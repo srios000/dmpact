@@ -77,7 +77,7 @@ dmpact/
 │   │   │   └── negotiate/     # mismatch, counteroffers, nudges
 │   │   ├── paypal/            # oauth, invoices, webhooks verify, disputes
 │   │   └── evidence/          # PDF builder
-│   └── components/            # ui/ = shadcn
+│   └── components/            # ui/ (atoms, shadcn), molecules/, organisms/, templates/
 ├── evals/                     # extraction + negotiation eval runners
 └── .github/                   # CI, issue + PR templates
 ```

@@ -18,6 +18,30 @@
 - **Never use `prisma db push`.** Change `prisma/schema.prisma`, run `pnpm db:migrate`, and commit the migration. `prisma generate` runs on `pnpm install`.
 - Demo data uses fictional names only: no real VTubers, brands, or copyrighted assets.
 
+## Frontend
+
+### Atomic Design
+
+| Level | Folder | Contains |
+|---|---|---|
+| Atoms | `src/components/ui/` | shadcn primitives: Button, Input, Badge. No business logic, no data fetching. |
+| Molecules | `src/components/molecules/` | A few atoms with one job: form field, money input, ambiguity flag. Plain props only. |
+| Organisms | `src/components/organisms/` | Sections that know domain types: agreement form, commission queue, counteroffer list. |
+| Templates | `src/components/templates/` | Page layouts with slots. No data. |
+| Pages | `src/app/**/page.tsx` | Fetch data and pass it down. |
+
+- Import only from lower levels. Never upward, never across the same level.
+- Add atoms with the shadcn CLI (`pnpm dlx shadcn@latest add <name>`), not by hand.
+- One component per file, named in PascalCase, file in kebab-case.
+
+### Variants
+
+- A visual difference of the same component is a `cva` variant on that component, not a new component.
+- Name variant props consistently: `variant`, `size`, and domain ones like `state`. Always set `defaultVariants`.
+- No boolean style props (`isPrimary`, `isLarge`). Use a variant.
+- `className` is for layout only (spacing, width, placement), not for restyling.
+- Colors come from theme tokens, never hard-coded hex.
+
 ## Labels
 
 | Label | Meaning |
