@@ -33,10 +33,12 @@ Next.js · TypeScript · PostgreSQL · Google Gemini · PayPal Invoicing v2 + We
 ```bash
 git clone https://github.com/srios000/dmpact.git
 cd dmpact
+pnpm install
 cp .env.example .env
+pnpm dev
 ```
 
-Fill in the PayPal sandbox and Gemini keys in `.env`.
+Requires Node 24 and pnpm. Fill in the PayPal sandbox and Gemini keys in `.env`.
 
 ## Team
 
