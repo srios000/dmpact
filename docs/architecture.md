@@ -45,41 +45,44 @@ One deployable Next.js app holds both UI and API. Every boundary that talks to a
 ```
 dmpact/
 ├── docs/                      # PRD, URD, schema, architecture, timeline
-├── schema/                    # agreement.schema.json (generated from zod after lock)
+├── schema/                    # agreement.schema.json (generated from zod)
 ├── prisma/                    # schema.prisma, migrations, seed.ts
-├── prisma.config.ts           # Prisma CLI config
-├── fixtures/
-│   └── dms/                   # 15–20 fake commission DMs + expected JSON (Marsha)
-├── public/
-├── src/
-│   ├── proxy.ts               # Supabase session refresh
-│   ├── generated/prisma/      # Prisma Client (git-ignored)
-│   ├── app/
-│   │   ├── (creator)/         # dashboard, queue, commission detail, settings/rate card
-│   │   ├── a/[token]/         # client agreement page
-│   │   └── api/
-│   │       ├── commissions/   # CRUD, transitions, versions
-│   │       ├── extract/       # POST DM → agreement
-│   │       ├── negotiate/     # POST agreement → counteroffers
-│   │       ├── deliveries/    # upload + hash
-│   │       ├── evidence/      # GET evidence pack
-│   │       ├── cron/overdue/  # called by Vercel Cron
-│   │       └── webhooks/paypal/
-│   ├── lib/
-│   │   ├── schema/            # zod: agreement, negotiation, events
-│   │   ├── state-machine/     # transitions + guards
-│   │   ├── money/             # decimal math, deposit/balance
-│   │   ├── db.ts              # PrismaClient singleton
-│   │   ├── supabase/          # client.ts, server.ts, proxy.ts
-│   │   ├── ai/
-│   │   │   ├── gemini.ts      # client + structured-output helper
-│   │   │   ├── extract/       # prompts, post-checks
-│   │   │   └── negotiate/     # mismatch, counteroffers, nudges
-│   │   ├── paypal/            # oauth, invoices, webhooks verify, disputes
-│   │   └── evidence/          # PDF builder
-│   └── components/            # ui/ (atoms, shadcn), molecules/, organisms/, templates/
+├── prisma.config.ts
+├── fixtures/dms/              # fake commission DMs + expected JSON
 ├── evals/                     # extraction + negotiation eval runners
-└── .github/                   # CI, issue + PR templates
+├── public/
+└── src/
+    ├── proxy.ts               # Supabase session refresh
+    ├── generated/prisma/      # Prisma Client (git-ignored)
+    ├── app/
+    │   ├── (auth)/login/
+    │   ├── (creator)/
+    │   │   ├── layout.tsx     # creator shell, redirects if logged out
+    │   │   ├── commissions/
+    │   │   │   ├── page.tsx   # AG Grid queue
+    │   │   │   ├── new/       # paste DM
+    │   │   │   └── [id]/      # detail, timeline, actions.ts
+    │   │   └── settings/rate-card/
+    │   ├── a/[token]/         # client agreement page
+    │   └── api/
+    │       ├── webhooks/paypal/
+    │       ├── cron/overdue/
+    │       └── commissions/[id]/
+    │           ├── status/    # polling
+    │           └── evidence/  # PDF download
+    ├── components/            # ui/ (atoms), molecules/, organisms/, templates/
+    ├── hooks/                 # use-polling.ts, ...
+    └── lib/
+        ├── db.ts
+        ├── auth/              # session helpers
+        ├── repositories/      # server-only data access, one file per domain
+        ├── supabase/          # client.ts, server.ts, proxy.ts
+        ├── schema/            # zod: agreement, negotiation, forms
+        ├── state-machine/
+        ├── money/
+        ├── ai/                # gemini.ts, extract/, negotiate/
+        ├── paypal/
+        └── evidence/
 ```
 
 Unit tests sit next to the code they test (`*.test.ts`).
@@ -154,10 +157,10 @@ erDiagram
 sequenceDiagram
   actor Cr as Creator
   participant UI
-  participant API as /api/extract
+  participant API as Server Action
   participant G as Gemini
   Cr->>UI: paste DM
-  UI->>API: POST {dm}
+  UI->>API: extractAgreement(dm)
   API->>G: system prompt + DM (as data) + JSON schema
   G-->>API: JSON
   API->>API: zod validate → (repair retry once) → deterministic post-checks → compute money
@@ -171,10 +174,10 @@ sequenceDiagram
 sequenceDiagram
   actor Cl as Client
   participant P as /a/[token]
-  participant API
+  participant API as Server
   participant PP as PayPal Sandbox
   Cl->>P: open link, Confirm
-  P->>API: POST confirm {version_hash}
+  P->>API: confirmAgreement(token, version_hash)
   API->>API: transition → agreed
   API->>PP: POST /v2/invoicing/invoices (deposit)
   API->>PP: POST /v2/invoicing/invoices/{id}/send
@@ -183,7 +186,7 @@ sequenceDiagram
   PP->>API: webhook INVOICING.INVOICE.PAID
   API->>PP: verify-webhook-signature
   API->>API: dedupe event → transition → dp_paid
-  P->>API: poll status
+  P->>API: GET /api/commissions/[id]/status (polling)
   API-->>P: dp_paid ✓
 ```
 

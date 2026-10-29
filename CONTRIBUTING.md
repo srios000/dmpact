@@ -42,6 +42,36 @@
 - `className` is for layout only (spacing, width, placement), not for restyling.
 - Colors come from theme tokens, never hard-coded hex.
 
+### Routes
+
+- Route groups by audience: `(auth)`, `(creator)`. Group names never appear in the URL.
+- URL segments in kebab-case. Dynamic segments named after what they identify: `[id]`, `[token]`. `params` is a Promise: `const { id } = await params`.
+- Page-only components go in a private `_components/` folder next to the page.
+- Route handlers (`app/api/`) only for callers outside the UI: PayPal webhooks, cron, polling, file downloads. UI writes use Server Actions.
+- The `(creator)` layout redirect is for UX only. The auth check that protects data happens in the repositories.
+
+### Data and hooks
+
+- Reads: Server Components call repositories. No client-side data fetching library (no TanStack Query, no SWR).
+- Writes: Server Actions in an `actions.ts` next to the page. Validate input with zod, call repositories, `state-machine/`, `paypal/` or `ai/`, then revalidate.
+- Pending and optimistic UI: `useActionState`, `useTransition`, `useOptimistic`.
+- Live status (payment): the `usePolling` hook against an `app/api/.../status` route.
+- Forms: react-hook-form with the zod resolver, using the same schema as the server.
+- Custom hooks live in `src/hooks/`, one per file, named `useX` in a kebab-case file (`use-polling.ts`).
+
+### Repositories
+
+- One file per domain in `src/lib/repositories/` (`commission-repository.ts`, ...). Each starts with `import "server-only"`.
+- Every function checks that the current creator owns the data.
+- Return plain data that client components can receive: convert `Decimal` and `Date` to strings inside the repository.
+- Business rules stay in `state-machine/`, `money/`, `ai/`, `paypal/`, not in repositories.
+
+### Types
+
+- Database types come from Prisma (`@/generated/prisma/client`). Contract and form types come from zod schemas in `src/lib/schema/` via `z.infer`.
+- Component props are typed in the component file.
+- No separate `types/` folder.
+
 ## Labels
 
 | Label | Meaning |

@@ -10,7 +10,7 @@
 | Sat Oct 31 | 2 | Scaffold app, CI, Prisma | OAuth + invoice create/send spike | Structured-output spike | Mismatch rules draft | Paste screen (mock data) | 10 DMs + expected JSON |
 | **Sun Nov 1** | 3 | **Schema v1 locked.** DB migrations | Webhook spike (simulator) | Extract prompt v1 | Counteroffer prompt v1 | Agreement form | **M0 done** check |
 | Mon Nov 2 | 4 | State machine + events | PayPal client module | Ambiguity post-checks | Rate card model | Client agreement page | Creator interviews (impact) |
-| Tue Nov 3 | 5 | Commissions API + client token | Deposit invoice on `agreed` | Wire `/api/extract` | Wire `/api/negotiate` | Wire paste → form | 20 DMs done |
+| Tue Nov 3 | 5 | Commissions API + client token | Deposit invoice on `agreed` | Wire extract action | Wire negotiate action | Wire paste → form | 20 DMs done |
 | Wed Nov 4 | 6 | Vercel + Supabase deploy | Webhook → `dp_paid` | Extraction eval v1 | Mismatch detection done | Client confirm + pay | Test happy path |
 | **Thu Nov 5** | 7 | **M1: core loop live on Vercel** | Polling fallback | Fix eval failures | Counteroffer options validated | AG Grid queue v1 | **M1 demo run** |
 | Fri Nov 6 | 8 | Delivery API + storage | Delivery hash log | Language/slang edge cases | Counteroffer UI integration | Counteroffer editor | Demo script v1 |

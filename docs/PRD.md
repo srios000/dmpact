@@ -236,6 +236,8 @@ Confirmed by Rio on Oct 29 (#1). AI code is TypeScript (confirmed with Berwyn an
 | App | **Next.js (App Router) + TypeScript**, one deployable | API routes and UI in one place |
 | UI | Tailwind CSS + shadcn/ui, **AG Grid (Community)** | AG Grid is required by the team |
 | Validation | **zod**, exported to JSON Schema for Gemini | One schema shared by AI, API, and UI |
+| Data flow | **Server Components + Server Actions**, no client query library | Reads and writes stay on the server |
+| Forms | **react-hook-form** + zod resolver | Same schema as the server |
 | DB access | **PostgreSQL** + Prisma | Commissions, versions, and events are relational |
 | AI | **Google Gemini API** (`@google/genai`) with structured output | Named in the Commission Desk idea pitch |
 | Payments | **PayPal REST APIs (Sandbox)**: Invoicing v2, Webhooks | Core requirement |
