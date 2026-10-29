@@ -35,10 +35,14 @@ git clone https://github.com/srios000/dmpact.git
 cd dmpact
 pnpm install
 cp .env.example .env
+docker compose up -d
+pnpm db:deploy
 pnpm dev
 ```
 
-Requires Node 24 and pnpm. Fill in the PayPal sandbox and Gemini keys in `.env`.
+Requires Node 24, pnpm, and Docker. Without Docker, point `DATABASE_URL` and `DIRECT_URL` in `.env` at any local Postgres. Fill in the PayPal sandbox and Gemini keys in `.env`.
+
+`pnpm db:reset` wipes the local database and re-applies all migrations.
 
 ## Team
 

@@ -53,11 +53,20 @@
 ### Data and hooks
 
 - Reads: Server Components call repositories. No client-side data fetching library (no TanStack Query, no SWR).
-- Writes: Server Actions in an `actions.ts` next to the page. Validate input with zod, call repositories, `state-machine/`, `paypal/` or `ai/`, then revalidate.
+- Writes: Server Actions in an `actions.ts` next to the page (see Backend).
 - Pending and optimistic UI: `useActionState`, `useTransition`, `useOptimistic`.
 - Live status (payment): the `usePolling` hook against an `app/api/.../status` route.
 - Forms: react-hook-form with the zod resolver, using the same schema as the server.
 - Custom hooks live in `src/hooks/`, one per file, named `useX` in a kebab-case file (`use-polling.ts`).
+
+## Backend
+
+### Security
+
+- Every Server Action and route handler checks access itself. Page, layout, and `proxy.ts` checks don't protect them.
+- Read the session only through `getCurrentCreator()` in `src/lib/auth/` (wrapped in React `cache`).
+- Actions take IDs, never whole objects, and re-read data on the server.
+- Client-page actions check the agreement token instead of a session.
 
 ### Repositories
 
@@ -66,7 +75,34 @@
 - Return plain data that client components can receive: convert `Decimal` and `Date` to strings inside the repository.
 - Business rules stay in `state-machine/`, `money/`, `ai/`, `paypal/`, not in repositories.
 
-### Types
+### Server Actions
+
+- Order: validate input with zod → repositories, `state-machine/`, `paypal/` or `ai/` → `updateTag` → return.
+- Return expected errors as values (`{ ok: false, error }`) and show them with `useActionState`. Throw only unexpected errors; they reach `error.tsx`.
+- Writes only. Reads happen in Server Components.
+- Pages whose actions call Gemini set `export const maxDuration`.
+
+### Caching
+
+Cache Components is on.
+
+- Components that read the session or per-user data render inside `<Suspense>`. Don't `await` the session at the top of a layout.
+- Per-user data is not cached with `"use cache"`.
+- After a write: `updateTag` in Server Actions, `revalidateTag(tag, "max")` in route handlers.
+
+### Route handlers
+
+- PayPal webhook: read the raw body with `request.text()`, verify the signature, store the event (dedupe by ID), respond 200, and process it in `after()`.
+- Cron: require `Authorization: Bearer $CRON_SECRET`.
+- Missing records or bad tokens: `notFound()`.
+
+### Config
+
+- App code reads env vars only through `src/lib/env.ts` (`server-only`, validated with zod), never `process.env` directly.
+- `DATABASE_URL` is Supabase's pooled connection, `DIRECT_URL` the direct one for migrations.
+- Integration tests (`*.integration.test.ts`) run only when `TEST_DATABASE_URL` points at a separate, migrated database. They wipe it.
+
+## Types
 
 - Database types come from Prisma (`@/generated/prisma/client`). Contract and form types come from zod schemas in `src/lib/schema/` via `z.infer`.
 - Component props are typed in the component file.

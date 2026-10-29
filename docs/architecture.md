@@ -74,7 +74,8 @@ dmpact/
     ├── hooks/                 # use-polling.ts, ...
     └── lib/
         ├── db.ts
-        ├── auth/              # session helpers
+        ├── env.ts             # validated env vars
+        ├── auth/              # getCurrentCreator()
         ├── repositories/      # server-only data access, one file per domain
         ├── supabase/          # client.ts, server.ts, proxy.ts
         ├── schema/            # zod: agreement, negotiation, forms
