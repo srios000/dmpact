@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+.next
+src/generated
+docs
+*.md
+schema
