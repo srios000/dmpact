@@ -47,7 +47,7 @@
 - Route groups by audience: `(auth)`, `(creator)`. Group names never appear in the URL.
 - URL segments in kebab-case. Dynamic segments named after what they identify: `[id]`, `[token]`. `params` is a Promise: `const { id } = await params`.
 - Page-only components go in a private `_components/` folder next to the page.
-- Route handlers (`app/api/`) only for callers outside the UI: PayPal webhooks, cron, polling, file downloads. UI writes use Server Actions.
+- Route handlers (`app/api/`) only for callers outside the UI: Neon Auth, PayPal webhooks, cron, polling, file downloads. UI writes use Server Actions.
 - The `(creator)` layout redirect is for UX only. The auth check that protects data happens in the repositories.
 
 ### Data and hooks
@@ -99,7 +99,8 @@ Cache Components is on.
 ### Config
 
 - App code reads env vars only through `src/lib/env.ts` (`server-only`, validated with zod), never `process.env` directly.
-- `DATABASE_URL` is Supabase's pooled connection, `DIRECT_URL` the direct one for migrations.
+- `DATABASE_URL` is Neon's pooled connection (host contains `-pooler`), `DIRECT_URL` the direct one for migrations.
+- Develop on your own Neon branch (`dev-<name>`). The Neon `main` branch is the deployed demo; migrations reach it only through deploys.
 - Integration tests (`*.integration.test.ts`) run only when `TEST_DATABASE_URL` points at a separate, migrated database. They wipe it.
 
 ## Types

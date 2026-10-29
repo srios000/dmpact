@@ -16,7 +16,7 @@ All commissions are tracked in an AG Grid queue.
 
 ## Planned stack
 
-Next.js · TypeScript · PostgreSQL · Google Gemini · PayPal Invoicing v2 + Webhooks (Sandbox) · AG Grid · Vercel · Supabase
+Next.js · TypeScript · PostgreSQL · Google Gemini · PayPal Invoicing v2 + Webhooks (Sandbox) · AG Grid · Vercel · Neon
 
 ## Docs
 
@@ -35,14 +35,13 @@ git clone https://github.com/srios000/dmpact.git
 cd dmpact
 pnpm install
 cp .env.example .env
-docker compose up -d
 pnpm db:deploy
 pnpm dev
 ```
 
-Requires Node 24, pnpm, and Docker. Without Docker, point `DATABASE_URL` and `DIRECT_URL` in `.env` at any local Postgres. Fill in the PayPal sandbox and Gemini keys in `.env`.
+Requires Node 24 and pnpm. Each teammate develops on their own Neon branch, which has its own database, auth, and storage: put that branch's values in `.env`. For a database-only setup without Neon, run `docker compose up -d` and keep the local `DATABASE_URL` / `DIRECT_URL`. Fill in the PayPal sandbox and Gemini keys in `.env`.
 
-`pnpm db:reset` wipes the local database and re-applies all migrations.
+`pnpm db:reset` wipes your database and re-applies all migrations.
 
 ## Team
 

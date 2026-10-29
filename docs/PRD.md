@@ -242,9 +242,9 @@ Confirmed by Rio on Oct 29 (#1). AI code is TypeScript (confirmed with Berwyn an
 | AI | **Google Gemini API** (`@google/genai`) with structured output | Named in the Commission Desk idea pitch |
 | Payments | **PayPal REST APIs (Sandbox)**: Invoicing v2, Webhooks | Core requirement |
 | Hosting | **Vercel Hobby** (free) | Free Next.js hosting |
-| DB + file storage | **Supabase free tier** (Postgres + Storage) | Free Postgres and file storage |
+| DB + file storage | **Neon free tier** (Postgres + Object Storage), Singapore | Scales to zero instead of pausing. One branch per teammate |
 | Scheduled jobs | **Vercel Cron** (once a day, included in Hobby) calling `/api/cron/overdue` | Free, configured in the app |
-| Creator auth | **Supabase Auth** (email + password) + seeded demo account | Free, already part of Supabase |
+| Creator auth | **Neon Auth** (Managed Better Auth, email + password) + seeded demo account | Free, part of Neon, branches with the database |
 | Package manager | **pnpm** | |
 | PayPal SDK tooling *(optional)* | **APIMatic** | Optional, only if it helps (#53) |
 | CI | GitHub Actions: typecheck, lint, unit tests | Keep `main` working |
@@ -270,7 +270,7 @@ Confirmed by Rio on Oct 29 (#1). AI code is TypeScript (confirmed with Berwyn an
 | Sandbox payment flow behaves differently than expected | Document the exact sandbox steps in the README. Rehearse the demo before recording. |
 | LLM output inconsistent | Structured output + zod + repair retry. Evals catch regressions. Pin the model version. |
 | Scope creep | P0 first. P1 only after the P0 flow works end to end. Stretch last. |
-| Free-tier limits (e.g. Supabase pauses inactive projects) | Keep the project active during judging. Local run instructions as backup. |
+| Free-tier limits (Neon compute sleeps after 5 min idle; the first query takes a few hundred ms longer) | Warm up before recording and before judging. Local run instructions as backup. |
 | Needing AG Grid Enterprise features | Stay on Community features. |
 
 ## 15. Milestones (proposed)

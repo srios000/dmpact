@@ -22,7 +22,7 @@ flowchart LR
     EV[Evidence pack builder]
   end
 
-  DB[(PostgreSQL + Storage<br/>Supabase free tier)]
+  DB[(Postgres + Auth + Storage<br/>Neon free tier)]
   CRON[Vercel Cron<br/>daily overdue check]
   G[Google Gemini API]
   PAY[PayPal Sandbox<br/>Invoicing v2 + Webhooks]
@@ -52,7 +52,7 @@ dmpact/
 ├── evals/                     # extraction + negotiation eval runners
 ├── public/
 └── src/
-    ├── proxy.ts               # Supabase session refresh
+    ├── proxy.ts               # Neon Auth route protection
     ├── generated/prisma/      # Prisma Client (git-ignored)
     ├── app/
     │   ├── (auth)/login/
@@ -65,6 +65,7 @@ dmpact/
     │   │   └── settings/rate-card/
     │   ├── a/[token]/         # client agreement page
     │   └── api/
+    │       ├── auth/[...path]/  # Neon Auth handler
     │       ├── webhooks/paypal/
     │       ├── cron/overdue/
     │       └── commissions/[id]/
@@ -75,9 +76,9 @@ dmpact/
     └── lib/
         ├── db.ts
         ├── env.ts             # validated env vars
-        ├── auth/              # getCurrentCreator()
+        ├── auth/              # server.ts, client.ts, getCurrentCreator()
         ├── repositories/      # server-only data access, one file per domain
-        ├── supabase/          # client.ts, server.ts, proxy.ts
+        ├── storage.ts         # S3 client for Neon Object Storage
         ├── schema/            # zod: agreement, negotiation, forms
         ├── state-machine/
         ├── money/
@@ -88,7 +89,7 @@ dmpact/
 
 Unit tests sit next to the code they test (`*.test.ts`).
 
-Creator pages and API routes check the user with `supabase.auth.getClaims()`. The client page, PayPal webhook, and cron route are protected by the token, webhook signature, and `CRON_SECRET`.
+Creator pages, Server Actions, and API routes check the user with `getCurrentCreator()` (Neon Auth `auth.getSession()`). The client page, PayPal webhook, and cron route are protected by the token, webhook signature, and `CRON_SECRET`.
 
 ## 3. Commission state machine
 
@@ -199,10 +200,10 @@ Vercel Cron (once a day, plus a manual "Run now" button for the demo) calls `GET
 
 | Env var | Used by |
 |---|---|
-| `DATABASE_URL` | Prisma Client at runtime (Supabase pooled connection) |
+| `DATABASE_URL` | Prisma Client at runtime (Neon pooled connection, host contains `-pooler`) |
 | `DIRECT_URL` | Prisma CLI / migrations via `prisma.config.ts` (direct connection) |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase Auth (creator login) |
-| `SUPABASE_SECRET_KEY` | Delivery file storage (server only, never exposed to the browser) |
+| `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` | Neon Auth (creator login) |
+| `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Neon Object Storage (delivery files, server only) |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | AI modules |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | PayPal client |
 | `PAYPAL_API_BASE` = `https://api-m.sandbox.paypal.com` | PayPal client |
