@@ -39,7 +39,7 @@ pnpm db:deploy
 pnpm dev
 ```
 
-Requires Node 24 and pnpm. Each teammate develops on their own Neon branch, which has its own database, auth, and storage: put that branch's values in `.env`. For a database-only setup without Neon, run `docker compose up -d` and keep the local `DATABASE_URL` / `DIRECT_URL`. Fill in the PayPal sandbox and Gemini keys in `.env`.
+Requires Node 24 and pnpm. Each teammate develops on their own Neon branch (`dev-<name>` in the `dmpact` Neon project), which has its own database, auth, and storage. In the Neon console, open your branch: **Connect** gives `DATABASE_URL` (pooled) and `DIRECT_URL` (direct), and **Auth** gives `NEON_AUTH_BASE_URL`. Generate `NEON_AUTH_COOKIE_SECRET` with `openssl rand -base64 32`. For a database-only setup without Neon, run `docker compose up -d` and keep the local `DATABASE_URL` / `DIRECT_URL`. Fill in the PayPal sandbox and Gemini keys in `.env`.
 
 `pnpm db:reset` wipes your database and re-applies all migrations.
 
