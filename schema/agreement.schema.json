@@ -1,99 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/srios000/dmpact/schema/agreement.schema.json",
-  "title": "DMpact Agreement",
-  "description": "DRAFT v1. Source of truth will be the zod schema in src/lib/schema/agreement.ts. See docs/agreement-schema.md.",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "service_type",
-    "service_other",
-    "title",
-    "deliverables",
-    "price",
-    "deposit",
-    "deadline",
-    "revisions",
-    "ambiguities"
-  ],
-  "$defs": {
-    "money": {
-      "type": "string",
-      "pattern": "^\\d+(\\.\\d{1,2})?$"
-    },
-    "nullableMoney": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/money"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "ambiguity": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "code",
-        "severity",
-        "field",
-        "message"
-      ],
-      "properties": {
-        "code": {
-          "enum": [
-            "MISSING_PRICE",
-            "AMBIGUOUS_CURRENCY",
-            "UNSUPPORTED_CURRENCY",
-            "CONFLICTING_VALUES",
-            "SCOPE_UNCLEAR",
-            "MISSING_DEADLINE",
-            "RELATIVE_DEADLINE",
-            "PAST_DEADLINE",
-            "MISSING_REVISIONS",
-            "VAGUE_REVISIONS",
-            "MISSING_DEPOSIT_TERMS",
-            "DEPOSIT_EXCEEDS_TOTAL",
-            "USAGE_RIGHTS_UNCLEAR",
-            "MISSING_CLIENT_EMAIL",
-            "OTHER"
-          ]
-        },
-        "severity": {
-          "enum": [
-            "blocker",
-            "warning"
-          ]
-        },
-        "field": {
-          "type": "string",
-          "description": "JSON Pointer into the agreement"
-        },
-        "message": {
-          "type": "string"
-        },
-        "source_quote": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "suggested_question": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
-    }
-  },
   "properties": {
     "schema_version": {
+      "type": "string",
       "const": "1.0"
     },
     "service_type": {
+      "type": "string",
       "enum": [
         "mixing",
         "mastering",
@@ -106,27 +20,25 @@
       ]
     },
     "service_other": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Required when service_type is other, else null"
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "title": {
       "type": "string",
       "minLength": 1
     },
     "deliverables": {
-      "type": "array",
       "minItems": 1,
+      "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "description",
-          "quantity"
-        ],
         "properties": {
           "id": {
             "type": "string",
@@ -138,7 +50,8 @@
           },
           "quantity": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 9007199254740991
           },
           "format": {
             "type": [
@@ -146,39 +59,52 @@
               "null"
             ]
           }
-        }
+        },
+        "required": [
+          "id",
+          "description",
+          "quantity"
+        ],
+        "additionalProperties": false
       }
     },
     "price": {
       "type": "object",
-      "additionalProperties": false,
+      "properties": {
+        "total": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d{1,2})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
       "required": [
         "total",
         "currency"
       ],
-      "properties": {
-        "total": {
-          "$ref": "#/$defs/nullableMoney"
-        },
-        "currency": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "pattern": "^[A-Z]{3}$"
-        }
-      }
+      "additionalProperties": false
     },
     "deposit": {
       "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "type",
-        "percent",
-        "fixed_amount"
-      ],
       "properties": {
         "type": {
+          "type": "string",
           "enum": [
             "percent",
             "fixed",
@@ -186,40 +112,72 @@
           ]
         },
         "percent": {
-          "type": [
-            "number",
-            "null"
-          ],
-          "minimum": 0,
-          "maximum": 100
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "fixed_amount": {
-          "$ref": "#/$defs/nullableMoney"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d{1,2})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "amount": {
-          "$ref": "#/$defs/nullableMoney",
-          "description": "Computed by server"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d{1,2})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
-      }
+      },
+      "required": [
+        "type",
+        "percent",
+        "fixed_amount"
+      ],
+      "additionalProperties": false
     },
     "balance_amount": {
-      "$ref": "#/$defs/nullableMoney",
-      "description": "Computed by server"
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d{1,2})?$"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "deadline": {
       "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "date",
-        "is_relative"
-      ],
       "properties": {
         "date": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date"
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "raw_text": {
           "type": [
@@ -230,30 +188,47 @@
         "is_relative": {
           "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "date",
+        "is_relative"
+      ],
+      "additionalProperties": false
     },
     "revisions": {
       "type": "object",
-      "additionalProperties": false,
+      "properties": {
+        "included": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extra_fee": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^\\d+(\\.\\d{1,2})?$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
       "required": [
         "included"
       ],
-      "properties": {
-        "included": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": 0
-        },
-        "extra_fee": {
-          "$ref": "#/$defs/nullableMoney"
-        }
-      }
+      "additionalProperties": false
     },
     "usage_rights": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "commercial": {
           "type": [
@@ -273,15 +248,14 @@
             "null"
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "parties": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "client": {
           "type": "object",
-          "additionalProperties": false,
           "properties": {
             "display_name": {
               "type": [
@@ -296,15 +270,22 @@
               ]
             },
             "email": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "format": "email"
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "email",
+                  "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "notes": {
       "type": [
@@ -315,12 +296,67 @@
     "ambiguities": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/ambiguity"
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "MISSING_PRICE",
+              "AMBIGUOUS_CURRENCY",
+              "UNSUPPORTED_CURRENCY",
+              "CONFLICTING_VALUES",
+              "SCOPE_UNCLEAR",
+              "MISSING_DEADLINE",
+              "RELATIVE_DEADLINE",
+              "PAST_DEADLINE",
+              "MISSING_REVISIONS",
+              "VAGUE_REVISIONS",
+              "MISSING_DEPOSIT_TERMS",
+              "DEPOSIT_EXCEEDS_TOTAL",
+              "USAGE_RIGHTS_UNCLEAR",
+              "MISSING_CLIENT_EMAIL",
+              "OTHER"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocker",
+              "warning"
+            ]
+          },
+          "field": {
+            "type": "string",
+            "pattern": "^\\/([^/]+(\\/[^/]+)*)?$"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_quote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggested_question": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "field",
+          "message"
+        ],
+        "additionalProperties": false
       }
     },
     "extraction": {
       "type": "object",
-      "additionalProperties": false,
       "properties": {
         "model": {
           "type": "string"
@@ -336,33 +372,27 @@
         "source_language": {
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "model",
+        "prompt_version",
+        "confidence",
+        "source_language"
+      ],
+      "additionalProperties": false
     }
   },
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "service_type": {
-            "const": "other"
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "service_other": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "else": {
-        "properties": {
-          "service_other": {
-            "type": "null"
-          }
-        }
-      }
-    }
-  ]
+  "required": [
+    "schema_version",
+    "service_type",
+    "service_other",
+    "title",
+    "deliverables",
+    "price",
+    "deposit",
+    "deadline",
+    "revisions",
+    "ambiguities"
+  ],
+  "additionalProperties": false
 }
