@@ -56,7 +56,7 @@ The source of truth in code will be a zod schema at `src/lib/schema/agreement.ts
 | `extraction.confidence` | number 0–1 | | Overall self-reported confidence |
 | `extraction.source_language` | string | | `en`, `id`, `ja`, `mixed` |
 
-**Stored outside the JSON (DB columns, not AI-writable):** `commission_id`, `version`, `content_hash`, `created_by`, `created_at`, `creator_confirmed_at`, `client_confirmed_at`, original DM text.
+**Stored outside the JSON (DB columns, not AI-writable):** `commission_id`, `version`, `content_hash`, `created_by`, `created_at`, original DM text. Creator and client confirmations are stored in `confirmations`, each tied to a version's `content_hash`.
 
 ## 3. Ambiguity flags
 

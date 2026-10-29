@@ -125,24 +125,26 @@ erDiagram
   creators ||--o{ commissions : owns
   creators ||--o| rate_cards : has
   commissions ||--|{ agreement_versions : has
+  agreement_versions ||--o{ confirmations : confirmed_by
   commissions ||--o{ invoices : has
   commissions ||--o{ deliveries : has
   commissions ||--o{ commission_events : logs
   commissions ||--o{ change_requests : receives
-  webhook_events }o--|| invoices : updates
+  webhook_events }o--o| invoices : updates
 
-  creators { uuid id  string email  string display_name  string paypal_email }
-  commissions { uuid id  uuid creator_id  string state  text source_dm  string client_token  int current_version  timestamptz created_at }
-  agreement_versions { uuid id  uuid commission_id  int version  jsonb content  string content_hash  timestamptz creator_confirmed_at  timestamptz client_confirmed_at }
-  invoices { uuid id  uuid commission_id  string kind "deposit|balance"  string paypal_invoice_id  string status  string amount  string currency  date due_date  timestamptz paid_at  timestamptz last_reminded_at }
-  deliveries { uuid id  uuid commission_id  string filename  string sha256  int size_bytes  string mime  string storage_key  timestamptz logged_at }
-  commission_events { uuid id  uuid commission_id  string from_state  string to_state  string actor  string reason  jsonb meta  timestamptz at }
+  creators { uuid id  uuid auth_user_id  string email  string display_name  string paypal_email }
+  commissions { uuid id  uuid creator_id  string state  text source_dm  string client_token  timestamptz created_at }
+  agreement_versions { uuid id  uuid commission_id  int version  jsonb content  string content_hash  string created_by }
+  confirmations { uuid id  uuid agreement_version_id  string party "creator|client"  string content_hash  timestamptz confirmed_at }
+  invoices { uuid id  uuid commission_id  string kind "deposit|balance"  string paypal_invoice_id  string status  decimal amount  string currency  date due_date  timestamptz paid_at  timestamptz last_reminded_at }
+  deliveries { uuid id  uuid commission_id  string filename  string sha256  int size_bytes  string mime_type  string storage_key  bool is_final  timestamptz logged_at }
+  commission_events { uuid id  uuid commission_id  string type  string from_state  string to_state  string actor  string reason  jsonb meta  timestamptz at }
   change_requests { uuid id  uuid commission_id  int version  text message  timestamptz at }
   rate_cards { uuid id  uuid creator_id  jsonb rates  int mismatch_threshold_pct }
-  webhook_events { string paypal_event_id  string type  jsonb payload  timestamptz received_at }
+  webhook_events { string id  string type  jsonb payload  timestamptz received_at  timestamptz processed_at }
 ```
 
-`agreement_versions`, `commission_events`, `deliveries`, and `webhook_events` are append-only.
+`agreement_versions`, `confirmations`, `deliveries`, and `commission_events` are append-only, enforced by database triggers.
 
 ## 5. Key sequences
 

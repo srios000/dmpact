@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CommissionState {
+  draft
+  negotiating
+  agreed
+  dp_paid
+  in_progress
+  delivered
+  fully_paid
+  cancelled
+}
+
+enum Actor {
+  creator
+  client
+  paypal
+  system
+}
+
+enum Party {
+  creator
+  client
+}
+
+enum InvoiceKind {
+  deposit
+  balance
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  cancelled
+}
+
+model Creator {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  authUserId  String       @unique @map("auth_user_id") @db.Uuid
+  email       String       @unique
+  displayName String       @map("display_name")
+  paypalEmail String?      @map("paypal_email")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  commissions Commission[]
+  rateCard    RateCard?
+
+  @@map("creators")
+}
+
+model Commission {
+  id                String             @id @default(uuid(7)) @db.Uuid
+  creatorId         String             @map("creator_id") @db.Uuid
+  state             CommissionState    @default(draft)
+  sourceDm          String             @map("source_dm")
+  clientToken       String?            @unique @map("client_token")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  creator           Creator            @relation(fields: [creatorId], references: [id])
+  agreementVersions AgreementVersion[]
+  confirmations     Confirmation[]
+  invoices          Invoice[]
+  deliveries        Delivery[]
+  events            CommissionEvent[]
+  changeRequests    ChangeRequest[]
+
+  @@index([creatorId, state])
+  @@map("commissions")
+}
+
+model AgreementVersion {
+  id            String         @id @default(uuid(7)) @db.Uuid
+  commissionId  String         @map("commission_id") @db.Uuid
+  version       Int
+  content       Json
+  contentHash   String         @map("content_hash") @db.Char(64)
+  createdBy     Actor          @map("created_by")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  commission    Commission     @relation(fields: [commissionId], references: [id])
+  confirmations Confirmation[]
+
+  @@unique([commissionId, version])
+  @@map("agreement_versions")
+}
+
+model Confirmation {
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  commissionId       String           @map("commission_id") @db.Uuid
+  agreementVersionId String           @map("agreement_version_id") @db.Uuid
+  party              Party
+  contentHash        String           @map("content_hash") @db.Char(64)
+  confirmedAt        DateTime         @default(now()) @map("confirmed_at") @db.Timestamptz
+  commission         Commission       @relation(fields: [commissionId], references: [id])
+  agreementVersion   AgreementVersion @relation(fields: [agreementVersionId], references: [id])
+
+  @@unique([agreementVersionId, party])
+  @@index([commissionId])
+  @@map("confirmations")
+}
+
+model Invoice {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  commissionId    String        @map("commission_id") @db.Uuid
+  kind            InvoiceKind
+  status          InvoiceStatus @default(draft)
+  paypalInvoiceId String?       @unique @map("paypal_invoice_id")
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String        @db.Char(3)
+  dueDate         DateTime?     @map("due_date") @db.Date
+  payLink         String?       @map("pay_link")
+  paidAt          DateTime?     @map("paid_at") @db.Timestamptz
+  lastRemindedAt  DateTime?     @map("last_reminded_at") @db.Timestamptz
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  commission      Commission    @relation(fields: [commissionId], references: [id])
+
+  @@index([commissionId])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+model Delivery {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  commissionId String     @map("commission_id") @db.Uuid
+  filename     String
+  sha256       String     @db.Char(64)
+  sizeBytes    Int        @map("size_bytes")
+  mimeType     String     @map("mime_type")
+  storageKey   String?    @map("storage_key")
+  isFinal      Boolean    @default(false) @map("is_final")
+  loggedAt     DateTime   @default(now()) @map("logged_at") @db.Timestamptz
+  commission   Commission @relation(fields: [commissionId], references: [id])
+
+  @@index([commissionId])
+  @@map("deliveries")
+}
+
+model CommissionEvent {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  commissionId String           @map("commission_id") @db.Uuid
+  type         String
+  fromState    CommissionState? @map("from_state")
+  toState      CommissionState? @map("to_state")
+  actor        Actor
+  reason       String?
+  meta         Json?
+  at           DateTime         @default(now()) @db.Timestamptz
+  commission   Commission       @relation(fields: [commissionId], references: [id])
+
+  @@index([commissionId, at])
+  @@map("commission_events")
+}
+
+model ChangeRequest {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  commissionId String     @map("commission_id") @db.Uuid
+  version      Int
+  message      String
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  commission   Commission @relation(fields: [commissionId], references: [id])
+
+  @@index([commissionId])
+  @@map("change_requests")
+}
+
+model RateCard {
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  creatorId            String   @unique @map("creator_id") @db.Uuid
+  rates                Json
+  mismatchThresholdPct Int      @default(20) @map("mismatch_threshold_pct")
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  creator              Creator  @relation(fields: [creatorId], references: [id])
+
+  @@map("rate_cards")
+}
+
+model WebhookEvent {
+  id          String    @id
+  type        String
+  payload     Json
+  receivedAt  DateTime  @default(now()) @map("received_at") @db.Timestamptz
+  processedAt DateTime? @map("processed_at") @db.Timestamptz
+
+  @@map("webhook_events")
+}

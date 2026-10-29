@@ -15,6 +15,7 @@
 - **Never commit secrets.** Use `.env` (git-ignored). Add new keys to `.env.example` with an empty value.
 - **PayPal sandbox only.** No live credentials anywhere.
 - **Money is a decimal string**, never a float.
+- **Never use `prisma db push`.** Change `prisma/schema.prisma`, run `pnpm db:migrate`, and commit the migration. `prisma generate` runs on `pnpm install`.
 - Demo data uses fictional names only: no real VTubers, brands, or copyrighted assets.
 
 ## Labels
