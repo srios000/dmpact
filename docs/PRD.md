@@ -5,7 +5,7 @@
 | **Product** | DMpact |
 | **Event** | Build What's Next with PayPal and AI (Devpost) |
 | **Hard deadline** | **Nov 12, 2026, 12:00 PM PST** (= Nov 13, 03:00 WIB) |
-| **Status** | Draft, not yet reviewed by the team |
+| **Status** | Under Review |
 | **Related** | [URD](URD.md) · [Agreement Schema](agreement-schema.md) · [Architecture](architecture.md) · [Timeline](timeline.md) · [Submission Checklist](submission-checklist.md) |
 
 > Everything in this draft is a proposal until the team reviews it. Problem statements and user descriptions are hypotheses taken from the team's idea pitches and have not been validated with creators yet (see #46).

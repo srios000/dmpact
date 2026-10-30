@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft, not yet reviewed by the team |
+| **Status** | Under Review |
 | **Related** | [PRD](PRD.md) · [Agreement Schema](agreement-schema.md) |
 
 The PRD says *what we build*. This document says *who it's for and what they need to do*, as user stories with acceptance criteria to test against. Story IDs (`US-xx`) can be referenced from issues and test cases.
