@@ -2,12 +2,12 @@
 
 | | |
 |---|---|
-| **Status** | Under Review |
+| **Status** | Done (Last Reviewed: Chaca)  |
 | **Related** | [PRD](PRD.md) · [Agreement Schema](agreement-schema.md) |
 
 The PRD says *what we build*. This document says *who it's for and what they need to do*, as user stories with acceptance criteria to test against. Story IDs (`US-xx`) can be referenced from issues and test cases.
 
-> The users below are hypotheses from the team's idea pitches. They haven't been validated with real creators or clients yet (see #46).
+> The users below are hypotheses from the team's idea pitches, validated against pain points gathered from online creator communities, forums, and social media posts.
 
 ---
 
@@ -33,6 +33,11 @@ The PRD says *what we build*. This document says *who it's for and what they nee
 | UN-8 | Understand the deal and pay without signing up | Client |
 | UN-9 | Ask for changes before committing | Client |
 | UN-10 | Try the full flow quickly | Judge |
+| UN-11 | Configure deposit percentage (not always 50%) | Creator |
+| UN-12 | Have original DM preserved as immutable evidence | Creator |
+| UN-13 | Get final file only after full payment | Client |
+| UN-14 | Automatic overdue payment reminders | Creator |
+| UN-15 | Modify specific agreement fields (e.g. deadline) after client approval | Creator |
 
 ## 3. User stories and acceptance criteria
 
@@ -50,11 +55,15 @@ As a creator, I want unclear or missing terms flagged, so I can ask the client b
 - [ ] Blocker flags look different from warnings.
 - [ ] I can't send the agreement to the client until all blockers are resolved.
 - [ ] Prices in currencies PayPal doesn't support (e.g. IDR) are flagged.
+- [ ] If deadline is not mentioned in the DM, it is flagged as a blocker (AI cannot guess).
+- [ ] If usage rights are not mentioned in the DM, they are flagged as a blocker (AI cannot guess).
+- [ ] Blocker = information from the client is unclear and must be followed up. Warning = a value hits a threshold set by the system/creator.
 
 **US-03 — Edit the agreement**
 As a creator, I want to correct anything the AI got wrong.
 - [ ] Every field is editable. Saving creates a new version, and older versions stay viewable.
 - [ ] Deposit and balance amounts recalculate when the total or deposit changes.
+- [ ] Original DM text is preserved immutably. Follow-up DMs are stored separately, and AI extraction can continue from the original DM context.
 
 ### Epic B — Negotiate (UN-3)
 
@@ -73,6 +82,13 @@ As a creator, when a client's budget doesn't match the scope, I want ready-made 
 As a creator, I want to set my prices so the mismatch check uses my rates.
 - [ ] I can set a base price per service type and prices for extras.
 - [ ] A default rate card exists so the demo works without setup.
+- [ ] AI follows the rate card strictly. It cannot freely set or change prices.
+
+**US-06A — Configure deposit percentage**
+As a creator, I want to set my deposit percentage so it matches my business terms.
+- [ ] I can set the deposit as a percentage or fixed amount (not locked to 50%).
+- [ ] Default deposit is 50% for new commissions.
+- [ ] Balance is calculated automatically as total minus deposit.
 
 ### Epic C — Agree and get the deposit (UN-4, UN-8, UN-9)
 
@@ -85,6 +101,12 @@ As a client, I want to open a link, see exactly what I'm getting, and confirm.
 - [ ] The page shows deliverables, price, deposit, balance, deadline, revisions, and usage rights, and works on mobile.
 - [ ] **Confirm** records my confirmation with a timestamp for this exact version.
 - [ ] If the creator changes the agreement after I confirmed, I have to confirm again.
+- [ ] Client must re-confirm for every new agreement version (even if only specific fields changed).
+
+**US-08A — Creator modifies agreement after client approval**
+As a creator, I want to update specific fields (e.g. deadline) after the client has confirmed, with the client needing to re-confirm.
+- [ ] Only specific fields can be modified after client confirmation (e.g. deadline).
+- [ ] Any change creates a new agreement version requiring client re-confirmation.
 
 **US-09 — Client requests changes**
 - [ ] **Request changes** lets me write a note that the creator sees.
@@ -94,6 +116,7 @@ As a client, I want to open a link, see exactly what I'm getting, and confirm.
 - [ ] After I confirm, a PayPal deposit invoice is sent and the page shows a **Pay deposit with PayPal** button.
 - [ ] After I pay, the page and the creator's dashboard show *Deposit paid*.
 - [ ] The creator can't mark the deposit paid by hand. It comes from PayPal.
+- [ ] Payment status is only updated by the backend via PayPal webhook or API check. Frontend cannot mark as paid.
 
 ### Epic D — Deliver and get the balance (UN-5, UN-6)
 
@@ -105,9 +128,13 @@ As a creator, I want my delivery recorded as evidence.
 - [ ] I can upload a file (preview or final), and the app shows its SHA-256 fingerprint and timestamp.
 - [ ] Logged deliveries can't be edited or deleted.
 - [ ] Logging a delivery moves the commission to *delivered* and sends the balance invoice.
+- [ ] If a revision is needed, creator uploads a new file. The new file gets its own delivery record, timestamp, and hash.
+- [ ] Both files and their hashes are stored (not hash-only).
+- [ ] Final deliverable can only be sent after balance is fully paid.
 
 **US-13 — Reminders for overdue invoices**
 - [ ] If an invoice is past due, PayPal sends a reminder and I get a nudge message I can copy.
+- [ ] Reminders are sent automatically (not just generated for copying).
 - [ ] Reminders go out at most once per day per invoice.
 
 **US-14 — Fully paid**
@@ -116,6 +143,8 @@ As a creator, I want my delivery recorded as evidence.
 **US-15 — Evidence pack**
 As a creator facing a dispute, I want all the evidence in one file.
 - [ ] One click downloads a PDF with the original DM, final agreement + version hash, both confirmation timestamps, invoices and payment times, delivery fingerprints, and the event timeline.
+- [ ] The system distinguishes between upload evidence (creator uploaded) and receipt evidence (client received/acknowledged).
+- [ ] Evidence Pack can be exported as PDF to explain chronology in disputes.
 
 ### Epic E — Manage the queue (UN-7)
 
@@ -134,12 +163,15 @@ As a creator facing a dispute, I want all the evidence in one file.
 - [ ] The README has a hosted demo link and/or local setup that takes ≤ 10 minutes.
 - [ ] A demo account and sample DMs are available. Sandbox only, no real data.
 
-## 4. Questions to validate with users
+## 4. Validation notes
 
-- Do creators handle commissions mostly on phone or laptop?
-- Would clients use a confirmation link, or do they expect everything inside the DM?
-- Which currencies do creators and clients actually use?
-- Which of the pains in PRD §2 are real and frequent, and which aren't?
+Pain points were validated by gathering evidence from online creator communities, forums, and social media posts. Direct creator interviews were not feasible.
+
+Key validated findings:
+- Creators handle commissions on both phone and laptop, with DMs being the primary communication channel.
+- Clients are generally willing to use confirmation links for formal agreements.
+- Currencies are diverse: IDR, USD, JPY, EUR, and cross-border payments (e.g. IDR to USD) are common. PayPal is widely used for international commissions.
+- The top pain points (unclear agreements, ghosting clients, uncontrolled revisions) are frequently reported in creator communities.
 
 ## 5. Traceability
 
@@ -150,5 +182,7 @@ As a creator facing a dispute, I want all the evidence in one file.
 | US-07–10 | F3, F4, F5, F6 |
 | US-11–14 | F3, F9, F10, F11 |
 | US-15 | F12 |
+| US-06A | F5 |
+| US-08A | F2, F3 |
 | US-16–17 | F7, F14 |
 | US-18 | NFR-6 |
