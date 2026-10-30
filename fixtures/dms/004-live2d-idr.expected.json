@@ -1,0 +1,12 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "service_type": "live2d_rigging",
+    "price": { "total": "2500000.00", "currency": "IDR" },
+    "deposit": { "type": "percent", "percent": 30, "fixed_amount": null },
+    "deadline": { "date": "2027-01-10", "is_relative": false },
+    "revisions": { "included": 3 }
+  },
+  "expected_ambiguity_codes": ["UNSUPPORTED_CURRENCY"],
+  "expect_mismatch": false
+}

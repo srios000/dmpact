@@ -92,7 +92,7 @@ The source of truth in code will be a zod schema at `src/lib/schema/agreement.ts
 | `PAST_DEADLINE` | blocker | Resolved date is before today |
 | `MISSING_REVISIONS` | warning | |
 | `VAGUE_REVISIONS` | warning | "a few revisions", "unlimited" |
-| `MISSING_DEPOSIT_TERMS` | warning | No DP mentioned. Default to 50% |
+| `MISSING_DEPOSIT_TERMS` | warning | No DP mentioned. Extract as `deposit.type = none`; never assume 50% |
 | `DEPOSIT_EXCEEDS_TOTAL` | blocker | |
 | `USAGE_RIGHTS_UNCLEAR` | warning | Monetized use not addressed |
 | `MISSING_CLIENT_EMAIL` | warning | Asked for on the client page |

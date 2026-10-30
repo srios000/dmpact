@@ -1,0 +1,12 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "service_type": "thumbnail",
+    "price": { "total": "25.00", "currency": "USD" },
+    "deposit": { "type": "percent", "percent": 50, "fixed_amount": null },
+    "deadline": { "date": "2026-11-25", "is_relative": false },
+    "revisions": { "included": 1 }
+  },
+  "expected_ambiguity_codes": ["OTHER"],
+  "expect_mismatch": false
+}

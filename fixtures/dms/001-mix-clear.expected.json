@@ -1,0 +1,14 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "service_type": "mix_and_master",
+    "price": { "total": "150.00", "currency": "USD" },
+    "deposit": { "type": "percent", "percent": 50, "fixed_amount": null },
+    "deadline": { "date": "2026-11-20", "is_relative": false },
+    "revisions": { "included": 2 },
+    "usage_rights": { "commercial": true, "credit_required": true },
+    "parties": { "client": { "email": "ren.tanaka@example.com" } }
+  },
+  "expected_ambiguity_codes": [],
+  "expect_mismatch": false
+}
