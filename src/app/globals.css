@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "ag-grid-community/styles/ag-grid.css";
+@import "ag-grid-community/styles/ag-theme-quartz.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -48,72 +50,54 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #F4F6F9; /* Soft Gray */
+  --foreground: #1E2F50; /* Navy Text */
+  --card: #FFFFFF; /* White */
+  --card-foreground: #1E2F50;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E2F50;
+  --primary: #1E2F50; /* Navy */
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4F6F9;
+  --secondary-foreground: #1E2F50;
+  --muted: #F4F6F9;
+  --muted-foreground: #334563; /* Slate Navy for muted text */
+  --accent: #F4F6F9;
+  --accent-foreground: #1E2F50;
+  --destructive: oklch(0.6 0.18 25);
+  --border: #DCE5F0; /* Border Color from Spec */
+  --input: #DCE5F0;
+  --ring: #1E2F50;
+  --radius: 0.75rem;
+
+  /* Sidebar: Matches the light blue/gray in image */
+  --sidebar: #F4F6F9;
+  --sidebar-foreground: #334563;
+  --sidebar-primary: #1E2F50;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FFFFFF;
+  --sidebar-accent-foreground: #1E2F50;
+  --sidebar-border: #DCE5F0;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.18 0.02 240);
+  --foreground: oklch(0.98 0.01 240);
+  --card: oklch(0.22 0.02 240);
+  --card-foreground: oklch(0.98 0.01 240);
+  --popover: oklch(0.22 0.02 240);
+  --popover-foreground: oklch(0.98 0.01 240);
+  --primary: oklch(0.65 0.15 240);
+  --primary-foreground: oklch(0.2 0.02 240);
+  --secondary: oklch(0.28 0.02 240);
+  --secondary-foreground: oklch(0.98 0.01 240);
+  --muted: oklch(0.28 0.02 240);
+  --muted-foreground: oklch(0.7 0.02 240);
+  --accent: oklch(0.3 0.02 240);
+  --accent-foreground: oklch(0.98 0.01 240);
+  --border: oklch(0.3 0.02 240);
+  --input: oklch(0.3 0.02 240);
+  --ring: oklch(0.65 0.15 240 / 0.5);
 }
 
 @layer base {
@@ -125,5 +109,229 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .queue-grid-card {
+    position: relative;
+    --ag-background-color: transparent;
+    --ag-foreground-color: var(--foreground);
+    --ag-header-background-color: color-mix(in srgb, var(--background) 64%, white 36%);
+    --ag-odd-row-background-color: white;
+    --ag-row-hover-color: color-mix(in srgb, var(--background) 58%, white 42%);
+    --ag-border-color: var(--border);
+    --ag-wrapper-border-radius: 0px;
+    --ag-border-radius: 0px;
+    --ag-font-family: var(--font-sans);
+    --ag-cell-horizontal-padding: 16px;
+    --ag-list-item-height: 40px;
+    --ag-header-column-separator-display: none;
+    --ag-popup-shadow: 0 24px 60px rgba(30, 47, 80, 0.16);
+    isolation: isolate;
+  }
+
+  .queue-grid-card .ag-root-wrapper {
+    border: 0;
+    background: var(--card);
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden;
+  }
+
+  .queue-grid-card .ag-root-wrapper-body,
+  .queue-grid-card .ag-root,
+  .queue-grid-card .ag-body,
+  .queue-grid-card .ag-body-viewport-wrapper,
+  .queue-grid-card .ag-body-viewport,
+  .queue-grid-card .ag-center-cols-viewport,
+  .queue-grid-card .ag-center-cols-container,
+  .queue-grid-card .ag-center-cols-clipper {
+    background: var(--card);
+  }
+
+  .queue-grid-card .ag-header {
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 48%, white 52%) 0%,
+      color-mix(in srgb, var(--background) 78%, white 22%) 100%
+    );
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+    overflow: hidden;
+  }
+
+  .queue-grid-card .ag-header-cell-label {
+    color: var(--muted-foreground);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .queue-grid-card .ag-row {
+    cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent 55%);
+    transition:
+      background-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .queue-grid-card .ag-row-hover {
+    background: color-mix(in srgb, var(--background) 38%, white 62%) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+
+  .queue-grid-card .ag-row-last {
+    border-bottom: 0;
+  }
+
+  .queue-grid-card .ag-cell {
+    display: flex;
+    align-items: center;
+    border-right: 0;
+    color: var(--foreground);
+    font-size: 13px;
+    font-weight: 500;
+    justify-content: flex-start;
+    line-height: normal;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .queue-grid-card .ag-row .ag-cell-value,
+  .queue-grid-card .ag-row .ag-cell-wrapper {
+    display: flex;
+    height: 100%;
+    min-height: 100%;
+    width: 100%;
+    align-items: center;
+  }
+
+  .queue-grid-card .ag-row .ag-cell-wrapper {
+    height: 100%;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .queue-grid-card .ag-row .ag-cell-value {
+    height: 100%;
+    line-height: 1.2;
+  }
+
+  .queue-grid-card .ag-header-cell {
+    border-right: 0;
+  }
+
+  .queue-grid-card .ag-cell:first-child,
+  .queue-grid-card .ag-header-cell:first-child {
+    padding-left: 24px;
+  }
+
+  .queue-grid-card .ag-cell:last-child,
+  .queue-grid-card .ag-header-cell:last-child {
+    padding-right: 24px;
+  }
+
+  .queue-grid-card .ag-paging-panel {
+    border-top: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted-foreground);
+    font-size: 12px;
+    font-weight: 700;
+    border-bottom-left-radius: 22px;
+    border-bottom-right-radius: 22px;
+  }
+
+  .queue-grid-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 72%, white 28%);
+    pointer-events: none;
+  }
+
+  .queue-grid-card .queue-row-overdue {
+    background: color-mix(in srgb, var(--destructive) 10%, white 90%);
+  }
+
+  .queue-grid-card .ag-header-viewport,
+  .queue-grid-card .ag-header-container,
+  .queue-grid-card .ag-body-vertical-scroll-viewport,
+  .queue-grid-card .ag-body-horizontal-scroll-viewport {
+    border-radius: inherit;
+  }
+
+  .queue-grid-card .ag-horizontal-left-spacer,
+  .queue-grid-card .ag-horizontal-right-spacer {
+    display: none;
+  }
+
+  .ag-theme-quartz .ag-menu,
+  .ag-theme-quartz .ag-popup-child {
+    border: 1px solid color-mix(in srgb, var(--border) 86%, white 14%);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 60px rgba(30, 47, 80, 0.16);
+    backdrop-filter: blur(16px);
+    overflow: hidden;
+  }
+
+  .ag-theme-quartz .ag-menu-header,
+  .ag-theme-quartz .ag-filter-toolpanel-header,
+  .ag-theme-quartz .ag-set-filter-list,
+  .ag-theme-quartz .ag-filter-body-wrapper,
+  .ag-theme-quartz .ag-menu-list {
+    background: transparent;
+  }
+
+  .ag-theme-quartz .ag-picker-field-wrapper,
+  .ag-theme-quartz .ag-input-wrapper,
+  .ag-theme-quartz .ag-text-field-input-wrapper {
+    border: 1px solid color-mix(in srgb, var(--border) 90%, white 10%);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--background) 68%, white 32%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .ag-theme-quartz .ag-input-field-input,
+  .ag-theme-quartz input[class*="ag-"],
+  .ag-theme-quartz select[class*="ag-"] {
+    min-height: 40px;
+    border: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+  }
+
+  .ag-theme-quartz .ag-input-field-input::placeholder,
+  .ag-theme-quartz input[class*="ag-"]::placeholder {
+    color: color-mix(in srgb, var(--muted-foreground) 72%, white 28%);
+    font-weight: 500;
+  }
+
+  .ag-theme-quartz .ag-picker-field-wrapper:focus-within,
+  .ag-theme-quartz .ag-input-wrapper:focus-within,
+  .ag-theme-quartz .ag-text-field-input-wrapper:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 18%, white 82%);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 8%, transparent 92%);
+  }
+
+  .ag-theme-quartz .ag-menu-option {
+    border-radius: 12px;
+  }
+
+  .ag-theme-quartz .ag-menu-option:hover,
+  .ag-theme-quartz .ag-menu-option-active {
+    background: color-mix(in srgb, var(--background) 75%, white 25%);
+  }
+
+  .ag-theme-quartz .ag-checkbox-input-wrapper {
+    border-radius: 10px;
+    border-color: var(--border);
   }
 }
