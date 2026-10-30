@@ -313,6 +313,7 @@
               "VAGUE_REVISIONS",
               "MISSING_DEPOSIT_TERMS",
               "DEPOSIT_EXCEEDS_TOTAL",
+              "MISSING_USAGE_RIGHTS",
               "USAGE_RIGHTS_UNCLEAR",
               "MISSING_CLIENT_EMAIL",
               "OTHER"

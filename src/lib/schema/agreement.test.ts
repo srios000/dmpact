@@ -150,6 +150,34 @@ describe("agreementSchema", () => {
       ).toContain("ambiguities.0.code");
     });
 
+    it.each([
+      ["MISSING_DEADLINE", "/deadline/date"],
+      ["MISSING_USAGE_RIGHTS", "/usage_rights"],
+    ])("accepts %s as a blocker", (code, field) => {
+      expect(
+        issuesFor({
+          ...exampleAgreement,
+          ambiguities: [{ code, severity: "blocker", field, message: "x" }],
+        }),
+      ).toEqual([]);
+    });
+
+    it("rejects a severity that doesn't match the code", () => {
+      expect(
+        issuesFor({
+          ...exampleAgreement,
+          ambiguities: [
+            {
+              code: "MISSING_DEADLINE",
+              severity: "warning",
+              field: "/deadline/date",
+              message: "x",
+            },
+          ],
+        }),
+      ).toContain("ambiguities.0.severity");
+    });
+
     it("requires the field to be a JSON Pointer", () => {
       expect(
         issuesFor({

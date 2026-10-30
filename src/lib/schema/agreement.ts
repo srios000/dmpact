@@ -24,10 +24,32 @@ export const AMBIGUITY_CODES = [
   "VAGUE_REVISIONS",
   "MISSING_DEPOSIT_TERMS",
   "DEPOSIT_EXCEEDS_TOTAL",
+  "MISSING_USAGE_RIGHTS",
   "USAGE_RIGHTS_UNCLEAR",
   "MISSING_CLIENT_EMAIL",
   "OTHER",
 ] as const;
+
+export const SEVERITIES = ["blocker", "warning"] as const;
+
+export const AMBIGUITY_SEVERITY: Record<AmbiguityCode, Severity> = {
+  MISSING_PRICE: "blocker",
+  AMBIGUOUS_CURRENCY: "blocker",
+  UNSUPPORTED_CURRENCY: "blocker",
+  CONFLICTING_VALUES: "blocker",
+  SCOPE_UNCLEAR: "blocker",
+  MISSING_DEADLINE: "blocker",
+  RELATIVE_DEADLINE: "warning",
+  PAST_DEADLINE: "blocker",
+  MISSING_REVISIONS: "warning",
+  VAGUE_REVISIONS: "warning",
+  MISSING_DEPOSIT_TERMS: "warning",
+  DEPOSIT_EXCEEDS_TOTAL: "blocker",
+  MISSING_USAGE_RIGHTS: "blocker",
+  USAGE_RIGHTS_UNCLEAR: "warning",
+  MISSING_CLIENT_EMAIL: "warning",
+  OTHER: "warning",
+};
 
 export const moneySchema = z
   .string()
@@ -37,16 +59,30 @@ export const currencySchema = z
   .string()
   .regex(/^[A-Z]{3}$/, "Currency is an ISO 4217 code like USD");
 
-export const ambiguitySchema = z.strictObject({
-  code: z.enum(AMBIGUITY_CODES),
-  severity: z.enum(["blocker", "warning"]),
-  field: z
-    .string()
-    .regex(/^\/([^/]+(\/[^/]+)*)?$/, "Field is a JSON Pointer like /deadline/date"),
-  message: z.string().min(1),
-  source_quote: z.string().nullable().optional(),
-  suggested_question: z.string().nullable().optional(),
-});
+export const ambiguitySchema = z
+  .strictObject({
+    code: z.enum(AMBIGUITY_CODES),
+    severity: z.enum(SEVERITIES),
+    field: z
+      .string()
+      .regex(
+        /^\/([^/]+(\/[^/]+)*)?$/,
+        "Field is a JSON Pointer like /deadline/date",
+      ),
+    message: z.string().min(1),
+    source_quote: z.string().nullable().optional(),
+    suggested_question: z.string().nullable().optional(),
+  })
+  .superRefine((ambiguity, ctx) => {
+    const expected = AMBIGUITY_SEVERITY[ambiguity.code];
+    if (ambiguity.severity !== expected) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["severity"],
+        message: `${ambiguity.code} is always a ${expected}`,
+      });
+    }
+  });
 
 export const deliverableSchema = z.strictObject({
   id: z.string().regex(/^d\d+$/),
@@ -146,3 +182,4 @@ export type Agreement = z.infer<typeof agreementSchema>;
 export type Ambiguity = z.infer<typeof ambiguitySchema>;
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 export type AmbiguityCode = (typeof AMBIGUITY_CODES)[number];
+export type Severity = (typeof SEVERITIES)[number];
