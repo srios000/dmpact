@@ -23,7 +23,12 @@ export function baseAgreement(overrides: Partial<Agreement> = {}): Agreement {
     },
     notes: null,
     ambiguities: [],
-    extraction: { confidence: 0.9, source_language: "en" },
+    extraction: {
+      model: "",
+      prompt_version: "",
+      confidence: 0.9,
+      source_language: "en",
+    },
     ...overrides,
   };
 }

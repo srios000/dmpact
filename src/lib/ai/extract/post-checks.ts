@@ -1,8 +1,9 @@
 import { computeAmounts } from "@/lib/money/decimal";
-import type {
-  Agreement,
-  Ambiguity,
-  AmbiguityCode,
+import {
+  AMBIGUITY_SEVERITY,
+  type Agreement,
+  type Ambiguity,
+  type AmbiguityCode,
 } from "@/lib/schema/agreement";
 import { findInjectionText } from "./injection";
 
@@ -34,15 +35,28 @@ export const SUPPORTED_CURRENCIES = new Set([
   "USD",
 ]);
 
-const BLOCKER_CODES = new Set<AmbiguityCode>([
-  "MISSING_PRICE",
-  "AMBIGUOUS_CURRENCY",
-  "UNSUPPORTED_CURRENCY",
-  "CONFLICTING_VALUES",
-  "SCOPE_UNCLEAR",
-  "PAST_DEADLINE",
-  "DEPOSIT_EXCEEDS_TOTAL",
-]);
+export const DEFAULT_DEPOSIT_PERCENT = 50;
+
+/** Phrases that never count as an exact deadline (FR-1.9). */
+const VAGUE_DEADLINE =
+  /\b(asap|a\.s\.a\.p|as soon as possible|whenever|any ?time|no rush|secepatnya|sesegera mungkin|kapan (aja|saja|pun)|hayaku|itsudemo)\b/i;
+
+/** Used when a flag has no question from the model (FR-1.4). */
+const DEFAULT_QUESTIONS: Partial<Record<AmbiguityCode, string>> = {
+  MISSING_PRICE: "What total price are we agreeing on?",
+  AMBIGUOUS_CURRENCY: "Which currency is this price in?",
+  UNSUPPORTED_CURRENCY: "PayPal can't invoice this currency. Can we use USD?",
+  SCOPE_UNCLEAR: "What exactly should I deliver?",
+  MISSING_DEADLINE: "What exact date do you need this delivered by?",
+  RELATIVE_DEADLINE: "Can you confirm the exact delivery date?",
+  PAST_DEADLINE: "That date has passed. What date should we use?",
+  MISSING_REVISIONS: "How many revision rounds should be included?",
+  MISSING_DEPOSIT_TERMS: "Is a 50% deposit okay with you?",
+  DEPOSIT_EXCEEDS_TOTAL: "What deposit amount should we use?",
+  MISSING_USAGE_RIGHTS:
+    "Will this be used commercially, and do you need to credit me?",
+  MISSING_CLIENT_EMAIL: "What is your PayPal email for the invoice?",
+};
 
 export type PostCheckInput = {
   agreement: Agreement;
@@ -83,12 +97,7 @@ export function runPostChecks({
   const result: Agreement = structuredClone(agreement);
   const flags: Ambiguity[] = result.ambiguities.map((a) => ({
     ...a,
-    severity:
-      a.code === "OTHER"
-        ? a.severity
-        : BLOCKER_CODES.has(a.code)
-          ? "blocker"
-          : "warning",
+    severity: AMBIGUITY_SEVERITY[a.code],
   }));
 
   // Deliverable ids are d1, d2, ... in order.
@@ -149,7 +158,16 @@ export function runPostChecks({
     });
   }
 
-  // Deadline.
+  // Deadline. The AI can't supply a date for a vague phrase or with no source
+  // phrase at all (FR-1.9).
+  const rawDeadline = result.deadline.raw_text?.trim();
+  if (
+    result.deadline.date !== null &&
+    (!rawDeadline || VAGUE_DEADLINE.test(rawDeadline))
+  ) {
+    result.deadline.date = null;
+    result.deadline.is_relative = false;
+  }
   const deadlineDate = result.deadline.date;
   if (
     deadlineDate !== null &&
@@ -166,6 +184,7 @@ export function runPostChecks({
     });
   }
   if (
+    deadlineDate !== null &&
     result.deadline.is_relative &&
     !hasFlag(flags, ["RELATIVE_DEADLINE"], "/deadline")
   ) {
@@ -173,9 +192,7 @@ export function runPostChecks({
       code: "RELATIVE_DEADLINE",
       severity: "warning",
       field: "/deadline/date",
-      message: deadlineDate
-        ? `The deadline was relative. Resolved to ${deadlineDate} using today's date (${pasteDate}); please confirm.`
-        : "The deadline was relative and could not be resolved to a date.",
+      message: `The deadline was relative. Resolved to ${deadlineDate} using today's date (${pasteDate}); please confirm.`,
       source_quote: result.deadline.raw_text ?? null,
       suggested_question: null,
     });
@@ -184,21 +201,17 @@ export function runPostChecks({
     deadlineDate === null &&
     !hasAnyFlagOn(
       flags.filter((a) =>
-        [
-          "MISSING_DEADLINE",
-          "RELATIVE_DEADLINE",
-          "CONFLICTING_VALUES",
-        ].includes(a.code),
+        ["MISSING_DEADLINE", "CONFLICTING_VALUES"].includes(a.code),
       ),
       "/deadline",
     )
   ) {
     flags.push({
-      code: result.deadline.raw_text ? "RELATIVE_DEADLINE" : "MISSING_DEADLINE",
-      severity: "warning",
+      code: "MISSING_DEADLINE",
+      severity: "blocker",
       field: "/deadline/date",
       message: result.deadline.raw_text
-        ? "A deadline was mentioned but could not be turned into a date."
+        ? "A deadline was mentioned, but it has no exact date."
         : "No deadline was agreed.",
       source_quote: result.deadline.raw_text ?? null,
       suggested_question: null,
@@ -227,6 +240,25 @@ export function runPostChecks({
     });
   }
 
+  // Usage rights.
+  const rights = result.usage_rights;
+  if (
+    (!rights ||
+      (rights.commercial == null &&
+        rights.credit_required == null &&
+        rights.notes == null)) &&
+    !hasFlag(flags, ["MISSING_USAGE_RIGHTS"], "/usage_rights")
+  ) {
+    flags.push({
+      code: "MISSING_USAGE_RIGHTS",
+      severity: "blocker",
+      field: "/usage_rights",
+      message: "The chat says nothing about commercial use, credit, or usage.",
+      source_quote: null,
+      suggested_question: null,
+    });
+  }
+
   // Client email.
   const email = result.parties?.client?.email ?? null;
   if (
@@ -241,6 +273,18 @@ export function runPostChecks({
       source_quote: null,
       suggested_question: null,
     });
+  }
+
+  // No deposit mentioned means the default applies. An explicit "no deposit"
+  // has no flag and stays none (FR-6.7).
+  const depositFlag = flags.find((a) => a.code === "MISSING_DEPOSIT_TERMS");
+  if (depositFlag && result.deposit.type === "none") {
+    result.deposit = {
+      type: "percent",
+      percent: DEFAULT_DEPOSIT_PERCENT,
+      fixed_amount: null,
+    };
+    depositFlag.message = `No deposit was mentioned, so the default ${DEFAULT_DEPOSIT_PERCENT}% is used. Please confirm.`;
   }
 
   // Money is computed here; whatever the model wrote is discarded.
@@ -307,18 +351,21 @@ export function runPostChecks({
   result.ambiguities = [
     ...flags.filter((a) => a.severity === "blocker"),
     ...flags.filter((a) => a.severity !== "blocker"),
-  ];
+  ].map((a) => ({
+    ...a,
+    suggested_question:
+      a.suggested_question ?? DEFAULT_QUESTIONS[a.code] ?? null,
+  }));
 
   // Confidence cannot stay high when blockers exist.
   const blockers = result.ambiguities.filter(
     (a) => a.severity === "blocker",
   ).length;
   const cap = Math.max(0.1, 0.95 - 0.1 * blockers);
-  const confidence = result.extraction?.confidence;
-  if (confidence !== undefined) {
+  if (result.extraction) {
     result.extraction = {
       ...result.extraction,
-      confidence: Math.min(confidence, cap),
+      confidence: Math.min(result.extraction.confidence, cap),
     };
   }
 

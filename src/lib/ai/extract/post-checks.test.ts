@@ -102,6 +102,8 @@ describe("runPostChecks", () => {
   });
 
   it("flags relative and missing deadlines", () => {
+    const severityOf = (a: ReturnType<typeof run>, code: string) =>
+      a.ambiguities.find((x) => x.code === code)?.severity;
     const relative = run(
       baseAgreement({
         deadline: {
@@ -118,7 +120,7 @@ describe("runPostChecks", () => {
         deadline: { date: null, raw_text: null, is_relative: false },
       }),
     );
-    expect(codes(missing)).toContain("MISSING_DEADLINE");
+    expect(severityOf(missing, "MISSING_DEADLINE")).toBe("blocker");
 
     const unresolved = run(
       baseAgreement({
@@ -129,8 +131,84 @@ describe("runPostChecks", () => {
         },
       }),
     );
-    expect(codes(unresolved)).toContain("RELATIVE_DEADLINE");
-    expect(codes(unresolved)).not.toContain("MISSING_DEADLINE");
+    expect(severityOf(unresolved, "MISSING_DEADLINE")).toBe("blocker");
+    expect(codes(unresolved)).not.toContain("RELATIVE_DEADLINE");
+  });
+
+  it("removes a date the AI guessed for a vague or missing phrase", () => {
+    for (const raw_text of ["ASAP", "secepatnya kak", "whenever", null]) {
+      const result = run(
+        baseAgreement({
+          deadline: { date: "2026-11-01", raw_text, is_relative: false },
+        }),
+      );
+      expect(result.deadline.date).toBeNull();
+      expect(codes(result)).toContain("MISSING_DEADLINE");
+    }
+  });
+
+  it("flags missing usage rights as a blocker", () => {
+    for (const usage_rights of [
+      undefined,
+      { commercial: null, credit_required: null, notes: null },
+    ]) {
+      const flag = run(baseAgreement({ usage_rights })).ambiguities.find(
+        (x) => x.code === "MISSING_USAGE_RIGHTS",
+      );
+      expect(flag?.severity).toBe("blocker");
+    }
+  });
+
+  it("does not flag usage rights when any of them is stated", () => {
+    const result = run(
+      baseAgreement({
+        usage_rights: { commercial: null, credit_required: null, notes: "x" },
+      }),
+    );
+    expect(codes(result)).not.toContain("MISSING_USAGE_RIGHTS");
+  });
+
+  it("applies the 50% default when no deposit was mentioned", () => {
+    const result = run(
+      baseAgreement({
+        deposit: { type: "none", percent: null, fixed_amount: null },
+        ambiguities: [
+          {
+            code: "MISSING_DEPOSIT_TERMS",
+            severity: "warning",
+            field: "/deposit",
+            message: "No DP",
+            source_quote: null,
+            suggested_question: null,
+          },
+        ],
+      }),
+    );
+    expect(result.deposit.percent).toBe(50);
+    expect(result.deposit.amount).toBe("75.00");
+    expect(result.balance_amount).toBe("75.00");
+  });
+
+  it("keeps an explicit no-deposit agreement", () => {
+    const result = run(
+      baseAgreement({
+        deposit: { type: "none", percent: null, fixed_amount: null },
+      }),
+    );
+    expect(result.deposit.type).toBe("none");
+    expect(result.balance_amount).toBe("150.00");
+  });
+
+  it("gives deterministic flags a suggested question", () => {
+    const result = run(
+      baseAgreement({
+        price: { total: null, currency: null },
+        usage_rights: undefined,
+      }),
+    );
+    for (const flag of result.ambiguities) {
+      expect(flag.suggested_question).toBeTruthy();
+    }
   });
 
   it("flags missing revisions and missing client email", () => {
