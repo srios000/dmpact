@@ -19,3 +19,6 @@ uploads/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Local tool config (GitHub CLI) - jangan di-commit
+.gh-config/
