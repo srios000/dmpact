@@ -102,7 +102,7 @@ Cache Components is on.
 - App code reads env vars only through `src/lib/env.ts` (`server-only`, validated with zod), never `process.env` directly.
 - `DATABASE_URL` is Neon's pooled connection (host contains `-pooler`), `DIRECT_URL` the direct one for migrations.
 - Develop on your own Neon branch (`dev-<name>`). The Neon `main` branch is the deployed demo; migrations reach it only through deploys.
-- Integration tests (`*.integration.test.ts`) run only when `TEST_DATABASE_URL` points at a separate, migrated database. They wipe it. CI runs them against its own Postgres service.
+- Integration tests (`*.integration.test.ts`) run only when `TEST_DATABASE_URL` points at a separate, migrated database. They wipe it.
 
 ## Types
 
