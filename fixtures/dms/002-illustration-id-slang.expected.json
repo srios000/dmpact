@@ -1,0 +1,12 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "service_type": "illustration",
+    "price": { "total": "45.00", "currency": "USD" },
+    "deposit": { "type": "percent", "percent": 50, "fixed_amount": null },
+    "deadline": { "date": "2026-12-15", "is_relative": false },
+    "revisions": { "included": 2 }
+  },
+  "expected_ambiguity_codes": ["MISSING_CLIENT_EMAIL", "MISSING_USAGE_RIGHTS"],
+  "expect_mismatch": false
+}
