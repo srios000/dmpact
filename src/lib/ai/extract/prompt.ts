@@ -59,7 +59,9 @@ FIELD RULES
 - title: short and descriptive, built only from what the chat says.
 - deliverables: ids "d1", "d2", … in order; quantity is an integer ≥ 1. If scope
   cannot be determined, emit one placeholder deliverable describing the vague
-  request and add SCOPE_UNCLEAR.
+  request and add SCOPE_UNCLEAR. For mix_and_master, list the mix and the master as
+  separate deliverables, even if they arrive as one file. Other named outputs, like
+  stems, are their own deliverables.
 - deposit: percent → {type:"percent", percent:N, fixed_amount:null}; fixed →
   {type:"fixed", percent:null, fixed_amount:"…"}; explicitly no deposit →
   {type:"none", percent:null, fixed_amount:null} with no flag; no deposit mentioned
@@ -80,11 +82,13 @@ FIELD RULES
   MISSING_USAGE_RIGHTS (blocker); never guess or recommend them. Mentioned but vague
   ("for my channel" without saying if it's monetized) → put the phrase in notes +
   USAGE_RIGHTS_UNCLEAR.
-- parties.client: display_name, handle, email only if present in the chat.
+- parties.client: display_name, handle, email only if present in the chat. Keep the
+  handle exactly as written, including a leading "@".
   Missing email → MISSING_CLIENT_EMAIL.
 - Conflicts: if two different values for one field are never resolved, set the field
   to null, add CONFLICTING_VALUES quoting the relevant text, and list both values
-  in the message. If the chat resolves it, use the resolved value and no flag.
+  in the message. If the chat resolves it, use the resolved value and no flag. A
+  conflict over the amount does not affect a clearly stated currency.
 
 AMBIGUITIES
 Use only the schema's codes. Each code has one fixed severity:

@@ -30,6 +30,7 @@ export type CaseScore = {
 
 export const SKIPPED_KEYS = new Set([
   "title",
+  "service_other",
   "notes",
   "description",
   "format",

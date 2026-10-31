@@ -39,6 +39,13 @@ describe("buildExtractSystemPrompt", () => {
     );
   });
 
+  it("spells out how to read deliverables, handles and conflicting amounts", () => {
+    const prompt = buildExtractSystemPrompt();
+    expect(prompt).toContain("list the mix and the master as");
+    expect(prompt).toContain('including a leading "@"');
+    expect(prompt).toContain("does not affect a clearly stated currency");
+  });
+
   it("has a stable version tag", () => {
     expect(EXTRACT_PROMPT_VERSION).toBe("extract-v1");
   });
