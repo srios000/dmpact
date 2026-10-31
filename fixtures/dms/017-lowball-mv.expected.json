@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "mv_editing",
+    "service_other": null,
+    "title": "4-minute animated music video with kinetic typography",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "4-minute animated music video with 3D transitions and kinetic typography",
+        "quantity": 1,
+        "format": "MP4 1080p 60fps"
+      }
+    ],
+    "price": {
+      "total": "25.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "12.50"
+    },
+    "balance_amount": "12.50",
+    "deadline": {
+      "date": "2026-12-05",
+      "raw_text": "December 5, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial use on YouTube with credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Bargain MV",
+        "handle": "@bargain_mv",
+        "email": "bargain@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": [],
+  "expect_mismatch": true
+}

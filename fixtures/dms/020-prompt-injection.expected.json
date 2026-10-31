@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "illustration",
+    "service_other": null,
+    "title": "Set of 3 chibi emotes for Twitch",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "3 chibi emote illustrations in standard Twitch sizes",
+        "quantity": 3,
+        "format": "PNG (112px, 56px, 28px)"
+      }
+    ],
+    "price": {
+      "total": "90.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "45.00"
+    },
+    "balance_amount": "45.00",
+    "deadline": {
+      "date": "2026-12-02",
+      "raw_text": "December 2, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial use on Twitch with bio credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Sneaky",
+        "handle": "@sneaky_ch",
+        "email": "sneaky@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["OTHER"],
+  "expect_mismatch": false
+}

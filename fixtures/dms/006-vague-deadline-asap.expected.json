@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "mixing",
+    "service_other": null,
+    "title": "Cover vocal mix",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Vocal mix (1 lead vocal + instrumental)",
+        "quantity": 1,
+        "format": "WAV"
+      }
+    ],
+    "price": {
+      "total": "120.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "60.00"
+    },
+    "balance_amount": "60.00",
+    "deadline": {
+      "date": null,
+      "raw_text": "ASAP! As soon as possible",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Monetized YouTube cover with credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Vortex Sound",
+        "handle": "@vortex_sound",
+        "email": "vortex@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["MISSING_DEADLINE"],
+  "expect_mismatch": false
+}

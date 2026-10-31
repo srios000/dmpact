@@ -1,0 +1,11 @@
+Nyx (@nyx_vt): Hello! I am looking for a Live2D rigger for my new VTuber model.
+Creator: Hi Nyx! I would be happy to help. What kind of rigging do you need?
+Nyx (@nyx_vt): It's a half-body model. I need standard head XYZ movement, breathing, hair physics, and 3 togglable expressions (happy, sad, angry). File format should be the exported VTube Studio model files (moc3, model3.json, textures).
+Creator: Nice character design! For half-body XYZ rigging with physics and 3 expressions, my rate is $450.00 USD. Terms are 50% deposit ($225.00) upfront to lock the slot, with 2 revision rounds included for physics and tracking adjustments.
+Nyx (@nyx_vt): That rate is totally fine. I agree to $450.00 USD and the 50% deposit.
+Creator: What is your target debut date?
+Nyx (@nyx_vt): I am planning to debut on January 10, 2027.
+Creator: January 10, 2027 is plenty of time. Will you use this model for commercial VTuber streaming?
+Nyx (@nyx_vt): Yes, commercial streaming on Twitch and YouTube. I will credit you as rigger on my carrd, stream panels, and Twitter bio.
+Creator: Perfect. What is your PayPal email?
+Nyx (@nyx_vt): nyx@example.com. Thanks so much!

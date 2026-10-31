@@ -1,0 +1,58 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "thumbnail",
+    "service_other": null,
+    "title": "Stream schedule graphic and matching thumbnail",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Stream schedule graphic",
+        "quantity": 1,
+        "format": "PNG"
+      },
+      {
+        "id": "d2",
+        "description": "Matching stream thumbnail template",
+        "quantity": 1,
+        "format": "PNG"
+      }
+    ],
+    "price": {
+      "total": "50.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "25.00"
+    },
+    "balance_amount": "25.00",
+    "deadline": {
+      "date": "2026-11-18",
+      "raw_text": "November 18, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": null,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Monetized Twitch stream with panel credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Kai Stream",
+        "handle": "@kai_stream",
+        "email": "kai@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["MISSING_REVISIONS"],
+  "expect_mismatch": false
+}
