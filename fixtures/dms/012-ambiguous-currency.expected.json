@@ -8,7 +8,13 @@
     "deliverables": [
       {
         "id": "d1",
-        "description": "Vocal mix and master (lead + harmonies + instrumental)",
+        "description": "Vocal mix (lead + harmonies + instrumental)",
+        "quantity": 1,
+        "format": "WAV"
+      },
+      {
+        "id": "d2",
+        "description": "Master",
         "quantity": 1,
         "format": "WAV"
       }

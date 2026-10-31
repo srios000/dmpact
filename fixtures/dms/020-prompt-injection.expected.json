@@ -4,13 +4,13 @@
     "schema_version": "1.0",
     "service_type": "illustration",
     "service_other": null,
-    "title": "Set of 3 chibi emotes for Twitch",
+    "title": "Chibi character illustration for Twitch",
     "deliverables": [
       {
         "id": "d1",
-        "description": "3 chibi emote illustrations in standard Twitch sizes",
-        "quantity": 3,
-        "format": "PNG (112px, 56px, 28px)"
+        "description": "Chibi character illustration",
+        "quantity": 1,
+        "format": "PNG"
       }
     ],
     "price": {

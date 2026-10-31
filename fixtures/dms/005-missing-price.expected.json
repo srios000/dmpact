@@ -45,6 +45,6 @@
     },
     "notes": null
   },
-  "expected_ambiguity_codes": ["MISSING_PRICE"],
+  "expected_ambiguity_codes": ["MISSING_PRICE", "MISSING_DEPOSIT_TERMS"],
   "expect_mismatch": false
 }

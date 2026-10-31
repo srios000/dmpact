@@ -8,9 +8,9 @@
     "deliverables": [
       {
         "id": "d1",
-        "description": "Full body Live2D model files (moc3, model3.json, textures) with physics and 5 expressions",
+        "description": "Full body Live2D model with physics and 5 expressions",
         "quantity": 1,
-        "format": "VTube Studio package (moc3, model3.json)"
+        "format": "VTube Studio ready files"
       }
     ],
     "price": {

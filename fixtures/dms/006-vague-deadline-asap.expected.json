@@ -10,7 +10,7 @@
         "id": "d1",
         "description": "Vocal mix (1 lead vocal + instrumental)",
         "quantity": 1,
-        "format": "WAV"
+        "format": null
       }
     ],
     "price": {

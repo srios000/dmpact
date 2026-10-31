@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "other",
+    "service_other": "emote pack",
+    "title": "Custom emote pack (3 emotes) for Twitch",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "3 custom Twitch chibi emotes",
+        "quantity": 3,
+        "format": "PNG (112px, 56px, 28px)"
+      }
+    ],
+    "price": {
+      "total": "75.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "37.50"
+    },
+    "balance_amount": "37.50",
+    "deadline": {
+      "date": "2026-12-18",
+      "raw_text": "December 18, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial use on Twitch with bio credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Poko",
+        "handle": "@poko_vt",
+        "email": "poko@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": [],
+  "expect_mismatch": false
+}
