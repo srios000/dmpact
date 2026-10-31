@@ -1,13 +1,57 @@
 {
   "paste_date": "2026-10-30",
   "expected": {
+    "schema_version": "1.0",
     "service_type": "mix_and_master",
-    "price": { "total": "150.00", "currency": "USD" },
-    "deposit": { "type": "percent", "percent": 50, "fixed_amount": null },
-    "deadline": { "date": "2026-11-20", "is_relative": false },
-    "revisions": { "included": 2 },
-    "usage_rights": { "commercial": true, "credit_required": true },
-    "parties": { "client": { "email": "ren.tanaka@example.com" } }
+    "service_other": null,
+    "title": "Original song mix & master — 'Starlight Echo'",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Full mix (lead vocal, 2 harmonies, instrumental)",
+        "quantity": 1,
+        "format": "WAV 48kHz/24bit"
+      },
+      {
+        "id": "d2",
+        "description": "Master for streaming",
+        "quantity": 1,
+        "format": "WAV 48kHz/24bit"
+      }
+    ],
+    "price": {
+      "total": "150.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "75.00"
+    },
+    "balance_amount": "75.00",
+    "deadline": {
+      "date": "2026-11-25",
+      "raw_text": "November 25, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Monetized on YouTube and Spotify"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Luna Echo",
+        "handle": "@luna_echo",
+        "email": "luna@example.com"
+      }
+    },
+    "notes": null
   },
   "expected_ambiguity_codes": [],
   "expect_mismatch": false

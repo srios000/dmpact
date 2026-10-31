@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "illustration",
+    "service_other": null,
+    "title": "Waist-up character illustration in cafe",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Waist-up full color character illustration",
+        "quantity": 1,
+        "format": "PNG"
+      }
+    ],
+    "price": {
+      "total": "180.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "90.00"
+    },
+    "balance_amount": "90.00",
+    "deadline": {
+      "date": "2026-12-12",
+      "raw_text": "December 12, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": null,
+      "credit_required": null,
+      "notes": null
+    },
+    "parties": {
+      "client": {
+        "display_name": "Mira",
+        "handle": "@mira_ch",
+        "email": "mira@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["MISSING_USAGE_RIGHTS"],
+  "expect_mismatch": false
+}

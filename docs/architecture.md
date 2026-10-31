@@ -45,7 +45,8 @@ One deployable Next.js app holds both UI and API. Every boundary that talks to a
 ```
 dmpact/
 ├── docs/                      # PRD, URD, schema, architecture, timeline
-├── schema/                    # agreement.schema.json (generated from zod)
+├── schema/                    # agreement + negotiation JSON Schema (generated from zod)
+├── scripts/                   # generate-json-schema.ts
 ├── prisma/                    # schema.prisma, migrations, seed.ts
 ├── prisma.config.ts
 ├── fixtures/dms/              # fake commission DMs + expected JSON
@@ -58,6 +59,7 @@ dmpact/
     │   ├── (auth)/login/
     │   ├── (creator)/
     │   │   ├── layout.tsx     # creator shell, redirects if logged out
+    │   │   ├── page.tsx       # home
     │   │   ├── commissions/
     │   │   │   ├── page.tsx   # AG Grid queue
     │   │   │   ├── new/       # paste DM
@@ -121,7 +123,7 @@ stateDiagram-v2
 | delivered → fully_paid | PayPal webhook | Verified, invoice = balance invoice | — |
 | * → cancelled | Creator | State before dp_paid | Cancel open PayPal invoices |
 
-All transitions go through one function, `transition(commissionId, to, actor, reason)`, which checks the guard, writes a `commission_events` row, and runs side effects. Nothing else updates `commissions.state`.
+All transitions go through one function, `transition(db, { commissionId, to, actor, reason }, handlers)`, which checks the guard, writes a `commission_events` row, and runs side effects. Nothing else updates `commissions.state`.
 
 ## 4. Data model
 
@@ -137,15 +139,15 @@ erDiagram
   commissions ||--o{ change_requests : receives
   webhook_events }o--o| invoices : updates
 
-  creators { uuid id  uuid auth_user_id  string email  string display_name  string paypal_email }
-  commissions { uuid id  uuid creator_id  string state  text source_dm  string client_token  timestamptz created_at }
-  agreement_versions { uuid id  uuid commission_id  int version  jsonb content  string content_hash  string created_by }
-  confirmations { uuid id  uuid agreement_version_id  string party "creator|client"  string content_hash  timestamptz confirmed_at }
-  invoices { uuid id  uuid commission_id  string kind "deposit|balance"  string paypal_invoice_id  string status  decimal amount  string currency  date due_date  timestamptz paid_at  timestamptz last_reminded_at }
+  creators { uuid id  uuid auth_user_id  string email  string display_name  string paypal_email  timestamptz created_at }
+  commissions { uuid id  uuid creator_id  string state  text source_dm  string client_token  timestamptz created_at  timestamptz updated_at }
+  agreement_versions { uuid id  uuid commission_id  int version  jsonb content  string content_hash  string created_by  timestamptz created_at }
+  confirmations { uuid id  uuid commission_id  uuid agreement_version_id  string party "creator|client"  string content_hash  timestamptz confirmed_at }
+  invoices { uuid id  uuid commission_id  string kind "deposit|balance"  string paypal_invoice_id  string status  decimal amount  string currency  date due_date  string pay_link  timestamptz paid_at  timestamptz last_reminded_at  timestamptz created_at  timestamptz updated_at }
   deliveries { uuid id  uuid commission_id  string filename  string sha256  int size_bytes  string mime_type  string storage_key  bool is_final  timestamptz logged_at }
   commission_events { uuid id  uuid commission_id  string type  string from_state  string to_state  string actor  string reason  jsonb meta  timestamptz at }
-  change_requests { uuid id  uuid commission_id  int version  text message  timestamptz at }
-  rate_cards { uuid id  uuid creator_id  jsonb rates  int mismatch_threshold_pct }
+  change_requests { uuid id  uuid commission_id  int version  text message  timestamptz created_at }
+  rate_cards { uuid id  uuid creator_id  jsonb rates  int mismatch_threshold_pct  timestamptz updated_at }
   webhook_events { string id  string type  jsonb payload  timestamptz received_at  timestamptz processed_at }
 ```
 
@@ -219,5 +221,6 @@ Local dev receives PayPal webhooks through a tunnel (ngrok / cloudflared) or the
 |---|---|---|
 | Unit | Money math, state machine guards, post-check rules, agreement diff | Vitest |
 | AI evals | Extraction on `fixtures/dms` (field accuracy, ambiguity recall). Negotiation on mismatch cases | `evals/` scripts, run manually + nightly |
+| Integration | State machine against a test database (`*.integration.test.ts`, needs `TEST_DATABASE_URL`) | Vitest |
 | Integration | PayPal client against sandbox (create/send/get/cancel) | Vitest, tagged `@sandbox`, not run in CI |
 | E2E | Paste → fully paid happy path, plus 3 edge paths | Playwright, or a manual checklist if time is short (Marsha) |

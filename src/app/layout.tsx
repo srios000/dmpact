@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "DMpact",
+  title: "DMpact | Creator Commission Suite",
+  description: "Manage your DM commissions with AI and PayPal",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

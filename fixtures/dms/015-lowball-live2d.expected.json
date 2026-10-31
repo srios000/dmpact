@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "live2d_rigging",
+    "service_other": null,
+    "title": "Full body Live2D model rigging",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Full body Live2D model with physics and 5 expressions",
+        "quantity": 1,
+        "format": "VTube Studio ready files"
+      }
+    ],
+    "price": {
+      "total": "50.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "25.00"
+    },
+    "balance_amount": "25.00",
+    "deadline": {
+      "date": "2027-01-15",
+      "raw_text": "January 15, 2027",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial use for streaming with credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Budget VTuber",
+        "handle": "@budget_vtuber",
+        "email": "budget@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": [],
+  "expect_mismatch": true
+}

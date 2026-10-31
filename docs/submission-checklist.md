@@ -21,7 +21,7 @@ Source: the official rules at https://paypalaihackathon.devpost.com
   - [ ] No third-party trademarks or copyrighted music/material without permission (use royalty-free music, fictional VTuber names, our own art/audio)
 
 ## Devpost write-up sections
-- [ ] Inspiration: the creator pain, with interview quotes if we have them (#46)
+- [ ] Inspiration: the creator pain, with quotes from public creator posts (#46)
 - [ ] What it does: the 7-step flow from PRD §7
 - [ ] How we built it: stack + PayPal APIs + Gemini usage
 - [ ] Tools used: Gemini (extraction, ambiguity, negotiation, nudges); PayPal Invoicing v2, Webhooks; AG Grid; APIMatic (if used)

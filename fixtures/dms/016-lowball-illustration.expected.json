@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "illustration",
+    "service_other": null,
+    "title": "Full color character illustration with detailed city night background",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Full color character illustration with detailed city background",
+        "quantity": 1,
+        "format": "PNG 4K"
+      }
+    ],
+    "price": {
+      "total": "20.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "10.00"
+    },
+    "balance_amount": "10.00",
+    "deadline": {
+      "date": "2026-12-20",
+      "raw_text": "December 20, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial use for YouTube banner with credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Penny Pincher",
+        "handle": "@penny_pincher",
+        "email": "penny@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": [],
+  "expect_mismatch": true
+}

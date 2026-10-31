@@ -1,0 +1,58 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "mix_and_master",
+    "service_other": null,
+    "title": "Song vocal mix & master",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Vocal mix (lead + harmonies + instrumental)",
+        "quantity": 1,
+        "format": "WAV"
+      },
+      {
+        "id": "d2",
+        "description": "Master",
+        "quantity": 1,
+        "format": "WAV"
+      }
+    ],
+    "price": {
+      "total": "150000.00",
+      "currency": null
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "75000.00"
+    },
+    "balance_amount": "75000.00",
+    "deadline": {
+      "date": "2026-11-28",
+      "raw_text": "November 28, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial rights for YouTube with credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Shadow Tune",
+        "handle": "@shadow_tune",
+        "email": "shadow@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["AMBIGUOUS_CURRENCY"],
+  "expect_mismatch": false
+}
