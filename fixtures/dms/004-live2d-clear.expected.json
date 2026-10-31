@@ -1,0 +1,52 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "live2d_rigging",
+    "service_other": null,
+    "title": "Live2D half-body rigging with head XYZ and 3 expressions",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Live2D half-body model files (moc3, model3.json, textures) with head XYZ and 3 expressions",
+        "quantity": 1,
+        "format": "VTube Studio package (moc3, model3.json)"
+      }
+    ],
+    "price": {
+      "total": "450.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "225.00"
+    },
+    "balance_amount": "225.00",
+    "deadline": {
+      "date": "2027-01-10",
+      "raw_text": "January 10, 2027",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial streaming on Twitch and YouTube with bio/overlay credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Nyx",
+        "handle": "@nyx_vt",
+        "email": "nyx@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": [],
+  "expect_mismatch": false
+}
