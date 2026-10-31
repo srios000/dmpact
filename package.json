@@ -13,6 +13,7 @@
     "eval:extract": "tsx evals/extract.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "schema:generate": "tsx scripts/generate-json-schema.ts",
     "prepare": "husky",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
