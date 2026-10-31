@@ -3,7 +3,7 @@
 > **This is the contract between all roles.** Backend stores it, AI extraction writes it, negotiation AI proposes new versions of it, the frontend renders it, and PayPal invoices are computed from it.
 > **Status:** draft, not reviewed yet. Rio (Tech Lead) writes it and the others sign off. **Locks Sun Nov 1, 2026.** The change process after the lock hasn't been decided.
 
-The source of truth in code will be a zod schema at `src/lib/schema/agreement.ts`. The machine-readable draft is [`schema/agreement.schema.json`](../schema/agreement.schema.json). This page explains the fields.
+The source of truth is the zod schema in [`src/lib/schema/agreement.ts`](../src/lib/schema/agreement.ts) (negotiation output: [`negotiation.ts`](../src/lib/schema/negotiation.ts)). [`schema/agreement.schema.json`](../schema/agreement.schema.json) and [`schema/negotiation.schema.json`](../schema/negotiation.schema.json) are generated from it with `pnpm schema:generate`. This page explains the fields.
 
 ---
 
@@ -37,14 +37,14 @@ The source of truth in code will be a zod schema at `src/lib/schema/agreement.ts
 | `deposit.fixed_amount` | money string \| null | ✓ | Set when `type = fixed` (e.g. `"40.00"`), else `null` |
 | `deposit.amount` | money string \| null | | **Computed by server** |
 | `balance_amount` | money string \| null | | **Computed by server** = total − deposit |
-| `deadline.date` | ISO date \| null | ✓ | |
+| `deadline.date` | ISO date \| null | ✓ | `null` → `MISSING_DEADLINE` blocker |
 | `deadline.raw_text` | string \| null | | Exact DM phrase, e.g. "before my debut on the 20th" |
 | `deadline.is_relative` | boolean | ✓ | `true` → `RELATIVE_DEADLINE` warning |
 | `revisions.included` | integer \| null | ✓ | `null` → `MISSING_REVISIONS` |
 | `revisions.extra_fee` | money string \| null | | Price per extra revision |
 | `usage_rights.commercial` | boolean \| null | | Monetized YouTube = commercial |
 | `usage_rights.credit_required` | boolean \| null | | |
-| `usage_rights.notes` | string \| null | | |
+| `usage_rights.notes` | string \| null | | `usage_rights` absent or all three `null` → `MISSING_USAGE_RIGHTS` blocker |
 | `parties.client.display_name` | string \| null | | |
 | `parties.client.handle` | string \| null | | "@ren_ch" |
 | `parties.client.email` | string \| null | | Needed to send PayPal invoice. Asked on the client page if null |
@@ -74,31 +74,32 @@ The source of truth in code will be a zod schema at `src/lib/schema/agreement.ts
 | Field | Type | Notes |
 |---|---|---|
 | `code` | enum | See table below |
-| `severity` | `blocker` \| `warning` | Blockers prevent sending to client |
+| `severity` | `blocker` \| `warning` | Fixed per code (table below), rejected if it doesn't match. Blockers prevent sending to client |
 | `field` | JSON Pointer | Path into the agreement. `/` = whole agreement |
 | `message` | string | Plain language, for the creator |
 | `source_quote` | string \| null | Verbatim from the DM |
 | `suggested_question` | string \| null | Ready to send to the client |
 
-| Code | Default severity | When |
+| Code | Severity | When |
 |---|---|---|
 | `MISSING_PRICE` | blocker | No price stated |
 | `AMBIGUOUS_CURRENCY` | blocker | "$" with no context, or "150k" |
 | `UNSUPPORTED_CURRENCY` | blocker | Currency PayPal doesn't support (IDR) |
 | `CONFLICTING_VALUES` | blocker | Two different prices/deadlines in the DM |
 | `SCOPE_UNCLEAR` | blocker | Can't tell what's being delivered |
-| `MISSING_DEADLINE` | warning | |
+| `MISSING_DEADLINE` | blocker | No exact date, including "ASAP" or "whenever" |
 | `RELATIVE_DEADLINE` | warning | "next Friday", "before debut" |
 | `PAST_DEADLINE` | blocker | Resolved date is before today |
 | `MISSING_REVISIONS` | warning | |
 | `VAGUE_REVISIONS` | warning | "a few revisions", "unlimited" |
 | `MISSING_DEPOSIT_TERMS` | warning | No DP mentioned. Default to 50% |
 | `DEPOSIT_EXCEEDS_TOTAL` | blocker | |
-| `USAGE_RIGHTS_UNCLEAR` | warning | Monetized use not addressed |
+| `MISSING_USAGE_RIGHTS` | blocker | DM says nothing about commercial use, credit, or usage |
+| `USAGE_RIGHTS_UNCLEAR` | warning | Mentioned but vague, e.g. "for my channel" without saying if it's monetized |
 | `MISSING_CLIENT_EMAIL` | warning | Asked for on the client page |
 | `OTHER` | warning | Free-form |
 
-Deterministic post-checks in code also add flags (`UNSUPPORTED_CURRENCY`, `PAST_DEADLINE`, `DEPOSIT_EXCEEDS_TOTAL`, `MISSING_PRICE`). The LLM is not trusted alone for these.
+Deterministic post-checks in code also add flags (`UNSUPPORTED_CURRENCY`, `PAST_DEADLINE`, `DEPOSIT_EXCEEDS_TOTAL`, `MISSING_PRICE`, `MISSING_DEADLINE`, `MISSING_USAGE_RIGHTS`). The LLM is not trusted alone for these.
 
 ## 4. Full example
 
