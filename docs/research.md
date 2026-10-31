@@ -100,3 +100,4 @@ Creator transactions conducted informally through Direct Messages (DMs) suffer f
 
 4. **Cryptographic Proof is Required for Disputes:**
    PayPal and credit card arbitrations routinely reject raw chat screenshots as inconclusive. A structured Evidence Pack with SHA-256 hashes, server-side UTC timestamps, and linked PayPal invoice records provides decisive evidence for dispute defense.
+
