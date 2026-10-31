@@ -8,7 +8,6 @@
 next-env.d.ts
 *.tsbuildinfo
 /src/generated/
-.gh-config
 .env*
 !.env.example
 .vercel
