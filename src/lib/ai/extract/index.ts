@@ -62,10 +62,22 @@ export function todayInZone(
 /** Replace what the app owns, so the model can't fail validation on it. */
 function applyServerFields(record: Record<string, unknown>, model: string) {
   delete record.balance_amount;
-  if (isRecord(record.deposit)) delete record.deposit.amount;
+  if (isRecord(record.deposit)) {
+    const { deposit } = record;
+    delete deposit.amount;
+    if (deposit.type === "percent" || deposit.type === "none") {
+      deposit.fixed_amount = null;
+    }
+    if (deposit.type === "fixed" || deposit.type === "none") {
+      deposit.percent = null;
+    }
+  }
 
   if (Array.isArray(record.ambiguities)) {
     for (const flag of record.ambiguities) {
+      if (isRecord(flag) && typeof flag.field === "string") {
+        flag.field = flag.field.replace(/%2F/gi, "/");
+      }
       if (isRecord(flag) && typeof flag.code === "string") {
         const severity = (AMBIGUITY_SEVERITY as Record<string, string>)[
           flag.code

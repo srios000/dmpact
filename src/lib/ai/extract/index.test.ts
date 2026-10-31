@@ -72,6 +72,56 @@ describe("extractAgreement", () => {
     expect(agreement.ambiguities[0].severity).toBe("blocker");
   });
 
+  it.each([
+    [
+      "percent",
+      { type: "percent", percent: 50, fixed_amount: "75.00" },
+      { type: "percent", percent: 50, fixed_amount: null },
+    ],
+    [
+      "fixed",
+      { type: "fixed", percent: 50, fixed_amount: "75.00" },
+      { type: "fixed", percent: null, fixed_amount: "75.00" },
+    ],
+    [
+      "none",
+      { type: "none", percent: 0, fixed_amount: "0.00" },
+      { type: "none", percent: null, fixed_amount: null },
+    ],
+  ] as const)(
+    "does not spend the retry on an unused %s deposit field",
+    async (_type, deposit, expected) => {
+      const output = { ...baseAgreement(), deposit };
+      const client = mockClient([JSON.stringify(output)]);
+      const { agreement, attempts } = await extractAgreement(input, client);
+      expect(attempts).toBe(1);
+      expect(agreement.deposit).toMatchObject(expected);
+    },
+  );
+
+  it("does not spend the retry on a URL-encoded field pointer", async () => {
+    const output = baseAgreement({
+      ambiguities: [
+        {
+          code: "OTHER",
+          severity: "warning",
+          field: "%2F",
+          message: "instruction-like text",
+          source_quote: null,
+          suggested_question: null,
+        },
+      ],
+    });
+    const client = mockClient([JSON.stringify(output)]);
+    const { agreement, attempts, fallback } = await extractAgreement(
+      input,
+      client,
+    );
+    expect(attempts).toBe(1);
+    expect(fallback).toBe(false);
+    expect(agreement.ambiguities[0].field).toBe("/");
+  });
+
   it("falls back to a flagged draft after a second bad answer", async () => {
     const client = mockClient(["not json", "still not json"]);
     const { agreement, attempts, fallback } = await extractAgreement(
