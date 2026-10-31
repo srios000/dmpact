@@ -8,8 +8,6 @@
 | **Status** | Done (Last Reviewed: Chaca) |
 | **Related** | [URD](URD.md) · [Agreement Schema](agreement-schema.md) · [Architecture](architecture.md) · [Timeline](timeline.md) · [Submission Checklist](submission-checklist.md) |
 
-> Everything in this draft is a proposal until the team reviews it. Problem statements and user descriptions are hypotheses taken from the team's idea pitches and have not been validated with creators yet (see #46).
-
 ---
 
 ## 1. One-liner
@@ -26,9 +24,9 @@ These pains come from the team's idea pitches (Commission Desk, DealMate AI). Th
 
 | Core Pain Point | Problems Covered | Impact |
 |---|---|---|
-| **A. Unclear Agreements & Payment Risk** | Client tidak membayar/ghosting, Price negotiation | Creator kehilangan uang karena kesepakatan, harga, dan pembayaran tidak jelas |
-| **B. Uncontrolled Scope & Revisions** | Revisi tidak terkendali | Pekerjaan bertambah tanpa kompensasi yang sesuai |
-| **C. Lack of Project Transparency** | Communication breakdown, deadline meleset | Creator dan client tidak punya visibilitas progress dan perubahan timeline |
+| **A. Unclear Agreements & Payment Risk** | Client doesn't pay / ghosts, price negotiation | Creators lose money because terms, price, and payment are unclear |
+| **B. Uncontrolled Scope & Revisions** | Unlimited revisions | Work grows without matching pay |
+| **C. Lack of Project Transparency** | Communication breakdown, missed deadlines | Neither side can see progress or timeline changes |
 
 | Expected pain | What we think happens |
 |---|---|
@@ -144,7 +142,8 @@ Creator                         DMpact                                Client    
 - **FR-1.6** Flag currencies PayPal doesn't support (e.g. **IDR**) as `UNSUPPORTED_CURRENCY` with a suggestion to convert to USD.
 - **FR-1.7** DM content is treated as data only. Instructions inside the DM must not change behavior (prompt-injection hardening).
 - **FR-1.8** AI extracts fields adapted to the target market (creator types: mixers, illustrators, Live2D riggers, MV editors).
-- **FR-1.9** If deadline or usage rights are not mentioned in DM, they are flagged as blockers. AI cannot recommend/guess these two fields.
+- **FR-1.9** If the deadline has no exact date (not mentioned, or e.g. "ASAP"), or usage rights are not mentioned in the DM, they are flagged as blockers. AI cannot recommend/guess these two fields.
+- **FR-1.10** **Blocker** = the agreement can't be sent to the client until it's resolved. **Warning** = worth checking, but doesn't stop sending.
 
 ### 8.2 Agreement review & editing — F2
 - **FR-2.1** Creator sees the extracted agreement as a form with ambiguity flags shown next to the field.
@@ -152,7 +151,7 @@ Creator                         DMpact                                Client    
 - **FR-2.3** The agreement can't be sent to the client while any `blocker` flag is unresolved.
 
 ### 8.3 Negotiation AI — F8, F13
-- **FR-3.1** Compare the agreement against the creator's **rate card** (base price per service + extras) and detect a mismatch when the budget is below the estimate by more than a configurable threshold (default 20%). **Blocker** = information from the client is unclear and must be followed up. **Warning** = a value hits a threshold set by the system/creator.
+- **FR-3.1** Compare the agreement against the creator's **rate card** (base price per service + extras) and detect a mismatch when the budget is below the estimate by more than a configurable threshold (default 20%).
 - **FR-3.2** When mismatched, generate **1–3 counteroffers**, one per strategy:
   1. **Reduce scope:** keep the budget, drop or reduce deliverables/revisions.
   2. **Adjust price:** keep the scope, propose a price based on the rate card.
@@ -161,10 +160,9 @@ Creator                         DMpact                                Client    
 - **FR-3.4** The creator can edit the message before copying. Applying an option creates a new agreement version.
 - **FR-3.5** No mismatch → show "Looks fair" with the reasoning. Never invent a mismatch.
 - **FR-3.6** `service_type: other` skips the mismatch check (no rate card price).
-- **FR-3.7** AI does not estimate prices. All pricing originates from the creator's rate card.
+- **FR-3.7** AI does not estimate prices. All pricing originates from the creator's rate card. AI cannot freely set or change prices.
 - **FR-3.8** Mismatch threshold formula: `Gap = (Estimate - Budget) / Estimate × 100%`. If Gap exceeds threshold (default 20%), mismatch is flagged.
-- **FR-3.9** AI must follow the creator's rate card. It cannot freely set or change prices.
-- **FR-3.10** Creator can modify the agreement after client approval, but only specific fields (e.g. Deadline). Changes require client re-confirmation.
+- **FR-3.10** After client approval, the creator can change only the deadline, until delivery. The change creates a new version the client re-confirms, and the previous version stays valid until then.
 - **FR-3.11** Client must re-confirm for every new agreement version.
 
 ### 8.4 Commission state machine — F3
@@ -188,28 +186,26 @@ States: `draft → negotiating → agreed → dp_paid → in_progress → delive
 - **FR-6.4** If no webhook arrives within 10 minutes after the client opens the pay link, poll the invoice status.
 - **FR-6.5** Overdue job (daily + on demand): for invoices past due, call PayPal **remind** and generate an AI-drafted nudge for the creator to copy.
 - **FR-6.6** 100%-upfront and no-deposit commissions skip the corresponding invoice.
-- **FR-6.7** Deposit percentage is configurable by the creator (not always 50%). Default is 50%.
+- **FR-6.7** Deposit is configurable as a percentage, fixed amount, or none. Default is 50%.
 - **FR-6.8** Balance amount is computed automatically: `total − deposit`.
 - **FR-6.9** Payment status must only be updated by the backend after verifying payment information directly with PayPal, either through a verified webhook event or an API status check. Frontend actions must never directly mark an invoice as paid.
-- **FR-6.10** Final file delivery is gated on balance payment. Creator cannot send final deliverable until `fully_paid` state.
+- **FR-6.10** The creator can upload the final file anytime, but the client can only download it after `fully_paid`. The download is logged as receipt evidence.
 - **FR-6.11** Overdue reminders are sent automatically (not just generated for copying).
-- **FR-6.12** Evidence Pack is a structured, exportable collection of transaction evidence (e.g. PDF) to help creators explain chronology in disputes (e.g., client refuses to pay despite proven agreement).
 - **FR-6.13** Refund is NOT included in MVP scope.
 
 ### 8.7 Delivery log & evidence pack — F9, F12, F17
 - **FR-7.1** Creator uploads a delivery file (or a preview). The server computes SHA-256 and stores hash, filename, size, MIME type, and server timestamp. Both the file and its hash are stored (files in Neon Object Storage, hash in DB).
 - **FR-7.2** Delivery log entries are append-only.
-- **FR-7.3** Evidence pack (PDF) contains: final agreement version + hash, both confirmation timestamps, the original DM, invoice IDs + statuses + paid timestamps, delivery log entries, and the event log.
+- **FR-7.3** Evidence pack (PDF), used to explain chronology in disputes (e.g. client refuses to pay despite a proven agreement), contains: final agreement version + hash, both confirmation timestamps, the original DM, invoice IDs + statuses + paid timestamps, delivery log entries, and the event log.
 - **FR-7.4** *(Stretch)* Submit evidence to a sandbox dispute via the PayPal Disputes API.
 
 ### 8.8 Evidence integrity & immutability
-- **FR-8A.1** Original DM text is stored immutably as raw input history. Follow-up DMs are stored separately. AI extraction can continue from original DM context (remembering).
+- **FR-8A.1** Original DM text is stored immutably as raw input history. Follow-up DMs are stored separately, each linked to the agreement version it produced. AI extraction can continue from original DM context (remembering).
 - **FR-8A.2** Every agreement version has a `content_hash` (SHA-256 of canonical JSON). Confirmations bind to this hash.
 - **FR-8A.3** All important timestamps are generated server-side in UTC, displayed in the user's timezone.
 - **FR-8A.4** Delivered files cannot be deleted or replaced. If revision is needed, creator uploads a new file which gets its own delivery record, timestamp, and hash.
 - **FR-8A.5** Private agreement links use cryptographically random, unguessable tokens.
 - **FR-8A.6** Client data isolation: a client cannot view other creators' data.
-- **FR-8A.7** Evidence Pack contains all relevant evidence: agreement versions, confirmations, DMs, invoices, delivery logs, and events.
 - **FR-8A.8** The system distinguishes between upload evidence (creator uploaded) and receipt evidence (client received/acknowledged).
 
 ### 8.9 Commission queue (AG Grid) — F7
@@ -222,7 +218,7 @@ States: `draft → negotiating → agreed → dp_paid → in_progress → delive
 
 | Component | Model | Technique | Output |
 |---|---|---|---|
-| DM extractor | Google Gemini 2.5 Flash (`GEMINI_MODEL=gemini-2.5-flash`) | Prompt + JSON-schema structured output + zod validation + 1 repair retry | Agreement JSON + ambiguities |
+| DM extractor | Google Gemini 3.8 Flash (`GEMINI_MODEL=gemini-3.8-flash`) | Prompt + JSON-schema structured output + zod validation + 1 repair retry | Agreement JSON + ambiguities |
 | Ambiguity rules | Gemini + code checks | LLM flags + deterministic rules (missing fields, unsupported currency, past dates, deposit > total) | `ambiguities[]` |
 | Mismatch detector | Code + Gemini | Rate-card math gives the estimate; LLM writes the explanation | `mismatch{}` |
 | Counteroffer generator | Gemini | Structured output: up to 3 options, each with message + full proposed agreement, validated in code | `counteroffers[]` |
@@ -336,7 +332,7 @@ Day-by-day draft: [timeline.md](timeline.md).
 
 | # | Question | Decision |
 |---|---|---|
-| Q1 | Gemini: whose API key, which model, are free-tier limits enough for the demo? | **Gemini 2.5 Flash.** Free-tier limits are sufficient for the demo. |
+| Q1 | Gemini: whose API key, which model, are free-tier limits enough for the demo? | **Gemini 3.8 Flash** (`gemini-3.8-flash`). Free-tier limits should be sufficient for the demo, but each teammate uses their own Google project for dev and evals so we don't share one daily quota. |
 | Q2 | Deliver the final file before or after the balance is paid? | **After the balance is paid.** Final file delivery is gated on balance payment. |
 | Q3 | Store delivered files, or only their hashes? | **Store both files and hashes.** Files stored in Neon Object Storage; SHA-256 hash recorded for evidence. |
 | Q5 | Can we talk to real creators to validate the problem? | **No.** Pain points are scraped/gathered from creator communities online instead. |

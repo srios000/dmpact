@@ -7,8 +7,6 @@
 
 The PRD says *what we build*. This document says *who it's for and what they need to do*, as user stories with acceptance criteria to test against. Story IDs (`US-xx`) can be referenced from issues and test cases.
 
-> The users below are hypotheses from the team's idea pitches, validated against pain points gathered from online creator communities, forums, and social media posts.
-
 ---
 
 ## 1. Users
@@ -33,7 +31,7 @@ The PRD says *what we build*. This document says *who it's for and what they nee
 | UN-8 | Understand the deal and pay without signing up | Client |
 | UN-9 | Ask for changes before committing | Client |
 | UN-10 | Try the full flow quickly | Judge |
-| UN-11 | Configure deposit percentage (not always 50%) | Creator |
+| UN-11 | Configure deposit (percentage, fixed, or none) | Creator |
 | UN-12 | Have original DM preserved as immutable evidence | Creator |
 | UN-13 | Get final file only after full payment | Client |
 | UN-14 | Automatic overdue payment reminders | Creator |
@@ -55,9 +53,9 @@ As a creator, I want unclear or missing terms flagged, so I can ask the client b
 - [ ] Blocker flags look different from warnings.
 - [ ] I can't send the agreement to the client until all blockers are resolved.
 - [ ] Prices in currencies PayPal doesn't support (e.g. IDR) are flagged.
-- [ ] If deadline is not mentioned in the DM, it is flagged as a blocker (AI cannot guess).
+- [ ] If the deadline is not mentioned in the DM, or has no exact date (e.g. "ASAP"), it is flagged as a blocker (AI cannot guess).
 - [ ] If usage rights are not mentioned in the DM, they are flagged as a blocker (AI cannot guess).
-- [ ] Blocker = information from the client is unclear and must be followed up. Warning = a value hits a threshold set by the system/creator.
+- [ ] Blocker = the agreement can't be sent to the client until it's resolved. Warning = worth checking, but doesn't stop sending.
 
 **US-03 — Edit the agreement**
 As a creator, I want to correct anything the AI got wrong.
@@ -84,9 +82,9 @@ As a creator, I want to set my prices so the mismatch check uses my rates.
 - [ ] A default rate card exists so the demo works without setup.
 - [ ] AI follows the rate card strictly. It cannot freely set or change prices.
 
-**US-06A — Configure deposit percentage**
-As a creator, I want to set my deposit percentage so it matches my business terms.
-- [ ] I can set the deposit as a percentage or fixed amount (not locked to 50%).
+**US-06A — Configure deposit**
+As a creator, I want to set my deposit so it matches my business terms.
+- [ ] I can set the deposit as a percentage, a fixed amount, or none (not locked to 50%).
 - [ ] Default deposit is 50% for new commissions.
 - [ ] Balance is calculated automatically as total minus deposit.
 
@@ -101,12 +99,11 @@ As a client, I want to open a link, see exactly what I'm getting, and confirm.
 - [ ] The page shows deliverables, price, deposit, balance, deadline, revisions, and usage rights, and works on mobile.
 - [ ] **Confirm** records my confirmation with a timestamp for this exact version.
 - [ ] If the creator changes the agreement after I confirmed, I have to confirm again.
-- [ ] Client must re-confirm for every new agreement version (even if only specific fields changed).
 
 **US-08A — Creator modifies agreement after client approval**
-As a creator, I want to update specific fields (e.g. deadline) after the client has confirmed, with the client needing to re-confirm.
-- [ ] Only specific fields can be modified after client confirmation (e.g. deadline).
-- [ ] Any change creates a new agreement version requiring client re-confirmation.
+As a creator, I want to change the deadline after the client has confirmed, with the client needing to re-confirm.
+- [ ] Only the deadline can be changed after client confirmation, until delivery.
+- [ ] The change creates a new agreement version requiring client re-confirmation. The previous version stays valid until then.
 
 **US-09 — Client requests changes**
 - [ ] **Request changes** lets me write a note that the creator sees.
@@ -130,7 +127,7 @@ As a creator, I want my delivery recorded as evidence.
 - [ ] Logging a delivery moves the commission to *delivered* and sends the balance invoice.
 - [ ] If a revision is needed, creator uploads a new file. The new file gets its own delivery record, timestamp, and hash.
 - [ ] Both files and their hashes are stored (not hash-only).
-- [ ] Final deliverable can only be sent after balance is fully paid.
+- [ ] I can upload the final file anytime, but the client can only download it after the balance is fully paid.
 
 **US-13 — Reminders for overdue invoices**
 - [ ] If an invoice is past due, PayPal sends a reminder and I get a nudge message I can copy.
@@ -144,7 +141,6 @@ As a creator, I want my delivery recorded as evidence.
 As a creator facing a dispute, I want all the evidence in one file.
 - [ ] One click downloads a PDF with the original DM, final agreement + version hash, both confirmation timestamps, invoices and payment times, delivery fingerprints, and the event timeline.
 - [ ] The system distinguishes between upload evidence (creator uploaded) and receipt evidence (client received/acknowledged).
-- [ ] Evidence Pack can be exported as PDF to explain chronology in disputes.
 
 ### Epic E — Manage the queue (UN-7)
 
@@ -167,7 +163,7 @@ As a creator facing a dispute, I want all the evidence in one file.
 
 Pain points were validated by gathering evidence from online creator communities, forums, and social media posts. Direct creator interviews were not feasible.
 
-Key validated findings:
+Findings observed in creator communities:
 - Creators handle commissions on both phone and laptop, with DMs being the primary communication channel.
 - Clients are generally willing to use confirmation links for formal agreements.
 - Currencies are diverse: IDR, USD, JPY, EUR, and cross-border payments (e.g. IDR to USD) are common. PayPal is widely used for international commissions.
