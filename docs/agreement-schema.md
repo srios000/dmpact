@@ -1,7 +1,7 @@
-# Agreement JSON Schema — v1 (DRAFT, needs sign-off)
+# Agreement JSON Schema — v1
 
 > **This is the contract between all roles.** Backend stores it, AI extraction writes it, negotiation AI proposes new versions of it, the frontend renders it, and PayPal invoices are computed from it.
-> **Status:** draft, not reviewed yet. Rio (Tech Lead) writes it and the others sign off. **Locks Sun Nov 1, 2026.** The change process after the lock hasn't been decided.
+> **Status:** locked, signed off in issue #2. Changes need approval from Rio and the affected owners.
 
 The source of truth is the zod schema in [`src/lib/schema/agreement.ts`](../src/lib/schema/agreement.ts) (negotiation output: [`negotiation.ts`](../src/lib/schema/negotiation.ts)). [`schema/agreement.schema.json`](../schema/agreement.schema.json) and [`schema/negotiation.schema.json`](../schema/negotiation.schema.json) are generated from it with `pnpm schema:generate`. This page explains the fields.
 
@@ -173,4 +173,4 @@ Owned by Firsta. Included here because each option carries a full agreement.
 
 ## 6. Sign-off
 
-Tick in the GitHub issue *"Lock Agreement JSON schema v1"*, not here.
+Recorded in the GitHub issue *"Lock Agreement JSON schema v1"* (#2).
