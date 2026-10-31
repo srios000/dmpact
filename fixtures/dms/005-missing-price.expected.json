@@ -1,0 +1,50 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "illustration",
+    "service_other": null,
+    "title": "Chibi headshot profile icon",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Chibi headshot icon with space helmet",
+        "quantity": 1,
+        "format": "PNG 2000x2000"
+      }
+    ],
+    "price": {
+      "total": null,
+      "currency": null
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null
+    },
+    "deadline": {
+      "date": "2026-12-05",
+      "raw_text": "December 5, 2026",
+      "is_relative": false
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial use on YouTube with credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Astra Star",
+        "handle": "@astra_star",
+        "email": "astra@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["MISSING_PRICE", "MISSING_DEPOSIT_TERMS"],
+  "expect_mismatch": false
+}

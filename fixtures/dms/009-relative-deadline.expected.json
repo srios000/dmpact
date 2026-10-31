@@ -1,0 +1,58 @@
+{
+  "paste_date": "2026-10-30",
+  "expected": {
+    "schema_version": "1.0",
+    "service_type": "mix_and_master",
+    "service_other": null,
+    "title": "Original song mix & master",
+    "deliverables": [
+      {
+        "id": "d1",
+        "description": "Full mix (main vocal, 2 backing vocals, instrumental)",
+        "quantity": 1,
+        "format": "WAV 24bit"
+      },
+      {
+        "id": "d2",
+        "description": "Master for streaming",
+        "quantity": 1,
+        "format": "WAV 24bit"
+      }
+    ],
+    "price": {
+      "total": "160.00",
+      "currency": "USD"
+    },
+    "deposit": {
+      "type": "percent",
+      "percent": 50,
+      "fixed_amount": null,
+      "amount": "80.00"
+    },
+    "balance_amount": "80.00",
+    "deadline": {
+      "date": "2026-11-20",
+      "raw_text": "before my debut on the 20th",
+      "is_relative": true
+    },
+    "revisions": {
+      "included": 2,
+      "extra_fee": null
+    },
+    "usage_rights": {
+      "commercial": true,
+      "credit_required": true,
+      "notes": "Commercial YouTube debut with video credit"
+    },
+    "parties": {
+      "client": {
+        "display_name": "Nova",
+        "handle": "@nova_v",
+        "email": "nova@example.com"
+      }
+    },
+    "notes": null
+  },
+  "expected_ambiguity_codes": ["RELATIVE_DEADLINE"],
+  "expect_mismatch": false
+}
