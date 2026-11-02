@@ -5,8 +5,9 @@
  *   pnpm eval:extract            all cases
  *   pnpm eval:extract 003        only fixtures whose name contains "003"
  *
- * Exit code 1 if field accuracy is below 90% or ambiguity recall is below 85%
- * (PRD section 5).
+ * Exit code 1 if field accuracy is below 90%, ambiguity recall is below 85%
+ * (PRD section 5), or p95 latency is not under 10 s (NFR-1). Failed calls are
+ * left out of the latency numbers.
  */
 import "dotenv/config";
 import { readdirSync, readFileSync } from "node:fs";
@@ -14,6 +15,7 @@ import { join } from "node:path";
 import { createGeminiClient } from "../src/lib/ai/gemini";
 import { ExtractionError, extractAgreement } from "../src/lib/ai/extract";
 import {
+  percentile,
   scoreCase,
   summarize,
   type CaseScore,
@@ -23,6 +25,10 @@ import {
 const FIXTURE_DIR = join(process.cwd(), "fixtures", "dms");
 const MIN_FIELD_ACCURACY = 0.9;
 const MIN_AMBIGUITY_RECALL = 0.85;
+const MAX_P95_MS = 10_000;
+
+const seconds = (ms: number | null) =>
+  ms === null ? "n/a" : `${(ms / 1000).toFixed(1)} s`;
 
 async function main() {
   const filter = process.argv[2];
@@ -43,6 +49,7 @@ async function main() {
   console.log(`Model: ${client.model} | cases: ${names.length}\n`);
 
   const scores: CaseScore[] = [];
+  const latencies: number[] = [];
   for (const name of names) {
     const dmText = readFileSync(join(FIXTURE_DIR, `${name}.txt`), "utf8");
     const fixture = JSON.parse(
@@ -51,11 +58,15 @@ async function main() {
 
     let score: CaseScore;
     let note = "";
+    let latency: number | null = null;
+    const startedAt = performance.now();
     try {
       const { agreement, attempts, fallback } = await extractAgreement(
         { dmText, pasteDate: fixture.paste_date },
         client,
       );
+      latency = performance.now() - startedAt;
+      latencies.push(latency);
       score = scoreCase(fixture, agreement);
       if (attempts === 2) note = " (needed repair retry)";
       if (fallback) note = " (fell back to a draft)";
@@ -78,7 +89,9 @@ async function main() {
     }
 
     scores.push(score);
-    console.log(`${score.pass ? "PASS" : "FAIL"}  ${name}${note}`);
+    console.log(
+      `${score.pass ? "PASS" : "FAIL"}  ${name} [${seconds(latency)}]${note}`,
+    );
     for (const m of score.mismatches) {
       console.log(
         `      ${m.path}: expected ${JSON.stringify(m.expected)}, got ${JSON.stringify(m.actual)}`,
@@ -93,12 +106,18 @@ async function main() {
   }
 
   const summary = summarize(scores);
+  const p95 = percentile(latencies, 95);
   console.log(
     `\nPassed ${summary.passed}/${summary.cases} (${(summary.passRate * 100).toFixed(0)}%) | field accuracy ${(summary.fieldAccuracy * 100).toFixed(0)}% | ambiguity recall ${(summary.ambiguityRecall * 100).toFixed(0)}%`,
   );
+  console.log(
+    `Latency over ${latencies.length} completed calls | p50 ${seconds(percentile(latencies, 50))} | p95 ${seconds(p95)} | max ${seconds(percentile(latencies, 100))}`,
+  );
   process.exit(
     summary.fieldAccuracy >= MIN_FIELD_ACCURACY &&
-      summary.ambiguityRecall >= MIN_AMBIGUITY_RECALL
+      summary.ambiguityRecall >= MIN_AMBIGUITY_RECALL &&
+      p95 !== null &&
+      p95 < MAX_P95_MS
       ? 0
       : 1,
   );

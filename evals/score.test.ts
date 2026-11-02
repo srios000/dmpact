@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   flattenExpected,
+  percentile,
   scoreCase,
   summarize,
   valuesMatch,
@@ -81,6 +82,19 @@ describe("scoreCase", () => {
     expect(score.missingCodes).toEqual(["MISSING_CLIENT_EMAIL"]);
     expect(score.unexpectedBlockers).toEqual(["MISSING_PRICE"]);
     expect(score.pass).toBe(false);
+  });
+});
+
+describe("percentile", () => {
+  it("uses the nearest rank on unsorted values", () => {
+    const values = Array.from({ length: 21 }, (_, i) => 21 - i);
+    expect(percentile(values, 50)).toBe(11);
+    expect(percentile(values, 95)).toBe(20);
+    expect(percentile([7], 95)).toBe(7);
+  });
+
+  it("returns null with no values", () => {
+    expect(percentile([], 95)).toBeNull();
   });
 });
 
