@@ -115,15 +115,17 @@ stateDiagram-v2
 
 | Transition | Trigger | Guard | Side effect |
 |---|---|---|---|
-| draft → negotiating | Creator | No `blocker` ambiguities | Generate client token |
-| negotiating → agreed | Client confirm | Both confirmations on the same `content_hash` | Create + send deposit invoice |
+| draft → negotiating | Creator | No `blocker` ambiguities, valid agreement | Generate client token |
+| negotiating → agreed | Client confirm | Valid agreement, both confirmations on the same `content_hash` | Create + send deposit invoice |
 | agreed → dp_paid | PayPal webhook | Verified signature, invoice = this commission's deposit | — |
 | dp_paid → in_progress | Creator | — | — |
-| in_progress → delivered | Delivery upload | ≥ 1 delivery log entry | Create + send balance invoice (skip if balance = 0 → straight to fully_paid) |
+| in_progress → delivered | Delivery upload | ≥ 1 delivery log entry, valid agreement | Create + send balance invoice (skip if balance = 0 → straight to fully_paid) |
 | delivered → fully_paid | PayPal webhook | Verified, invoice = balance invoice | — |
 | * → cancelled | Creator | State before dp_paid | Cancel open PayPal invoices |
 
 All transitions go through one function, `transition(db, { commissionId, to, actor, reason }, handlers)`, which checks the guard, writes a `commission_events` row, and runs side effects. Nothing else updates `commissions.state`.
+
+A valid agreement passes `agreementSchema`, has a total and currency, and has a deposit no larger than the total.
 
 ## 4. Data model
 

@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { contentHash } from "@/lib/schema/content-hash";
+import { exampleAgreement } from "@/lib/schema/example-agreement";
 import { TransitionError } from "./errors";
 import type { CommissionState } from "./rules";
 import { transition } from "./transition";
@@ -23,11 +24,7 @@ describe.skipIf(!url)("transition (database)", () => {
 
   async function seed(
     state: CommissionState,
-    content: Record<string, unknown> = {
-      deposit: { type: "percent" },
-      balance_amount: "75.00",
-      ambiguities: [],
-    },
+    content: object = exampleAgreement,
   ) {
     const creator = await db.creator.create({
       data: {
@@ -44,7 +41,7 @@ describe.skipIf(!url)("transition (database)", () => {
       data: {
         commissionId: commission.id,
         version: 1,
-        content: content as object,
+        content,
         contentHash: hash,
         createdBy: "creator",
       },
@@ -151,15 +148,32 @@ describe.skipIf(!url)("transition (database)", () => {
     expect(await db.commissionEvent.count()).toBe(0);
   });
 
+  it("blocks a malformed agreement even with no blocker flags", async () => {
+    const c = await seed("negotiating", { ambiguities: [] });
+    await confirm(c, "creator");
+    await confirm(c, "client");
+    const createDepositInvoice = vi.fn(async () => {});
+
+    await expect(
+      transition(
+        db,
+        { commissionId: c.id, to: "agreed", actor: "client" },
+        { createDepositInvoice },
+      ),
+    ).rejects.toMatchObject({ code: "guard_failed" });
+
+    expect(createDepositInvoice).not.toHaveBeenCalled();
+    const commission = await db.commission.findUniqueOrThrow({
+      where: { id: c.id },
+    });
+    expect(commission.state).toBe("negotiating");
+  });
+
   it("ignores confirmations of an older version", async () => {
     const c = await seed("negotiating");
     await confirm(c, "creator");
     await confirm(c, "client");
-    const newer = {
-      deposit: { type: "percent" },
-      balance_amount: "80.00",
-      ambiguities: [],
-    };
+    const newer: object = { ...exampleAgreement, title: "Changed title" };
     await db.agreementVersion.create({
       data: {
         commissionId: c.id,
@@ -177,9 +191,8 @@ describe.skipIf(!url)("transition (database)", () => {
 
   it("completes immediately when the balance is zero", async () => {
     const c = await seed("in_progress", {
-      deposit: { type: "percent" },
-      balance_amount: "0.00",
-      ambiguities: [],
+      ...exampleAgreement,
+      deposit: { type: "percent", percent: 100, fixed_amount: null },
     });
     await db.delivery.create({
       data: {

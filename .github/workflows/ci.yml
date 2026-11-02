@@ -8,6 +8,22 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # services:
+    #   postgres:
+    #     image: postgres:17
+    #     env:
+    #       POSTGRES_DB: dmpact_test
+    #       POSTGRES_HOST_AUTH_METHOD: trust
+    #     ports:
+    #       - 5432:5432
+    #     options: >-
+    #       --health-cmd "pg_isready -U postgres"
+    #       --health-interval 5s
+    #       --health-timeout 5s
+    #       --health-retries 10
+    # env:
+    #   DIRECT_URL: postgresql://postgres@localhost:5432/dmpact_test
+    #   TEST_DATABASE_URL: postgresql://postgres@localhost:5432/dmpact_test
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -19,5 +35,6 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      # - run: pnpm db:deploy
       - run: pnpm test
       - run: pnpm build
