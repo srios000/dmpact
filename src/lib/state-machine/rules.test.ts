@@ -3,6 +3,7 @@ import { checkTransition, type GuardContext } from "./rules";
 
 const ready: GuardContext = {
   hasAgreement: true,
+  agreementValid: true,
   blockerCount: 0,
   confirmedBy: { creator: true, client: true },
   depositType: "percent",
@@ -110,6 +111,27 @@ describe("guards", () => {
     );
   });
 
+  it.each([
+    ["draft", "negotiating", "creator"],
+    ["negotiating", "agreed", "client"],
+    ["in_progress", "delivered", "creator"],
+  ] as const)("%s → %s needs a valid agreement", (from, to, actor) => {
+    expectError(
+      checkTransition(from, to, actor, { ...ready, agreementValid: false }),
+      "guard_failed",
+    );
+  });
+
+  it("an invalid agreement can still be cancelled", () => {
+    expect(
+      checkTransition("agreed", "cancelled", "creator", {
+        ...ready,
+        agreementValid: false,
+        depositType: null,
+      }).ok,
+    ).toBe(true);
+  });
+
   it("agreed needs both parties to confirm the current version", () => {
     for (const confirmedBy of [
       { creator: true, client: false },
@@ -127,13 +149,15 @@ describe("guards", () => {
   });
 
   it("deposit paid only when a deposit is required", () => {
-    expectError(
-      checkTransition("agreed", "dp_paid", "paypal", {
-        ...ready,
-        depositType: "none",
-      }),
-      "guard_failed",
-    );
+    for (const depositType of ["none", null] as const) {
+      expectError(
+        checkTransition("agreed", "dp_paid", "paypal", {
+          ...ready,
+          depositType,
+        }),
+        "guard_failed",
+      );
+    }
   });
 
   it("can start without a deposit only when there is none", () => {

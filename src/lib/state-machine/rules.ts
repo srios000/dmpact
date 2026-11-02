@@ -16,6 +16,7 @@ export type Effect =
 
 export type GuardContext = {
   hasAgreement: boolean;
+  agreementValid: boolean;
   blockerCount: number;
   confirmedBy: { creator: boolean; client: boolean };
   depositType: "percent" | "fixed" | "none" | null;
@@ -49,13 +50,20 @@ const noBlockers: Guard = (ctx) =>
     ? null
     : `${ctx.blockerCount} blocker ambiguities must be resolved first.`;
 
+const validAgreement: Guard = (ctx) =>
+  ctx.agreementValid
+    ? null
+    : "The agreement is invalid or its price and deposit are incomplete.";
+
 const bothConfirmed: Guard = (ctx) =>
   ctx.confirmedBy.creator && ctx.confirmedBy.client
     ? null
     : "Creator and client must both confirm the current agreement version.";
 
 const depositRequired: Guard = (ctx) =>
-  ctx.depositType !== "none" ? null : "This commission has no deposit.";
+  ctx.depositType === "percent" || ctx.depositType === "fixed"
+    ? null
+    : "This commission has no deposit.";
 
 const noDeposit: Guard = (ctx) =>
   ctx.depositType === "none" ? null : "The deposit must be paid first.";
@@ -71,13 +79,13 @@ const RULES: Rule[] = [
     from: "draft",
     to: "negotiating",
     actors: ["creator"],
-    guards: [hasAgreement, noBlockers],
+    guards: [hasAgreement, noBlockers, validAgreement],
   },
   {
     from: "negotiating",
     to: "agreed",
     actors: ["creator", "client"],
-    guards: [hasAgreement, noBlockers, bothConfirmed],
+    guards: [hasAgreement, noBlockers, validAgreement, bothConfirmed],
     effects: (ctx) =>
       ctx.depositType === "none" ? [] : ["createDepositInvoice"],
   },
@@ -98,7 +106,7 @@ const RULES: Rule[] = [
     from: "in_progress",
     to: "delivered",
     actors: ["creator"],
-    guards: [hasDelivery],
+    guards: [hasDelivery, validAgreement],
     effects: (ctx) => (ctx.balanceIsZero ? [] : ["createBalanceInvoice"]),
     followUp: (ctx) => (ctx.balanceIsZero ? "fully_paid" : undefined),
   },
