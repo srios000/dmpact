@@ -1,10 +1,10 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 export interface PageShellProps extends React.HTMLAttributes<HTMLDivElement> {
-  title?: string
-  description?: string
-  actions?: React.ReactNode
+  title?: string;
+  description?: string;
+  actions?: React.ReactNode;
 }
 
 function PageShell({
@@ -19,7 +19,7 @@ function PageShell({
     <div
       className={cn(
         "mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-6 px-4 py-6 font-sans md:px-8",
-        className
+        className,
       )}
       {...props}
     >
@@ -30,15 +30,19 @@ function PageShell({
               {title}
             </h1>
             {description ? (
-              <p className="text-[14px] font-medium text-muted-foreground">{description}</p>
+              <p className="text-[14px] font-medium text-muted-foreground">
+                {description}
+              </p>
             ) : null}
           </div>
-          {actions ? <div className="flex items-center gap-3">{actions}</div> : null}
+          {actions ? (
+            <div className="flex items-center gap-3">{actions}</div>
+          ) : null}
         </div>
       ) : null}
       {children}
     </div>
-  )
+  );
 }
 
-export { PageShell }
+export { PageShell };

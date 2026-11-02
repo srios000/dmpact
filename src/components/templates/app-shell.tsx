@@ -1,11 +1,14 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { usePathname } from "next/navigation"
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/organisms/app-sidebar"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { Separator } from "@/components/ui/separator"
+import * as React from "react";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/organisms/app-sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,20 +16,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+} from "@/components/ui/breadcrumb";
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const isClientAgreementRoute = pathname.startsWith("/a/")
-
-  if (isClientAgreementRoute) {
-    return (
-      <TooltipProvider>
-        <main className="min-h-screen bg-background">{children}</main>
-      </TooltipProvider>
-    )
-  }
-
   return (
     <TooltipProvider>
       <SidebarProvider>
@@ -53,7 +45,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
-  )
+  );
 }
 
-export { AppShell }
+export { AppShell };
