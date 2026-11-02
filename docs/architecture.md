@@ -139,6 +139,8 @@ erDiagram
   commissions ||--o{ deliveries : has
   commissions ||--o{ commission_events : logs
   commissions ||--o{ change_requests : receives
+  commissions ||--o{ follow_up_dms : receives
+  agreement_versions ||--o{ follow_up_dms : produced_by
   webhook_events }o--o| invoices : updates
 
   creators { uuid id  uuid auth_user_id  string email  string display_name  string paypal_email  timestamptz created_at }
@@ -149,11 +151,14 @@ erDiagram
   deliveries { uuid id  uuid commission_id  string filename  string sha256  int size_bytes  string mime_type  string storage_key  bool is_final  timestamptz logged_at }
   commission_events { uuid id  uuid commission_id  string type  string from_state  string to_state  string actor  string reason  jsonb meta  timestamptz at }
   change_requests { uuid id  uuid commission_id  int version  text message  timestamptz created_at }
+  follow_up_dms { uuid id  uuid commission_id  uuid agreement_version_id  text message  timestamptz created_at }
   rate_cards { uuid id  uuid creator_id  jsonb rates  int mismatch_threshold_pct  timestamptz updated_at }
   webhook_events { string id  string type  jsonb payload  timestamptz received_at  timestamptz processed_at }
 ```
 
-`agreement_versions`, `confirmations`, `deliveries`, and `commission_events` are append-only, enforced by database triggers.
+`agreement_versions`, `confirmations`, `deliveries`, `commission_events`, and `follow_up_dms` are append-only, enforced by database triggers. A trigger also keeps `commissions.source_dm` from changing.
+
+The agreement in force is the latest version both parties confirmed. A deadline change after client approval adds a new version, and the previous one stays in force until the client re-confirms. Re-confirming doesn't change the commission state.
 
 ## 5. Key sequences
 
