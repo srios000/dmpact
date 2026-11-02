@@ -38,3 +38,8 @@ jobs:
       # - run: pnpm db:deploy
       - run: pnpm test
       - run: pnpm build
+        env:
+          DATABASE_URL: postgresql://build:build@localhost:5432/build
+          NEON_AUTH_BASE_URL: https://auth.invalid/neondb/auth
+          NEON_AUTH_COOKIE_SECRET: build-only-placeholder-value-000000
+          APP_BASE_URL: http://localhost:3000

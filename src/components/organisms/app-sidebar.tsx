@@ -3,11 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListIcon, PlusIcon, SettingsIcon } from "lucide-react";
+import { ListIcon, LogOutIcon, PlusIcon, SettingsIcon } from "lucide-react";
 
+import { logout } from "@/app/(creator)/actions";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -64,6 +66,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ))}
         </SidebarMenu>
       </SidebarContent>
+
+      <SidebarFooter className="px-4 pb-6">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <form action={logout}>
+              <SidebarMenuButton size="lg" tooltip="Log out" type="submit">
+                <LogOutIcon />
+                <span>Log out</span>
+              </SidebarMenuButton>
+            </form>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
