@@ -13,6 +13,7 @@ import { applyTransition, runEffects } from "@/lib/state-machine/transition";
 import { RepositoryError } from "./errors";
 import {
   agreementInForce,
+  isClientToken,
   isConfirmedBy,
   latestVersion,
   lockCommission,
@@ -99,6 +100,7 @@ export async function saveAgreementVersion(input: {
 }
 
 async function commissionForToken(tx: Tx, token: string) {
+  if (!isClientToken(token)) throw notFound();
   const found = await tx.commission.findUnique({
     where: { clientToken: token },
     select: { id: true },
@@ -113,7 +115,17 @@ async function commissionForToken(tx: Tx, token: string) {
   return commission;
 }
 
+export async function clientLinkExists(token: string): Promise<boolean> {
+  if (!isClientToken(token)) return false;
+  const found = await db.commission.findUnique({
+    where: { clientToken: token },
+    select: { id: true },
+  });
+  return !!found;
+}
+
 export async function getClientAgreement(token: string) {
+  if (!isClientToken(token)) return null;
   const commission = await db.commission.findUnique({
     where: { clientToken: token },
     include: {
