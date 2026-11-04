@@ -27,7 +27,11 @@ export type TransitionResult = {
   failedEffects: Effect[];
 };
 
-type Step = { from: CommissionState; to: CommissionState; effects: Effect[] };
+export type Step = {
+  from: CommissionState;
+  to: CommissionState;
+  effects: Effect[];
+};
 
 export async function loadGuardContext(
   tx: Prisma.TransactionClient,
@@ -55,69 +59,81 @@ export async function loadGuardContext(
   };
 }
 
+export async function applyTransition(
+  tx: Prisma.TransactionClient,
+  input: TransitionInput,
+): Promise<Step[]> {
+  const { commissionId } = input;
+  const applied: Step[] = [];
+  let target: CommissionState | undefined = input.to;
+  let actor = input.actor;
+  let reason = input.reason;
+
+  while (target) {
+    const commission = await tx.commission.findUnique({
+      where: { id: commissionId },
+      select: { state: true },
+    });
+    if (!commission) {
+      throw new TransitionError("not_found", "Commission not found.");
+    }
+
+    const from = commission.state;
+    const check = checkTransition(
+      from,
+      target,
+      actor,
+      await loadGuardContext(tx, commissionId),
+    );
+    if (!check.ok) throw new TransitionError(check.code, check.message);
+
+    const { count } = await tx.commission.updateMany({
+      where: { id: commissionId, state: from },
+      data: { state: target },
+    });
+    if (count !== 1) {
+      throw new TransitionError(
+        "conflict",
+        "The commission changed during the update. Try again.",
+      );
+    }
+
+    await tx.commissionEvent.create({
+      data: {
+        commissionId,
+        type: "transition",
+        fromState: from,
+        toState: target,
+        actor,
+        reason,
+        meta: check.effects.length ? { effects: check.effects } : undefined,
+      },
+    });
+
+    applied.push({ from, to: target, effects: check.effects });
+    target = check.followUp;
+    actor = "system";
+    reason = "Balance is zero.";
+  }
+
+  return applied;
+}
+
 export async function transition(
   db: PrismaClient,
   input: TransitionInput,
   handlers: EffectHandlers = {},
 ): Promise<TransitionResult> {
-  const { commissionId } = input;
+  const steps = await db.$transaction((tx) => applyTransition(tx, input));
+  return runEffects(db, input.commissionId, steps, handlers);
+}
 
-  const steps = await db.$transaction(async (tx) => {
-    const applied: Step[] = [];
-    let target: CommissionState | undefined = input.to;
-    let actor = input.actor;
-    let reason = input.reason;
-
-    while (target) {
-      const commission = await tx.commission.findUnique({
-        where: { id: commissionId },
-        select: { state: true },
-      });
-      if (!commission) {
-        throw new TransitionError("not_found", "Commission not found.");
-      }
-
-      const from = commission.state;
-      const check = checkTransition(
-        from,
-        target,
-        actor,
-        await loadGuardContext(tx, commissionId),
-      );
-      if (!check.ok) throw new TransitionError(check.code, check.message);
-
-      const { count } = await tx.commission.updateMany({
-        where: { id: commissionId, state: from },
-        data: { state: target },
-      });
-      if (count !== 1) {
-        throw new TransitionError(
-          "conflict",
-          "The commission changed during the update. Try again.",
-        );
-      }
-
-      await tx.commissionEvent.create({
-        data: {
-          commissionId,
-          type: "transition",
-          fromState: from,
-          toState: target,
-          actor,
-          reason,
-          meta: check.effects.length ? { effects: check.effects } : undefined,
-        },
-      });
-
-      applied.push({ from, to: target, effects: check.effects });
-      target = check.followUp;
-      actor = "system";
-      reason = "Balance is zero.";
-    }
-
-    return applied;
-  });
-
+export async function runEffects(
+  db: PrismaClient,
+  commissionId: string,
+  steps: Step[],
+  handlers: EffectHandlers = {},
+): Promise<TransitionResult> {
   const effects = steps.flatMap((s) => s.effects);
   const failedEffects: Effect[] = [];
 

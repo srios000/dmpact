@@ -70,6 +70,7 @@ model Commission {
   deliveries        Delivery[]
   events            CommissionEvent[]
   changeRequests    ChangeRequest[]
+  followUpDms       FollowUpDm[]
 
   @@index([creatorId, state])
   @@map("commissions")
@@ -85,6 +86,7 @@ model AgreementVersion {
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
   commission    Commission     @relation(fields: [commissionId], references: [id])
   confirmations Confirmation[]
+  followUpDms   FollowUpDm[]
 
   @@unique([commissionId, version])
   @@map("agreement_versions")
@@ -168,6 +170,20 @@ model ChangeRequest {
 
   @@index([commissionId])
   @@map("change_requests")
+}
+
+model FollowUpDm {
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  commissionId       String           @map("commission_id") @db.Uuid
+  agreementVersionId String           @map("agreement_version_id") @db.Uuid
+  message            String
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  commission         Commission       @relation(fields: [commissionId], references: [id])
+  agreementVersion   AgreementVersion @relation(fields: [agreementVersionId], references: [id])
+
+  @@index([commissionId])
+  @@index([agreementVersionId])
+  @@map("follow_up_dms")
 }
 
 model RateCard {

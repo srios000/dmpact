@@ -43,6 +43,10 @@ Requires Node 24 and pnpm. Each teammate develops on their own Neon branch (`dev
 
 `pnpm db:reset` wipes your database and re-applies all migrations.
 
+### Demo account
+
+Set `DEMO_CREATOR_EMAIL`, `DEMO_CREATOR_PASSWORD`, and `DEMO_CREATOR_PAYPAL_EMAIL` (the PayPal sandbox business email) in `.env`, then run `pnpm db:seed`. It creates the Neon Auth user and its creator row, and is safe to run again. Log in at `/login`. Use sandbox-only credentials.
+
 ## Team
 
 [@srios000](https://github.com/srios000) · [@imjia05stay-star](https://github.com/imjia05stay-star) · [@Wynnzzz](https://github.com/Wynnzzz) · [@Firsta30](https://github.com/Firsta30) · [@hasnapriswati](https://github.com/hasnapriswati) · [@marshaniswah](https://github.com/marshaniswah)
