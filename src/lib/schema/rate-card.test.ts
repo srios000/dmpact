@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { toMinor } from "@/lib/money/decimal";
-import { SERVICE_TYPES, type ServiceType } from "./agreement";
+import { estimatePrice } from "@/lib/money/estimate";
+import { SERVICE_TYPES, type Agreement } from "./agreement";
 import {
   DEFAULT_MISMATCH_THRESHOLD_PCT,
   DEFAULT_RATE_CARD,
@@ -86,10 +87,8 @@ describe("DEFAULT_RATE_CARD on the test DMs", () => {
     .map((file) => ({
       file,
       ...(JSON.parse(readFileSync(join(dir, file), "utf8")) as {
-        expected: {
-          service_type: ServiceType;
-          price: { total: string | null; currency: string | null };
-        };
+        paste_date: string;
+        expected: Agreement;
         expect_mismatch: boolean;
       }),
     }))
@@ -104,9 +103,9 @@ describe("DEFAULT_RATE_CARD on the test DMs", () => {
     expect(cases.length).toBeGreaterThan(0);
   });
 
-  it.each(cases)("$file", ({ expected, expect_mismatch }) => {
-    const type = expected.service_type as Exclude<ServiceType, "other">;
-    const estimate = toMinor(services[type], 2);
+  it.each(cases)("$file", ({ paste_date, expected, expect_mismatch }) => {
+    const { total } = estimatePrice(expected, DEFAULT_RATE_CARD, paste_date)!;
+    const estimate = toMinor(total, 2);
     const budget = toMinor(expected.price.total as string, 2);
 
     expect((estimate - budget) * 100 > DEFAULT_MISMATCH_THRESHOLD_PCT * estimate).toBe(

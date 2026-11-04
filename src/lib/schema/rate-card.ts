@@ -38,7 +38,15 @@ export const rateCardSchema = z.strictObject({
 
 export type RateCard = z.infer<typeof rateCardSchema>;
 
-// Base prices are the low end of each service, so a fair budget isn't flagged.
+export const rateCardSettingsSchema = z.strictObject({
+  rate_card: rateCardSchema,
+  mismatch_threshold_pct: z.int().min(1).max(100),
+});
+
+export type RateCardSettings = z.infer<typeof rateCardSettingsSchema>;
+
+// Base prices are the low end of each service and include commercial use,
+// so a fair budget isn't flagged.
 export const DEFAULT_RATE_CARD: RateCard = {
   currency: "USD",
   services: {
@@ -52,7 +60,7 @@ export const DEFAULT_RATE_CARD: RateCard = {
   },
   extras: {
     extra_revision: "15.00",
-    commercial_usage: "40.00",
+    commercial_usage: "0.00",
     rush_48h: "60.00",
     source_file: "25.00",
   },
