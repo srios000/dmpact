@@ -1,6 +1,10 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import {
+  DEFAULT_MISMATCH_THRESHOLD_PCT,
+  DEFAULT_RATE_CARD,
+} from "../src/lib/schema/rate-card";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
@@ -41,7 +45,7 @@ async function main() {
     `;
     if (!user) throw new Error("The demo user isn't in neon_auth.user.");
 
-    await db.creator.upsert({
+    const creator = await db.creator.upsert({
       where: { authUserId: user.id },
       update: { paypalEmail },
       create: {
@@ -51,7 +55,16 @@ async function main() {
         paypalEmail,
       },
     });
-    console.log("Seeded the demo creator.");
+    await db.rateCard.upsert({
+      where: { creatorId: creator.id },
+      update: {},
+      create: {
+        creatorId: creator.id,
+        rates: DEFAULT_RATE_CARD,
+        mismatchThresholdPct: DEFAULT_MISMATCH_THRESHOLD_PCT,
+      },
+    });
+    console.log("Seeded the demo creator and rate card.");
   } finally {
     await db.$disconnect();
   }
