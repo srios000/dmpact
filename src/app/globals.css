@@ -149,13 +149,42 @@
   }
   .bg-mesh {
     background-image:
-      radial-gradient(at 0% 0%, rgba(255, 59, 142, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 0%, rgba(255, 59, 142, 0.2) 0px, transparent 70%),
+      radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.2) 0px, transparent 70%),
       radial-gradient(
         at 100% 100%,
-        rgba(139, 92, 246, 0.15) 0px,
-        transparent 50%
+        rgba(139, 92, 246, 0.2) 0px,
+        transparent 70%
       ),
-      radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
+      radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.2) 0px, transparent 70%);
+    filter: blur(80px);
+    animation: mesh-rotate 20s linear infinite;
+  }
+  .animate-gradient {
+    animation: gradient 8s ease infinite;
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes mesh-rotate {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
   }
 }
