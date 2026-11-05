@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clientTokenSchema,
   confirmAgreementSchema,
   createCommissionSchema,
   transitionCommissionSchema,
@@ -65,5 +66,23 @@ describe("confirmAgreementSchema", () => {
       confirmAgreementSchema.safeParse({ token, versionHash: "a".repeat(64) })
         .success,
     ).toBe(true);
+  });
+});
+
+describe("clientTokenSchema", () => {
+  it("accepts only 22-character base64url tokens", () => {
+    expect(clientTokenSchema.safeParse("Ab0_-".padEnd(22, "x")).success).toBe(
+      true,
+    );
+    for (const token of [
+      "",
+      "a".repeat(21),
+      "a".repeat(23),
+      "a".repeat(21) + "=",
+      "a".repeat(21) + "/",
+      "a".repeat(21) + "+",
+    ]) {
+      expect(clientTokenSchema.safeParse(token).success).toBe(false);
+    }
   });
 });

@@ -9,7 +9,10 @@ export const commissionIdSchema = z.uuid();
 export const versionHashSchema = z
   .string()
   .regex(/^[a-f0-9]{64}$/, "Version hash is a SHA-256 hex string");
-export const clientTokenSchema = z.string().min(16).max(64);
+export const CLIENT_TOKEN_BYTES = 16;
+export const clientTokenSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{22}$/, "Client token is 128 bits in base64url");
 
 export const newAgreementSchema = z.preprocess((value) => {
   if (value === null || typeof value !== "object") return value;

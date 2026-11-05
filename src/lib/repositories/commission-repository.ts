@@ -1,5 +1,4 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { withComputedAmounts } from "@/lib/money/agreement";
 import { currencyExponent } from "@/lib/money/decimal";
@@ -17,9 +16,11 @@ import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { RepositoryError } from "./errors";
 import {
   agreementInForce,
+  isClientToken,
   isConfirmedBy,
   latestVersion,
   lockCommission,
+  newClientToken,
   notFound,
   readAgreement,
   requireCreator,
@@ -265,8 +266,7 @@ export async function sendToClient(input: {
       });
     }
 
-    const token =
-      commission.clientToken ?? randomBytes(16).toString("base64url");
+    const token = commission.clientToken ?? newClientToken();
     await tx.commission.update({
       where: { id: commissionId },
       data: { clientToken: token },
@@ -305,6 +305,7 @@ export async function getCommissionStatus(
   id: string,
   clientToken: string | null,
 ) {
+  if (clientToken && !isClientToken(clientToken)) return null;
   const creator = clientToken ? null : await getCurrentCreator();
   const where = clientToken
     ? { id, clientToken }
