@@ -39,7 +39,7 @@ export async function recordWebhookEvent(
   return { isNew: count === 1 };
 }
 
-type InvoiceRow = {
+export type InvoiceRow = {
   id: string;
   commissionId: string;
   kind: "deposit" | "balance";
@@ -55,10 +55,18 @@ const PAID_TRANSITION: Record<
   balance: { from: "delivered", to: "fully_paid" },
 };
 
-async function handlePaid(
+/** Where a payment update came from, stored on the commission event. */
+export type PaymentSource = { webhookEventId: string } | { via: "polling" };
+
+/**
+ * Marks the invoice paid and moves the commission (deposit: agreed -> dp_paid,
+ * balance: delivered -> fully_paid). Shared by the webhook and the polling
+ * fallback, and safe to run twice.
+ */
+export async function markInvoicePaid(
   invoice: InvoiceRow,
   ref: InvoiceRef,
-  eventId: string,
+  source: PaymentSource,
 ) {
   if (invoice.status !== "paid") {
     await db.$transaction([
@@ -78,7 +86,7 @@ async function handlePaid(
             kind: invoice.kind,
             invoiceId: invoice.id,
             paypalInvoiceId: ref.paypalInvoiceId,
-            webhookEventId: eventId,
+            ...source,
           },
         },
       }),
@@ -110,10 +118,11 @@ async function handlePaid(
   }
 }
 
-async function handleCancelled(
+/** Marks the invoice cancelled. The commission state doesn't change. */
+export async function markInvoiceCancelled(
   invoice: InvoiceRow,
   ref: InvoiceRef,
-  eventId: string,
+  source: PaymentSource,
 ) {
   if (invoice.status === "paid" || invoice.status === "cancelled") return;
   await db.$transaction([
@@ -130,7 +139,7 @@ async function handleCancelled(
           kind: invoice.kind,
           invoiceId: invoice.id,
           paypalInvoiceId: ref.paypalInvoiceId,
-          webhookEventId: eventId,
+          ...source,
         },
       },
     }),
@@ -168,9 +177,9 @@ export async function processWebhookEvent(
     if (invoice) {
       commissionId = invoice.commissionId;
       if (event.event_type === INVOICE_PAID) {
-        await handlePaid(invoice, ref, eventId);
+        await markInvoicePaid(invoice, ref, { webhookEventId: eventId });
       } else {
-        await handleCancelled(invoice, ref, eventId);
+        await markInvoiceCancelled(invoice, ref, { webhookEventId: eventId });
       }
     }
   }
