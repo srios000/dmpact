@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  evaluateGates,
   flattenExpected,
   percentile,
   scoreCase,
@@ -121,5 +122,72 @@ describe("summarize", () => {
 
   it("handles no cases", () => {
     expect(summarize([]).passRate).toBe(0);
+  });
+});
+
+describe("key-field accuracy and extra flags", () => {
+  it("counts only price, deposit, deadline and revisions as key fields", () => {
+    // fixture leaves: price.total, price.currency, deposit.type, deposit.percent
+    // (4 key) + deliverables.0.quantity (not key).
+    const score = scoreCase(fixture, {
+      ...actual,
+      deliverables: [{ id: "d1", description: "Mix", quantity: 9 }],
+    });
+    expect(score.fieldsTotal).toBe(5);
+    expect(score.fieldsMatched).toBe(4);
+    expect(score.keyFieldsTotal).toBe(4);
+    expect(score.keyFieldsMatched).toBe(4);
+  });
+
+  it("charges a wrong price against key-field accuracy", () => {
+    const score = scoreCase(fixture, {
+      ...actual,
+      price: { total: "1.00", currency: "USD" },
+    });
+    expect(score.keyFieldsMatched).toBe(3);
+    expect(summarize([score]).keyFieldAccuracy).toBeCloseTo(3 / 4);
+  });
+
+  it("lists flags the fixture did not expect, without failing the case", () => {
+    const score = scoreCase(fixture, actual);
+    expect(score.extraCodes).toEqual(["USAGE_RIGHTS_UNCLEAR"]);
+    expect(score.pass).toBe(true);
+  });
+
+  it("computes flag precision from returned codes", () => {
+    // 2 returned codes, 1 expected and found.
+    expect(summarize([scoreCase(fixture, actual)]).ambiguityPrecision).toBe(
+      0.5,
+    );
+    expect(summarize([]).ambiguityPrecision).toBe(1);
+  });
+});
+
+describe("evaluateGates", () => {
+  const ok = {
+    cases: 21,
+    passed: 21,
+    passRate: 1,
+    fieldAccuracy: 1,
+    keyFieldAccuracy: 0.9,
+    ambiguityRecall: 0.85,
+    ambiguityPrecision: 1,
+  };
+
+  it("passes exactly at the PRD thresholds with p95 under 10 s", () => {
+    expect(evaluateGates(ok, 9_999)).toEqual({ pass: true, failures: [] });
+  });
+
+  it("reports every missed target", () => {
+    const gates = evaluateGates(
+      { ...ok, keyFieldAccuracy: 0.89, ambiguityRecall: 0.8 },
+      10_000,
+    );
+    expect(gates.pass).toBe(false);
+    expect(gates.failures).toHaveLength(3);
+  });
+
+  it("fails when no call completed", () => {
+    expect(evaluateGates(ok, null).pass).toBe(false);
   });
 });

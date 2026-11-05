@@ -5,16 +5,23 @@
  *   pnpm eval:extract            all cases
  *   pnpm eval:extract 003        only fixtures whose name contains "003"
  *
- * Exit code 1 if field accuracy is below 90%, ambiguity recall is below 85%
- * (PRD section 5), or p95 latency is not under 10 s (NFR-1). Failed calls are
- * left out of the latency numbers.
+ *   pnpm eval:extract -- --out=evals/results/run.json   also write a JSON report
+ *
+ * Exit code 1 if key-field accuracy (price, currency, deadline, revisions,
+ * deposit) is below 90%, ambiguity recall is below 85% (PRD section 5), or p95
+ * latency is not under 10 s (NFR-1). Failed calls are left out of the latency
+ * numbers and count as missed fields and flags.
  */
 import "dotenv/config";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createGeminiClient } from "../src/lib/ai/gemini";
 import { ExtractionError, extractAgreement } from "../src/lib/ai/extract";
+import { EXTRACT_PROMPT_VERSION } from "../src/lib/ai/extract/prompt";
 import {
+  evaluateGates,
+  flattenExpected,
+  KEY_FIELD_ROOTS,
   percentile,
   scoreCase,
   summarize,
@@ -23,15 +30,16 @@ import {
 } from "./score";
 
 const FIXTURE_DIR = join(process.cwd(), "fixtures", "dms");
-const MIN_FIELD_ACCURACY = 0.9;
-const MIN_AMBIGUITY_RECALL = 0.85;
-const MAX_P95_MS = 10_000;
 
 const seconds = (ms: number | null) =>
   ms === null ? "n/a" : `${(ms / 1000).toFixed(1)} s`;
 
 async function main() {
-  const filter = process.argv[2];
+  const args = process.argv.slice(2).filter((arg) => arg !== "--");
+  const outPath = args
+    .find((arg) => arg.startsWith("--out="))
+    ?.slice("--out=".length);
+  const filter = args.find((arg) => !arg.startsWith("--"));
   const names = readdirSync(FIXTURE_DIR)
     .filter((file) => file.endsWith(".expected.json"))
     .map((file) => file.replace(".expected.json", ""))
@@ -46,7 +54,11 @@ async function main() {
   }
 
   const client = createGeminiClient();
-  console.log(`Model: ${client.model} | cases: ${names.length}\n`);
+  console.log(
+    `Model: ${client.model} | prompt: ${EXTRACT_PROMPT_VERSION} | cases: ${names.length}\n`,
+  );
+
+  const report: Array<Record<string, unknown>> = [];
 
   const scores: CaseScore[] = [];
   const latencies: number[] = [];
@@ -75,9 +87,15 @@ async function main() {
         error instanceof ExtractionError
           ? `${error.code}: ${error.message} ${error.details.join("; ")}`
           : String(error);
+      const keyLeaves = flattenExpected(fixture.expected).filter((leaf) =>
+        KEY_FIELD_ROOTS.has(leaf.path[0]),
+      );
       score = {
         fieldsTotal: 1,
         fieldsMatched: 0,
+        keyFieldsTotal: keyLeaves.length,
+        keyFieldsMatched: 0,
+        extraCodes: [],
         mismatches: [
           { path: "/", expected: "valid agreement", actual: detail },
         ],
@@ -89,6 +107,7 @@ async function main() {
     }
 
     scores.push(score);
+    report.push({ name, latencyMs: latency, note: note.trim(), ...score });
     console.log(
       `${score.pass ? "PASS" : "FAIL"}  ${name} [${seconds(latency)}]${note}`,
     );
@@ -99,6 +118,8 @@ async function main() {
     }
     if (score.missingCodes.length)
       console.log(`      missing flags: ${score.missingCodes.join(", ")}`);
+    if (score.extraCodes.length)
+      console.log(`      extra flags (info): ${score.extraCodes.join(", ")}`);
     if (score.unexpectedBlockers.length)
       console.log(
         `      unexpected blockers: ${score.unexpectedBlockers.join(", ")}`,
@@ -107,20 +128,47 @@ async function main() {
 
   const summary = summarize(scores);
   const p95 = percentile(latencies, 95);
+  const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
   console.log(
-    `\nPassed ${summary.passed}/${summary.cases} (${(summary.passRate * 100).toFixed(0)}%) | field accuracy ${(summary.fieldAccuracy * 100).toFixed(0)}% | ambiguity recall ${(summary.ambiguityRecall * 100).toFixed(0)}%`,
+    `\nPassed ${summary.passed}/${summary.cases} (${pct(summary.passRate)}) | key-field accuracy ${pct(summary.keyFieldAccuracy)} | all-field accuracy ${pct(summary.fieldAccuracy)} | ambiguity recall ${pct(summary.ambiguityRecall)} | flag precision ${pct(summary.ambiguityPrecision)} (info)`,
   );
   console.log(
     `Latency over ${latencies.length} completed calls | p50 ${seconds(percentile(latencies, 50))} | p95 ${seconds(p95)} | max ${seconds(percentile(latencies, 100))}`,
   );
-  process.exit(
-    summary.fieldAccuracy >= MIN_FIELD_ACCURACY &&
-      summary.ambiguityRecall >= MIN_AMBIGUITY_RECALL &&
-      p95 !== null &&
-      p95 < MAX_P95_MS
-      ? 0
-      : 1,
+
+  const gates = evaluateGates(summary, p95);
+  console.log(
+    gates.pass
+      ? "Targets met."
+      : `Targets missed: ${gates.failures.join("; ")}.`,
   );
+
+  if (outPath) {
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(
+      outPath,
+      JSON.stringify(
+        {
+          ranAt: new Date().toISOString(),
+          model: client.model,
+          promptVersion: EXTRACT_PROMPT_VERSION,
+          filter: filter ?? null,
+          summary,
+          latencyMs: {
+            p50: percentile(latencies, 50),
+            p95,
+            max: percentile(latencies, 100),
+          },
+          gates,
+          cases: report,
+        },
+        null,
+        2,
+      ),
+    );
+    console.log(`Report written to ${outPath}`);
+  }
+  process.exit(gates.pass ? 0 : 1);
 }
 
 main().catch((error) => {

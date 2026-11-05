@@ -34,7 +34,7 @@ describe("extractAgreement", () => {
     expect(fallback).toBe(false);
     expect(agreement.deposit.amount).toBe("75.00");
     expect(agreement.extraction?.model).toBe("gemini-test");
-    expect(agreement.extraction?.prompt_version).toBe("extract-v1");
+    expect(agreement.extraction?.prompt_version).toBe("extract-v2");
   });
 
   it("accepts JSON wrapped in code fences", async () => {

@@ -46,8 +46,21 @@ describe("buildExtractSystemPrompt", () => {
     expect(prompt).toContain("does not affect a clearly stated currency");
   });
 
+  it("teaches Indonesian amounts, deposits, revisions and acceptance words", () => {
+    const prompt = buildExtractSystemPrompt();
+    expect(prompt).toContain("\nLANGUAGE\n");
+    for (const phrase of ["150rb", "1jt", "DP 30%", "2x revisi", "oke gas"]) {
+      expect(prompt).toContain(phrase);
+    }
+    // The section must sit before AMBIGUITIES and keep the schema slot filled.
+    expect(prompt.indexOf("\nLANGUAGE\n")).toBeLessThan(
+      prompt.indexOf("\nAMBIGUITIES\n"),
+    );
+    expect(prompt).not.toContain("{{AGREEMENT_SCHEMA_JSON}}");
+  });
+
   it("has a stable version tag", () => {
-    expect(EXTRACT_PROMPT_VERSION).toBe("extract-v1");
+    expect(EXTRACT_PROMPT_VERSION).toBe("extract-v2");
   });
 });
 

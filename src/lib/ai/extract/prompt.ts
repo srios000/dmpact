@@ -1,7 +1,7 @@
 import agreementSchema from "../../../../schema/agreement.schema.json";
 import { AMBIGUITY_CODES, AMBIGUITY_SEVERITY } from "@/lib/schema/agreement";
 
-export const EXTRACT_PROMPT_VERSION = "extract-v1";
+export const EXTRACT_PROMPT_VERSION = "extract-v2";
 
 export const SCHEMA_PLACEHOLDER = "{{AGREEMENT_SCHEMA_JSON}}";
 
@@ -89,6 +89,25 @@ FIELD RULES
   to null, add CONFLICTING_VALUES quoting the relevant text, and list both values
   in the message. If the chat resolves it, use the resolved value and no flag. A
   conflict over the amount does not affect a clearly stated currency.
+
+LANGUAGE
+The chat may be English, Indonesian, Japanese romaji, or a mix, with slang, typos and
+abbreviations. Understand all of it, and keep source_quote verbatim in its original
+language.
+- Amounts: "150k" / "150rb" / "150 ribu" = 150000; "1jt" / "1 juta" = 1000000. "Rp" or
+  "rupiah" means IDR. A bare "k" or "rb" with no currency word stays ambiguous.
+- Deposit: "DP 30%" / "dp 30 persen" = 30 percent. "bayar penuh di awal" / "full
+  upfront" = 100 percent. "DP" with no value = no deposit terms.
+- Revisions: "2x revisi" / "revisi 2 kali" / "2 rev" = 2. "revisi unlimited" / "bebas
+  revisi" is vague → null + VAGUE_REVISIONS.
+- Acceptance: "deal", "oke", "sip", "gas", "oke gas", "siap", "fix", "sepakat" accept
+  the offer just before them. "gimana kalau", "nanti dulu", "mikir dulu", "coba
+  turunin" do not; they are offers or negotiation.
+- Dates: "tgl 20" / "tanggal 20" is a day with no month (relative); "besok", "lusa",
+  "minggu depan", "bulan depan", "3 hari lagi" are relative. Months: Januari, Februari,
+  Maret, April, Mei, Juni, Juli, Agustus, September, Oktober, November, Desember.
+- Write suggested_question in the client's language (Indonesian clients: polite
+  Indonesian, e.g. "Kak").
 
 AMBIGUITIES
 Use only the schema's codes. Each code has one fixed severity:
