@@ -66,7 +66,7 @@ const raw = (
   id,
   status,
   detail: {
-    invoice_number: "CD-3F9A2C1E-DP",
+    invoice_number: "CD-3F9A2C1E7B4D4E2A9C1F000000000000-DP",
     metadata: { recipient_view_url: `https://pay/${id}` },
   },
   amount: { currency_code: "USD", value: "75.00" },
@@ -75,12 +75,22 @@ const raw = (
 
 describe("invoiceNumber", () => {
   it("follows CD-<commission>-DP / -BAL", () => {
-    expect(invoiceNumber(input.commissionId, "deposit")).toBe("CD-3F9A2C1E-DP");
+    expect(invoiceNumber(input.commissionId, "deposit")).toBe(
+      "CD-3F9A2C1E7B4D4E2A9C1F000000000000-DP",
+    );
     expect(invoiceNumber(input.commissionId, "balance")).toBe(
-      "CD-3F9A2C1E-BAL",
+      "CD-3F9A2C1E7B4D4E2A9C1F000000000000-BAL",
     );
     expect(invoiceNumber(input.commissionId, "balance", 2)).toBe(
-      "CD-3F9A2C1E-BAL-2",
+      "CD-3F9A2C1E7B4D4E2A9C1F000000000000-BAL-2",
+    );
+  });
+
+  it("gives different numbers to commissions created in the same minute", () => {
+    expect(
+      invoiceNumber("019a5c3e-7b4d-7e2a-9c1f-3d2b1a0f9e8c", "deposit"),
+    ).not.toBe(
+      invoiceNumber("019a5c3e-8a21-7f00-b3c4-5e6f7a8b9c0d", "deposit"),
     );
   });
 });
@@ -130,11 +140,13 @@ describe("createPayPalClient", () => {
     expect(f.calls[0].url).toBe(`${base}/v2/invoicing/invoices`);
     expect(f.calls[0].headers.Prefer).toBe("return=representation");
     const sent = f.calls[0].body as { detail: { invoice_number: string } };
-    expect(sent.detail.invoice_number).toBe("CD-3F9A2C1E-DP");
+    expect(sent.detail.invoice_number).toBe(
+      "CD-3F9A2C1E7B4D4E2A9C1F000000000000-DP",
+    );
     expect(inv).toMatchObject({
       id: "INV2-1",
       status: "DRAFT",
-      invoiceNumber: "CD-3F9A2C1E-DP",
+      invoiceNumber: "CD-3F9A2C1E7B4D4E2A9C1F000000000000-DP",
       payLink: "https://pay/INV2-1",
     });
   });

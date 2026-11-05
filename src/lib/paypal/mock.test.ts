@@ -19,7 +19,7 @@ describe("createMockPayPalClient", () => {
     const draft = await pp.createInvoice(input);
     expect(draft).toMatchObject({
       status: "DRAFT",
-      invoiceNumber: "CD-ABCD1234-DP",
+      invoiceNumber: "CD-ABCD12340000-DP",
       amount: { currency: "JPY", value: "15000" },
     });
 
@@ -39,6 +39,6 @@ describe("createMockPayPalClient", () => {
     expect(err.isDuplicateInvoiceNumber).toBe(true);
     expect(
       (await pp.createInvoice({ ...input, attempt: 2 })).invoiceNumber,
-    ).toBe("CD-ABCD1234-DP-2");
+    ).toBe("CD-ABCD12340000-DP-2");
   });
 });
