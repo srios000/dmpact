@@ -4,27 +4,25 @@ import * as React from "react";
 import { cva } from "class-variance-authority";
 import {
   AlertTriangleIcon,
-  CheckCircle2Icon,
-  CopyIcon,
-  FilePenLineIcon,
   LoaderCircleIcon,
   MessageSquareQuoteIcon,
   RefreshCwIcon,
-  SparklesIcon,
-  WandSparklesIcon,
+  HeartIcon,
+  ZapIcon,
+  StarIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/molecules/empty-state";
+import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/molecules/error-state";
 import {
   CounterofferEditor,
   type CounterofferOption,
 } from "@/components/organisms/counteroffer-editor";
 import { cn } from "@/lib/utils";
+import { extractAgreement } from "../actions";
+import { type Agreement } from "@/lib/schema/agreement";
 
-type Severity = "blocker" | "warning";
 type Phase = "idle" | "loading" | "result" | "error" | "manual";
 
 const DEMO_COUNTEROFFERS: CounterofferOption[] = [
@@ -35,7 +33,7 @@ const DEMO_COUNTEROFFERS: CounterofferOption[] = [
     description:
       "Align with your base price for MV editing while keeping the requested scope.",
     suggestedMessage:
-      "Thanks for reaching out! For a full MV edit, my standard rate starts at $150. Let me know if that works for you and I can get started right away!",
+      "Thanks for reaching out! For a full MV edit, my standard rate starts at $150. Let me know if that works for you!",
     changes: [
       {
         field: "Total Price",
@@ -52,46 +50,12 @@ const DEMO_COUNTEROFFERS: CounterofferOption[] = [
     description:
       "Keep the $120 budget but reduce the number of revisions to protect your time.",
     suggestedMessage:
-      "I can definitely do this for $120! To stay within that budget, I can include 1 round of revisions instead of 2. Would that be okay?",
+      "I can definitely do this for $120. To stay within that budget, I can include 1 round of revisions instead of 2. Would that be okay?",
     changes: [
       { field: "Revisions", oldValue: "2", newValue: "1", type: "decrease" },
     ],
   },
-  {
-    id: "co-3",
-    strategy: "upsell",
-    label: "Premium Package",
-    description:
-      "Include the thumbnail and commercial rights for a comprehensive premium price.",
-    suggestedMessage:
-      "I saw you mentioned a thumbnail and commercial usage. I can include both plus the MV edit in a premium package for $200. This covers everything you need!",
-    changes: [
-      {
-        field: "Total Price",
-        oldValue: "120.00",
-        newValue: "200.00",
-        type: "increase",
-      },
-      {
-        field: "Usage Rights",
-        oldValue: "Unclear",
-        newValue: "Full Commercial",
-        type: "change",
-      },
-    ],
-  },
 ];
-
-type AgreementDraft = {
-  serviceType: string;
-  deliverables: string;
-  totalPrice: string;
-  currency: string;
-  depositPercent: string;
-  deadline: string;
-  revisions: string;
-  usageRights: string;
-};
 
 type VersionSnapshot = {
   id: string;
@@ -99,938 +63,424 @@ type VersionSnapshot = {
   createdAtLabel: string;
   contentHash: string;
   source: "extracted" | "manual" | "edited";
-  draft: AgreementDraft;
+  agreement: Agreement;
 };
 
-type Ambiguity = {
-  id: string;
-  severity: Severity;
-  field: keyof AgreementDraft;
-  title: string;
-  message: string;
-  quote: string;
-  question: string;
-};
-
-type ExtractionReviewProps = {
-  defaultCurrency: string;
-  defaultDepositPct: string;
-};
-
-const flagVariants = cva("rounded-3xl border p-4 shadow-sm", {
-  variants: {
-    severity: {
-      blocker: "border-rose-200 bg-rose-50/80 text-rose-900",
-      warning: "border-amber-200 bg-amber-50/80 text-amber-900",
-    },
-  },
-  defaultVariants: {
-    severity: "warning",
-  },
-});
-
-const flagLabelVariants = cva(
-  "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black tracking-[0.12em] uppercase",
+const flagVariants = cva(
+  "rounded-[2.5rem] border-2 border-white p-6 shadow-xl transition-all hover:scale-[1.01]",
   {
     variants: {
       severity: {
-        blocker: "bg-rose-100 text-rose-700",
-        warning: "bg-amber-100 text-amber-700",
+        blocker: "bg-red-50/90 text-red-900 border-red-200 shadow-red-100/50",
+        warning:
+          "bg-amber-50/90 text-amber-900 border-amber-200 shadow-amber-100/50",
       },
-    },
-    defaultVariants: {
-      severity: "warning",
     },
   },
 );
 
-const fieldShellVariants = cva("rounded-[28px] border p-4 transition-colors", {
-  variants: {
-    highlighted: {
-      true: "border-amber-200 bg-amber-50/40",
-      false: "border-border bg-background",
-    },
-  },
-  defaultVariants: {
-    highlighted: false,
-  },
-});
-
-const DEMO_DM = `Hi! I need an MV edit for a vocal cover.
-Budget is around $120. I need it before next Friday if possible.
-Maybe 2 revisions? I also need commercial usage because it will be monetized.
-Not sure yet if the thumbnail is included.`;
-
-function createEmptyDraft(
-  defaultCurrency: string,
-  defaultDepositPct: string,
-): AgreementDraft {
-  return {
-    serviceType: "",
-    deliverables: "",
-    totalPrice: "",
-    currency: defaultCurrency,
-    depositPercent: defaultDepositPct,
-    deadline: "",
-    revisions: "",
-    usageRights: "",
-  };
-}
-
-function createDemoDraft(
-  defaultCurrency: string,
-  defaultDepositPct: string,
-): AgreementDraft {
-  return {
-    serviceType: "MV Editing",
-    deliverables: "1 lyric video edit for a vocal cover, thumbnail unclear",
-    totalPrice: "120.00",
-    currency: defaultCurrency,
-    depositPercent: defaultDepositPct,
-    deadline: "",
-    revisions: "2",
-    usageRights: "",
-  };
-}
-
-function createDemoFlags(): Ambiguity[] {
-  return [
-    {
-      id: "usage-rights",
-      severity: "blocker",
-      field: "usageRights",
-      title: "Usage rights missing",
-      message:
-        "The DM says the cover will be monetized, but the exact usage rights are still unclear.",
-      quote: '"I also need commercial usage because it will be monetized."',
-      question:
-        "Can you confirm the exact usage rights you need for this commission?",
-    },
-    {
-      id: "deadline",
-      severity: "blocker",
-      field: "deadline",
-      title: "Deadline is relative",
-      message:
-        "Next Friday depends on when the message was sent, so the app needs a fixed date.",
-      quote: '"I need it before next Friday if possible."',
-      question: "What exact date should we use as the final delivery deadline?",
-    },
-    {
-      id: "deliverables",
-      severity: "warning",
-      field: "deliverables",
-      title: "Scope may be incomplete",
-      message:
-        "The thumbnail sounds optional, so the deliverables list may still change.",
-      quote: '"Not sure yet if the thumbnail is included."',
-      question:
-        "Should the thumbnail be included in this agreement or kept outside the scope?",
-    },
-  ];
-}
-
-function normalizeText(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function computeFlags(draft: AgreementDraft, baseFlags: Ambiguity[]) {
-  return baseFlags.filter((flag) => {
-    if (flag.field === "deadline") {
-      return normalizeText(draft.deadline).length === 0;
-    }
-
-    if (flag.field === "usageRights") {
-      return normalizeText(draft.usageRights).length === 0;
-    }
-
-    if (flag.field === "deliverables") {
-      const value = normalizeText(draft.deliverables);
-      return (
-        value.length === 0 ||
-        value.includes("unclear") ||
-        value.includes("not sure")
-      );
-    }
-
-    return true;
-  });
-}
-
-function calculatePaymentPreview(totalPrice: string, depositPercent: string) {
-  const total = Number(totalPrice);
-  const depositPct = Number(depositPercent);
-
-  if (!Number.isFinite(total) || !Number.isFinite(depositPct)) {
-    return { depositAmount: "0.00", balanceAmount: "0.00" };
-  }
-
-  const safeTotal = Math.max(0, total);
-  const safeDepositPct = Math.min(100, Math.max(0, depositPct));
-  const depositAmount = safeTotal * (safeDepositPct / 100);
-  const balanceAmount = safeTotal - depositAmount;
-
-  return {
-    depositAmount: depositAmount.toFixed(2),
-    balanceAmount: balanceAmount.toFixed(2),
-  };
-}
-
-function createContentHash(draft: AgreementDraft) {
-  const text = JSON.stringify(draft);
-  let hash = 0;
-
-  for (let index = 0; index < text.length; index += 1) {
-    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
-  }
-
-  return `vhash_${hash.toString(16).padStart(8, "0")}`;
-}
-
-function createVersionSnapshot(
-  draft: AgreementDraft,
-  version: number,
-  source: VersionSnapshot["source"],
-): VersionSnapshot {
-  return {
-    id: `version-${version}`,
-    version,
-    createdAtLabel: new Date().toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    contentHash: createContentHash(draft),
-    source,
-    draft: { ...draft },
-  };
-}
-
-function FieldCard({
-  label,
-  hint,
-  value,
-  name,
-  onChange,
-  ambiguities,
-  suffix,
-}: {
-  label: string;
-  hint: string;
-  value: string;
-  name: keyof AgreementDraft;
-  onChange: (field: keyof AgreementDraft, value: string) => void;
-  ambiguities: Ambiguity[];
-  suffix?: string;
-}) {
-  const hasFlags = ambiguities.length > 0;
-
-  return (
-    <div className="grid gap-3">
-      <div className={cn(fieldShellVariants({ highlighted: hasFlags }))}>
-        <div className="mb-2 flex items-start justify-between gap-3">
-          <div className="space-y-0.5">
-            <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-              {label}
-            </p>
-            <p className="text-[12px] leading-relaxed font-medium text-muted-foreground">
-              {hint}
-            </p>
-          </div>
-          {hasFlags ? (
-            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-amber-700 shadow-sm">
-              {ambiguities.length} flag
-            </span>
-          ) : null}
-        </div>
-        <div className="relative">
-          {name === "deliverables" ? (
-            <textarea
-              value={value}
-              onChange={(event) => onChange(name, event.target.value)}
-              className="min-h-28 w-full rounded-2xl border border-border bg-card px-3 py-3 text-[13px] font-semibold text-foreground transition-colors outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
-            />
-          ) : (
-            <>
-              <input
-                value={value}
-                onChange={(event) => onChange(name, event.target.value)}
-                className={cn(
-                  "h-11 w-full rounded-2xl border border-border bg-card px-3 text-[13px] font-semibold text-foreground transition-colors outline-none focus:border-ring focus:ring-3 focus:ring-ring/20",
-                  suffix ? "pr-12" : "",
-                )}
-              />
-              {suffix ? (
-                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[12px] font-bold text-muted-foreground">
-                  {suffix}
-                </span>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
-
-      {ambiguities.map((ambiguity) => (
-        <div
-          key={ambiguity.id}
-          className={cn(flagVariants({ severity: ambiguity.severity }))}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              <span
-                className={cn(
-                  flagLabelVariants({ severity: ambiguity.severity }),
-                )}
-              >
-                {ambiguity.severity === "blocker" ? "Blocker" : "Warning"}
-              </span>
-              <div>
-                <p className="text-[12px] font-black">{ambiguity.title}</p>
-                <p className="mt-1 text-[12px] leading-relaxed font-medium">
-                  {ambiguity.message}
-                </p>
-              </div>
-            </div>
-            {ambiguity.severity === "blocker" ? (
-              <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-rose-500" />
-            ) : (
-              <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-500" />
-            )}
-          </div>
-          <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-3">
-            <p className="text-[10px] font-black tracking-[0.14em] uppercase opacity-70">
-              Source Quote
-            </p>
-            <p className="mt-1 text-[12px] leading-relaxed font-medium">
-              {ambiguity.quote}
-            </p>
-          </div>
-          <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black tracking-[0.14em] uppercase opacity-70">
-                  Suggested Question
-                </p>
-                <p className="mt-1 text-[12px] leading-relaxed font-medium">
-                  {ambiguity.question}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  navigator.clipboard.writeText(ambiguity.question)
-                }
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white bg-white px-2.5 py-1 text-[11px] font-bold text-foreground shadow-sm transition-colors hover:bg-muted"
-              >
-                <CopyIcon className="size-3.5" />
-                Copy
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export function ExtractionReview({
-  defaultCurrency,
-  defaultDepositPct,
-}: ExtractionReviewProps) {
+export function ExtractionReview() {
   const [phase, setPhase] = React.useState<Phase>("idle");
-  const [dmText, setDmText] = React.useState("");
-  const [draft, setDraft] = React.useState<AgreementDraft>(() =>
-    createEmptyDraft(defaultCurrency, defaultDepositPct),
-  );
-  const [baseFlags, setBaseFlags] = React.useState<Ambiguity[]>([]);
-  const [errorMessage, setErrorMessage] = React.useState("");
-  const [versions, setVersions] = React.useState<VersionSnapshot[]>([]);
-  const [activeVersionId, setActiveVersionId] = React.useState<string | null>(
-    null,
-  );
-  const [copiedLink, setCopiedLink] = React.useState(false);
+  const [inputText, setInputText] = React.useState("");
+  const [agreement, setAgreement] = React.useState<Agreement | null>(null);
   const [showCounteroffers, setShowCounteroffers] = React.useState(false);
+  const [history, setHistory] = React.useState<VersionSnapshot[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const flags = React.useMemo(
-    () => computeFlags(draft, baseFlags),
-    [baseFlags, draft],
-  );
-  const blockerCount = flags.filter(
-    (flag) => flag.severity === "blocker",
-  ).length;
-  const warningCount = flags.filter(
-    (flag) => flag.severity === "warning",
-  ).length;
-  const paymentPreview = React.useMemo(
-    () => calculatePaymentPreview(draft.totalPrice, draft.depositPercent),
-    [draft.depositPercent, draft.totalPrice],
-  );
-  const activeVersion = React.useMemo(
-    () => versions.find((version) => version.id === activeVersionId) ?? null,
-    [activeVersionId, versions],
-  );
-  const clientLink = React.useMemo(() => {
-    const origin =
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "http://localhost:3000";
+  const handleExtract = async () => {
+    if (!inputText.trim()) return;
+    setPhase("loading");
+    setError(null);
+    setShowCounteroffers(false);
 
-    if (!activeVersion) return `${origin}/a/demo-agreement`;
-    return `${origin}/a/demo-${activeVersion.version}-${activeVersion.contentHash}`;
-  }, [activeVersion]);
-
-  const fieldFlags = React.useMemo(() => {
-    return {
-      serviceType: flags.filter((flag) => flag.field === "serviceType"),
-      deliverables: flags.filter((flag) => flag.field === "deliverables"),
-      totalPrice: flags.filter((flag) => flag.field === "totalPrice"),
-      currency: flags.filter((flag) => flag.field === "currency"),
-      depositPercent: flags.filter((flag) => flag.field === "depositPercent"),
-      deadline: flags.filter((flag) => flag.field === "deadline"),
-      revisions: flags.filter((flag) => flag.field === "revisions"),
-      usageRights: flags.filter((flag) => flag.field === "usageRights"),
-    };
-  }, [flags]);
-
-  const startExtraction = React.useCallback(
-    (sourceText: string) => {
-      if (!sourceText.trim()) {
-        setPhase("error");
-        setErrorMessage(
-          "Paste the client DM first, or switch to manual entry.",
-        );
-        return;
-      }
-
-      setPhase("loading");
-      setErrorMessage("");
-
-      window.setTimeout(() => {
-        if (
-          sourceText.toLowerCase().includes("error") ||
-          sourceText.toLowerCase().includes("fail")
-        ) {
-          setPhase("error");
-          setErrorMessage(
-            "The AI extraction failed. Retry the same DM or enter the agreement manually.",
-          );
-          return;
-        }
-
-        const nextDraft = createDemoDraft(defaultCurrency, defaultDepositPct);
-        const nextBaseFlags = createDemoFlags();
-        const initialVersion = createVersionSnapshot(nextDraft, 1, "extracted");
-
-        setDraft(nextDraft);
-        setBaseFlags(nextBaseFlags);
-        setVersions([initialVersion]);
-        setActiveVersionId(initialVersion.id);
-        setCopiedLink(false);
+    try {
+      const result = await extractAgreement(inputText);
+      if (result.ok) {
+        setAgreement(result.data);
         setPhase("result");
-      }, 1400);
-    },
-    [defaultCurrency, defaultDepositPct],
-  );
 
-  function handleFieldChange(field: keyof AgreementDraft, value: string) {
-    setDraft((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+        const newSnapshot: VersionSnapshot = {
+          id: Math.random().toString(36).substring(7),
+          version: 1,
+          createdAtLabel: "Just now",
+          contentHash: "h1",
+          source: "extracted",
+          agreement: result.data,
+        };
+        setHistory([newSnapshot]);
+      } else {
+        setError(result.error.message);
+        setPhase("error");
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "An unexpected error occurred.",
+      );
+      setPhase("error");
+    }
+  };
 
-  function handleManualMode() {
-    const nextDraft = createEmptyDraft(defaultCurrency, defaultDepositPct);
-    const initialVersion = createVersionSnapshot(nextDraft, 1, "manual");
+  const handleApplyCounteroffer = (option: CounterofferOption) => {
+    if (!agreement) return;
 
-    setDraft(nextDraft);
-    setBaseFlags([]);
-    setVersions([initialVersion]);
-    setActiveVersionId(initialVersion.id);
-    setCopiedLink(false);
-    setPhase("manual");
-    setErrorMessage("");
-  }
-
-  function handleRetry() {
-    startExtraction(dmText);
-  }
-
-  function saveNewVersion() {
-    const nextVersion = createVersionSnapshot(
-      draft,
-      versions.length + 1,
-      "edited",
-    );
-
-    setVersions((current) => [nextVersion, ...current]);
-    setActiveVersionId(nextVersion.id);
-  }
-
-  function loadVersion(versionId: string) {
-    const version = versions.find((item) => item.id === versionId);
-    if (!version) return;
-
-    setDraft({ ...version.draft });
-    setActiveVersionId(version.id);
-    setCopiedLink(false);
-  }
-
-  function handleApplyCounteroffer(option: CounterofferOption) {
-    const nextDraft = { ...draft };
-
+    const newAgreement = structuredClone(agreement);
     option.changes.forEach((change) => {
       if (change.field === "Total Price")
-        nextDraft.totalPrice = change.newValue;
-      if (change.field === "Revisions") nextDraft.revisions = change.newValue;
-      if (change.field === "Usage Rights")
-        nextDraft.usageRights = change.newValue;
+        newAgreement.price.total = change.newValue;
+      if (change.field === "Revisions")
+        newAgreement.revisions.included = parseInt(change.newValue);
     });
 
-    setDraft(nextDraft);
+    setAgreement(newAgreement);
     setShowCounteroffers(false);
-    saveNewVersion();
-  }
 
-  async function copyClientLink() {
-    await navigator.clipboard.writeText(clientLink);
-    setCopiedLink(true);
-    window.setTimeout(() => setCopiedLink(false), 1800);
-  }
+    const newSnapshot: VersionSnapshot = {
+      id: Math.random().toString(36).substring(7),
+      version: history.length + 1,
+      createdAtLabel: "Just now",
+      contentHash: "h" + (history.length + 1),
+      source: "edited",
+      agreement: newAgreement,
+    };
+    setHistory([newSnapshot, ...history]);
+  };
+
+  const clientLink = agreement
+    ? `https://dmpact.ai/a/${history[0]?.id || "active"}`
+    : "";
 
   return (
-    <div className="grid gap-6">
-      <Card className="rounded-[32px] border-2 border-white bg-card shadow-[0_15px_50px_rgba(0,0,0,0.1)]">
-        <CardHeader className="p-6 pb-4 md:p-8 md:pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <MessageSquareQuoteIcon className="size-5" />
-            </div>
-            <div>
-              <CardTitle className="text-[16px] font-black tracking-tight text-foreground uppercase">
-                Paste Client DM
-              </CardTitle>
-              <p className="text-[12px] font-medium text-muted-foreground">
-                Start with the raw chat. The review screen appears after
-                extraction.
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 p-6 pt-0 md:p-8 md:pt-0">
-          <textarea
-            value={dmText}
-            onChange={(event) => setDmText(event.target.value)}
-            placeholder="Paste the full commission DM here..."
-            className="min-h-[340px] w-full rounded-[28px] border-2 border-dashed border-border bg-background px-5 py-4 text-[13px] leading-relaxed font-medium text-foreground transition-colors outline-none focus:border-primary/40"
-          />
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              onClick={() => startExtraction(dmText)}
-              className="h-11 rounded-2xl px-5 text-[13px] font-bold shadow-lg shadow-primary/20"
-            >
-              <SparklesIcon className="size-4" />
-              Extract Agreement
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setDmText(DEMO_DM)}
-              className="h-11 rounded-2xl border-border bg-card px-5 text-[13px] font-bold"
-            >
-              <WandSparklesIcon className="size-4" />
-              Use Demo DM
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleManualMode}
-              className="h-11 rounded-2xl border-border bg-card px-5 text-[13px] font-bold"
-            >
-              <FilePenLineIcon className="size-4" />
-              Manual Entry
-            </Button>
-          </div>
-
-          <div className="rounded-[28px] border border-border bg-background p-4">
-            <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-              What this screen should do
-            </p>
-            <ul className="mt-3 grid gap-2 text-[12px] font-medium text-muted-foreground">
-              <li>Paste a DM and move into a loading state.</li>
-              <li>
-                Show extracted agreement fields that the creator can edit.
-              </li>
-              <li>
-                Flag blockers and warnings inline, with a quote and a copyable
-                follow-up question.
-              </li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-[32px] border-2 border-white bg-card shadow-[0_15px_50px_rgba(0,0,0,0.1)]">
-        <CardHeader className="p-6 pb-4 md:p-8 md:pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle className="text-[16px] font-black tracking-tight text-foreground uppercase">
-                Extraction Review
-              </CardTitle>
-              <p className="text-[12px] font-medium text-muted-foreground">
-                Review the AI output before it becomes the agreement draft.
-              </p>
-            </div>
-            {(phase === "result" || phase === "manual") && (
-              <div className="flex flex-wrap gap-2">
-                <span className="rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700">
-                  {blockerCount} blocker
-                </span>
-                <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700">
-                  {warningCount} warning
-                </span>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 pt-0 md:p-8 md:pt-0">
-          {phase === "idle" ? (
-            <EmptyState
-              size="lg"
-              icon={SparklesIcon}
-              title="No extraction yet"
-              description="Paste a client DM on the left, then run extraction to preview the agreement here."
-            />
-          ) : null}
-
-          {phase === "loading" ? (
-            <div className="grid gap-4">
-              <div className="flex items-center gap-3 rounded-[28px] border border-border bg-background p-4">
-                <LoaderCircleIcon className="size-5 animate-spin text-primary" />
-                <div>
-                  <p className="text-[12px] font-bold text-foreground">
-                    Extracting agreement...
-                  </p>
-                  <p className="text-[12px] font-medium text-muted-foreground">
-                    Pulling service, budget, deadline, deposit and ambiguity
-                    flags from the DM.
-                  </p>
+    <div className="mx-auto w-full max-w-5xl space-y-12 pb-20">
+      {/* Premium Multi-layered Background for Input */}
+      {phase === "idle" && (
+        <Card className="group relative overflow-hidden rounded-[3rem] border-2 border-white bg-white shadow-2xl transition-all duration-500 hover:shadow-indigo-100/40">
+          <CardContent className="p-0">
+            <div className="absolute top-0 right-0 -mt-20 -mr-20 h-64 w-64 rounded-full bg-indigo-50/50 blur-3xl transition-all group-hover:bg-indigo-100/50" />
+            <div className="relative z-10 p-8 md:p-12">
+              <div className="space-y-8">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-600 shadow-sm">
+                    <MessageSquareQuoteIcon className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-[#1E2F50]">
+                      Client Request
+                    </h3>
+                    <p className="text-sm font-medium text-slate-400">
+                      Paste the DM from your client to begin extraction.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <Skeleton className="h-24 rounded-[28px] bg-muted" />
-              <Skeleton className="h-20 rounded-[28px] bg-muted" />
-              <Skeleton className="h-20 rounded-[28px] bg-muted" />
-              <Skeleton className="h-20 rounded-[28px] bg-muted" />
-            </div>
-          ) : null}
 
-          {phase === "error" ? (
-            <ErrorState
-              title="Extraction failed"
-              description={errorMessage}
-              onRetry={handleRetry}
-              retryLabel="Retry extraction"
-              action={
+                <div className="relative">
+                  <textarea
+                    className="min-h-[300px] w-full resize-none rounded-[2.5rem] border-2 border-slate-100 bg-slate-50/30 p-8 text-lg font-medium text-[#1E2F50] shadow-inner transition-all placeholder:text-slate-300 focus:border-indigo-200 focus:bg-white focus:ring-0 focus:outline-none"
+                    placeholder="e.g., 'Hey! I saw your portfolio and I'd love to commission a 5-minute MV edit. My budget is $150 and I need it by next Friday...'"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                  />
+                  <div className="absolute right-6 bottom-6 flex items-center gap-2 text-[10px] font-black tracking-widest text-slate-300 uppercase">
+                    <ZapIcon className="h-3 w-3 fill-slate-300" />
+                    AI Ready
+                  </div>
+                </div>
+
                 <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleManualMode}
-                  className="mt-2 h-9 rounded-xl border-border bg-card px-4 text-[12px] font-bold"
+                  size="lg"
+                  className="group h-20 w-full rounded-full bg-[#1E2F50] text-xl font-black text-white shadow-2xl shadow-indigo-200/50 transition-all hover:bg-indigo-900 active:scale-[0.98]"
+                  onClick={handleExtract}
+                  disabled={!inputText.trim()}
                 >
-                  Enter manually instead
+                  Analyze Agreement
+                  <ArrowRightIcon className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                 </Button>
-              }
-            />
-          ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {(phase === "result" || phase === "manual") && (
-            <div className="grid gap-4">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                <div className="grid gap-4 rounded-[28px] border border-border bg-background p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                        Payment Preview
-                      </p>
-                      <p className="mt-1 text-[12px] font-medium text-muted-foreground">
-                        Deposit and balance are recalculated live from total
-                        price and deposit percentage.
-                      </p>
-                    </div>
-                    <div className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-foreground shadow-sm">
-                      {draft.currency || defaultCurrency}
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-3xl border border-border bg-card p-4">
-                      <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                        Deposit
-                      </p>
-                      <p className="mt-2 text-[24px] font-black tracking-tight text-foreground">
-                        {draft.currency || defaultCurrency}{" "}
-                        {paymentPreview.depositAmount}
-                      </p>
-                    </div>
-                    <div className="rounded-3xl border border-border bg-card p-4">
-                      <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                        Balance
-                      </p>
-                      <p className="mt-2 text-[24px] font-black tracking-tight text-foreground">
-                        {draft.currency || defaultCurrency}{" "}
-                        {paymentPreview.balanceAmount}
-                      </p>
-                    </div>
-                  </div>
+      {phase === "loading" && (
+        <Card className="flex min-h-[500px] flex-col items-center justify-center rounded-[3rem] border-2 border-white bg-white p-12 text-center shadow-2xl">
+          <div className="relative">
+            <div className="absolute inset-0 animate-ping rounded-full bg-indigo-100 opacity-20" />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border-4 border-indigo-50 bg-white shadow-xl">
+              <LoaderCircleIcon className="h-12 w-12 animate-spin text-indigo-600" />
+            </div>
+            <HeartIcon className="absolute -top-2 -right-2 h-8 w-8 animate-bounce fill-pink-500 text-pink-500" />
+          </div>
+          <h3 className="mt-10 text-3xl font-black text-[#1E2F50]">
+            Analyzing your DM...
+          </h3>
+          <p className="mt-4 max-w-xs text-lg leading-relaxed font-medium text-slate-400">
+            Our AI is identifying deliverables, deadlines, and pricing details.
+          </p>
+        </Card>
+      )}
 
-                  <div className="flex items-center justify-between gap-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                    <div className="flex items-center gap-3">
-                      <SparklesIcon className="size-4 text-amber-600" />
-                      <p className="text-[12px] font-bold text-amber-900">
-                        Budget mismatch detected
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowCounteroffers(!showCounteroffers)}
-                      className="h-8 rounded-xl px-3 text-[11px] font-black tracking-wider text-amber-700 uppercase hover:bg-amber-100"
-                    >
-                      {showCounteroffers
-                        ? "Hide options"
-                        : "Explore counteroffers"}
-                    </Button>
-                  </div>
+      {phase === "error" && (
+        <ErrorState
+          title="Extraction Failed"
+          message={error || "Something went wrong during extraction."}
+          onRetry={() => setPhase("idle")}
+          className="rounded-[3rem] border-2 border-white shadow-2xl"
+        />
+      )}
+
+      {phase === "result" && agreement && (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
+          {/* Main Analysis Results */}
+          <div className="space-y-8">
+            {/* Attention Flags */}
+            {agreement.ambiguities.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 px-4">
+                  <StarIcon className="h-5 w-5 fill-amber-500 text-amber-500" />
+                  <span className="text-xs font-black tracking-[0.2em] text-[#1E2F50] uppercase">
+                    Action Required
+                  </span>
                 </div>
-
-                <div className="grid gap-4 rounded-[28px] border border-border bg-background p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                        Version History
-                      </p>
-                      <p className="mt-1 text-[12px] font-medium text-muted-foreground">
-                        Save edits as a new immutable version, then reopen older
-                        ones anytime.
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-foreground shadow-sm">
-                      {versions.length} version
-                    </span>
-                  </div>
-
-                  <div className="grid gap-2">
-                    {versions.map((version) => {
-                      const isActive = version.id === activeVersionId;
-
-                      return (
-                        <button
-                          key={version.id}
-                          type="button"
-                          onClick={() => loadVersion(version.id)}
+                <div className="grid gap-4">
+                  {agreement.ambiguities.map((amb, idx) => (
+                    <div
+                      key={idx}
+                      className={flagVariants({
+                        severity: amb.severity as "blocker" | "warning",
+                      })}
+                    >
+                      <div className="flex items-start gap-5">
+                        <div
                           className={cn(
-                            "rounded-3xl border p-3 text-left transition-colors",
-                            isActive
-                              ? "border-primary bg-blue-50/70"
-                              : "border-border bg-card hover:bg-muted/60",
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white shadow-sm",
+                            amb.severity === "blocker"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-amber-100 text-amber-600",
                           )}
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-[12px] font-black text-foreground">
-                                v{version.version}{" "}
-                                <span className="text-[11px] font-bold text-muted-foreground">
-                                  ({version.source})
-                                </span>
-                              </p>
-                              <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-                                {version.createdAtLabel}
-                              </p>
-                            </div>
-                            {isActive ? (
-                              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-primary shadow-sm">
-                                Active
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-2 text-[11px] font-medium text-muted-foreground">
-                            Hash: {version.contentHash}
+                          <AlertTriangleIcon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <h4 className="text-sm font-black tracking-tight uppercase">
+                            {amb.code.replace(/_/g, " ")}
+                          </h4>
+                          <p className="text-sm leading-relaxed font-bold opacity-90">
+                            {amb.message}
                           </p>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          {amb.source_quote && (
+                            <div className="rounded-2xl border border-white/30 bg-white/50 p-4 text-[13px] font-medium italic">
+                              &quot;{amb.source_quote}&quot;
+                            </div>
+                          )}
+                          {amb.suggested_question && (
+                            <p className="text-xs font-black text-indigo-600 italic">
+                              💡 {amb.suggested_question}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            )}
 
-              {showCounteroffers && (
-                <div className="rounded-[32px] border-2 border-white bg-slate-50/50 p-6 shadow-inner md:p-8">
-                  <div className="mb-6">
-                    <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                      Counteroffer Generator
-                    </p>
-                    <p className="mt-1 text-[13px] font-medium text-muted-foreground">
-                      The AI suggests these options to bridge the gap between
-                      your rate card and the client’s budget.
-                    </p>
+            {/* Counteroffer Section */}
+            {showCounteroffers && (
+              <div className="rounded-[3rem] border-2 border-white bg-indigo-50/30 p-8 shadow-xl">
+                <div className="mb-8 px-4">
+                  <div className="flex items-center gap-2 text-indigo-600">
+                    <ZapIcon className="h-5 w-5 fill-indigo-600" />
+                    <span className="text-xs font-black tracking-widest uppercase">
+                      AI Strategy
+                    </span>
                   </div>
-                  <CounterofferEditor
-                    options={DEMO_COUNTEROFFERS}
-                    onApply={handleApplyCounteroffer}
-                    estimateRange="$150.00 - $220.00"
-                    mismatchReason="The client's budget ($120) is below your base price for MV editing. Consider adjusting the scope or rate."
-                  />
+                  <h3 className="mt-2 text-2xl font-black text-[#1E2F50]">
+                    Bridge the Gap
+                  </h3>
+                  <p className="mt-1 text-sm font-medium text-slate-500">
+                    Select a counteroffer strategy to align with your rate card.
+                  </p>
                 </div>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FieldCard
-                  label="Service Type"
-                  hint="What kind of commission is this?"
-                  name="serviceType"
-                  value={draft.serviceType}
-                  onChange={handleFieldChange}
-                  ambiguities={fieldFlags.serviceType}
-                />
-                <FieldCard
-                  label="Total Price"
-                  hint="Money math will use this as the base amount."
-                  name="totalPrice"
-                  value={draft.totalPrice}
-                  onChange={handleFieldChange}
-                  ambiguities={fieldFlags.totalPrice}
-                />
-                <FieldCard
-                  label="Currency"
-                  hint="Should match the creator's rate card and PayPal support."
-                  name="currency"
-                  value={draft.currency}
-                  onChange={handleFieldChange}
-                  ambiguities={fieldFlags.currency}
-                />
-                <FieldCard
-                  label="Deposit"
-                  hint="Default comes from Settings, but the creator can override it here."
-                  name="depositPercent"
-                  value={draft.depositPercent}
-                  onChange={handleFieldChange}
-                  ambiguities={fieldFlags.depositPercent}
-                  suffix="%"
-                />
-                <FieldCard
-                  label="Deadline"
-                  hint="Use a fixed date the client can confirm."
-                  name="deadline"
-                  value={draft.deadline}
-                  onChange={handleFieldChange}
-                  ambiguities={fieldFlags.deadline}
-                />
-                <FieldCard
-                  label="Revisions"
-                  hint="How many revisions are included in the agreed scope?"
-                  name="revisions"
-                  value={draft.revisions}
-                  onChange={handleFieldChange}
-                  ambiguities={fieldFlags.revisions}
+                <CounterofferEditor
+                  options={DEMO_COUNTEROFFERS}
+                  onApply={handleApplyCounteroffer}
+                  estimateRange="$150.00 - $220.00"
+                  mismatchReason="The client's budget is below your standard rate for this service."
                 />
               </div>
+            )}
 
-              <FieldCard
-                label="Deliverables"
-                hint="List the actual files or outputs the client should receive."
-                name="deliverables"
-                value={draft.deliverables}
-                onChange={handleFieldChange}
-                ambiguities={fieldFlags.deliverables}
-              />
-
-              <FieldCard
-                label="Usage Rights"
-                hint="State the allowed usage clearly. This must be resolved before sending to the client."
-                name="usageRights"
-                value={draft.usageRights}
-                onChange={handleFieldChange}
-                ambiguities={fieldFlags.usageRights}
-              />
-
-              <div className="grid gap-4 rounded-[28px] border border-border bg-background p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                      Review status
-                    </p>
-                    <p className="mt-1 text-[12px] font-medium text-muted-foreground">
-                      {blockerCount > 0
-                        ? "Blockers must be resolved before this agreement can be sent to the client."
-                        : "No blockers left. The agreement is ready for the next step."}
-                    </p>
+            {/* Agreement Preview Card */}
+            <Card className="overflow-hidden rounded-[3rem] border-2 border-white bg-white shadow-2xl">
+              <div className="bg-[#1E2F50] p-8 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 animate-pulse rounded-full bg-cyan-400" />
+                    <span className="text-xs font-black tracking-[0.2em] uppercase">
+                      Agreement Draft
+                    </span>
                   </div>
-                  {blockerCount > 0 ? (
-                    <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-700">
-                      <AlertTriangleIcon className="size-3.5" />
-                      Resolve blockers first
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
-                      <CheckCircle2Icon className="size-3.5" />
-                      Ready for next step
-                    </span>
-                  )}
+                  <span className="text-[10px] font-black uppercase opacity-40">
+                    v{history[0]?.version}
+                  </span>
+                </div>
+                <h2 className="mt-4 text-3xl font-black tracking-tight">
+                  {agreement.title}
+                </h2>
+              </div>
+              <CardContent className="p-8 md:p-12">
+                <div className="grid gap-8 md:grid-cols-2">
+                  {[
+                    {
+                      label: "Service Type",
+                      value: agreement.service_type.replace(/_/g, " "),
+                      icon: ZapIcon,
+                    },
+                    {
+                      label: "Deadline",
+                      value: agreement.deadline.date || "Not set",
+                      icon: StarIcon,
+                    },
+                    {
+                      label: "Revisions",
+                      value: `${agreement.revisions.included ?? "0"} included`,
+                      icon: RefreshCwIcon,
+                    },
+                    {
+                      label: "Commercial Rights",
+                      value: agreement.usage_rights?.commercial
+                        ? "Yes"
+                        : "No/Unclear",
+                      icon: ShieldCheckIcon,
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="group rounded-[2rem] border-2 border-slate-50 bg-slate-50/20 p-6 transition-all hover:border-indigo-100 hover:bg-white hover:shadow-xl hover:shadow-indigo-50/50"
+                    >
+                      <div className="flex items-center gap-3 text-slate-400 transition-colors group-hover:text-indigo-500">
+                        <item.icon className="h-4 w-4" />
+                        <span className="text-[10px] font-black tracking-[0.2em] uppercase">
+                          {item.label}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-lg font-black text-[#1E2F50]">
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="rounded-3xl border border-border bg-card p-4">
-                  <p className="text-[11px] font-black tracking-[0.14em] text-muted-foreground uppercase">
-                    Client Link
-                  </p>
-                  <p className="mt-2 text-[12px] font-medium break-all text-foreground">
-                    {clientLink}
-                  </p>
-                  <p className="mt-1 text-[12px] font-medium text-muted-foreground">
-                    The link is tied to the active agreement version hash.
-                  </p>
+                <div className="mt-10 space-y-4">
+                  <h4 className="px-2 text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">
+                    Deliverables
+                  </h4>
+                  <div className="space-y-3">
+                    {agreement.deliverables.map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-[10px] font-black text-indigo-600">
+                          {d.id.toUpperCase()}
+                        </div>
+                        <p className="text-sm font-bold text-[#1E2F50]">
+                          {d.description}
+                        </p>
+                        <span className="ml-auto text-xs font-black text-slate-300">
+                          x{d.quantity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sticky Sidebar Actions */}
+          <div className="space-y-6">
+            <Card className="sticky top-24 rounded-[2.5rem] border-2 border-white bg-white p-8 shadow-2xl">
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-xs font-black tracking-[0.2em] text-slate-400 uppercase">
+                    Total Investment
+                  </h3>
+                  <div className="mt-4 flex items-baseline gap-2">
+                    <span className="text-4xl font-black text-[#1E2F50]">
+                      {agreement.price.currency} {agreement.price.total}
+                    </span>
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    <div className="flex items-center justify-between rounded-2xl border border-indigo-100/50 bg-indigo-50/50 p-4">
+                      <span className="text-xs font-bold text-slate-500">
+                        Deposit ({agreement.deposit.percent}%)
+                      </span>
+                      <span className="text-sm font-black text-indigo-600">
+                        {agreement.price.currency} {agreement.deposit.amount}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <span className="text-xs font-bold text-slate-500">
+                        Final Payment
+                      </span>
+                      <span className="text-sm font-black text-[#1E2F50]">
+                        {agreement.price.currency} {agreement.balance_amount}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    onClick={saveNewVersion}
-                    className="h-10 rounded-xl px-4 text-[13px] font-bold shadow-lg shadow-primary/20"
-                  >
-                    Save New Version
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={copyClientLink}
-                    className="h-10 rounded-xl border-border bg-card px-4 text-[13px] font-bold"
-                  >
-                    <CopyIcon className="size-4" />
-                    {copiedLink ? "Copied" : "Copy Client Link"}
-                  </Button>
-                  <Button
-                    type="button"
-                    disabled={blockerCount > 0}
-                    className="h-10 rounded-xl px-4 text-[13px] font-bold shadow-lg shadow-primary/20"
-                  >
+                <div className="space-y-4">
+                  <Button className="h-16 w-full rounded-full bg-indigo-600 font-black text-white shadow-xl shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-[0.98]">
                     Send to Client
                   </Button>
                   <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => startExtraction(dmText)}
-                    className="h-10 rounded-xl border-border bg-card px-4 text-[13px] font-bold"
+                    variant="ghost"
+                    className="h-14 w-full rounded-full font-bold text-slate-400 hover:text-[#1E2F50]"
+                    onClick={() => setPhase("idle")}
                   >
-                    <RefreshCwIcon className="size-4" />
-                    Re-run extraction
+                    <RefreshCwIcon className="mr-2 h-4 w-4" />
+                    Redo Extraction
                   </Button>
                 </div>
+
+                {agreement.ambiguities.some(
+                  (a) => a.field === "/price/total",
+                ) &&
+                  !showCounteroffers && (
+                    <div className="rounded-3xl border-2 border-dashed border-amber-200 bg-amber-50/50 p-6 text-center">
+                      <p className="text-xs font-bold text-amber-800">
+                        Rate Mismatch Detected
+                      </p>
+                      <Button
+                        variant="link"
+                        className="mt-1 h-auto p-0 text-xs font-black text-amber-600 uppercase underline-offset-4"
+                        onClick={() => setShowCounteroffers(true)}
+                      >
+                        View AI Counteroffers
+                      </Button>
+                    </div>
+                  )}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </Card>
+
+            <Card className="rounded-[2.5rem] border-2 border-white bg-slate-900 p-8 text-white shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="h-2 w-2 rounded-full bg-cyan-400" />
+                <span className="text-[10px] font-black tracking-[0.2em] uppercase opacity-60">
+                  Sharing Info
+                </span>
+              </div>
+              <p className="mt-4 text-xs leading-relaxed font-medium opacity-80">
+                Agreement will be sent to the client&apos;s email via PayPal
+                Invoicing upon confirmation.
+              </p>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
