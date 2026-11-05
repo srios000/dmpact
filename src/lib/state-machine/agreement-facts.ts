@@ -4,7 +4,11 @@ import type { GuardContext } from "./rules";
 
 export type AgreementFacts = Pick<
   GuardContext,
-  "agreementValid" | "blockerCount" | "depositType" | "balanceIsZero"
+  | "agreementValid"
+  | "blockerCount"
+  | "depositType"
+  | "hasClientEmail"
+  | "balanceIsZero"
 >;
 
 function amountsOf({ price, deposit }: Agreement) {
@@ -24,6 +28,7 @@ export function readAgreementFacts(content: unknown): AgreementFacts {
       agreementValid: false,
       blockerCount: 0,
       depositType: null,
+      hasClientEmail: false,
       balanceIsZero: false,
     };
   }
@@ -36,6 +41,7 @@ export function readAgreementFacts(content: unknown): AgreementFacts {
       (a) => a.severity === "blocker",
     ).length,
     depositType: parsed.data.deposit.type,
+    hasClientEmail: !!parsed.data.parties?.client?.email?.trim(),
     balanceIsZero:
       amounts !== null && /^0+(\.0+)?$/.test(amounts.balance ?? ""),
   };
