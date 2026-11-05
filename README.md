@@ -2,6 +2,8 @@
 
 A PayPal + AI hackathon project for creators who take commissions over DMs.
 
+Live: https://dmpact.vercel.app
+
 ## Planned flow
 
 1. **Paste the DM.** Gemini extracts price, currency, deadline, revisions, deposit terms, and deliverables, and flags anything ambiguous.
