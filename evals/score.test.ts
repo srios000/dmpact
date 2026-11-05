@@ -51,8 +51,13 @@ describe("valuesMatch", () => {
     expect(valuesMatch("150.00", "150")).toBe(true);
     expect(valuesMatch("150.00", "150.01")).toBe(false);
     expect(valuesMatch(50, "50")).toBe(false);
-    expect(valuesMatch(null, undefined)).toBe(false);
     expect(valuesMatch(null, null)).toBe(true);
+  });
+
+  it("treats an omitted field as null", () => {
+    expect(valuesMatch(null, undefined)).toBe(true);
+    expect(valuesMatch(undefined, null)).toBe(false);
+    expect(valuesMatch("150.00", undefined)).toBe(false);
   });
 });
 

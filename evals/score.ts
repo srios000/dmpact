@@ -84,6 +84,7 @@ function getAt(root: unknown, path: string[]): unknown {
 const NUMERIC = /^\d+(\.\d+)?$/;
 
 export function valuesMatch(expected: unknown, actual: unknown): boolean {
+  if (expected === null && actual === undefined) return true;
   if (
     typeof expected === "string" &&
     typeof actual === "string" &&
