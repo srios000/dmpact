@@ -28,6 +28,11 @@ export const newAgreementSchema = z.preprocess((value) => {
       };
 }, agreementSchema);
 
+export const extractAgreementSchema = z.strictObject({
+  dmText: z.string().trim().min(1).max(MAX_DM_CHARS),
+  commissionId: commissionIdSchema.optional(),
+});
+
 export const createCommissionSchema = z.strictObject({
   sourceDm: z.string().max(MAX_DM_CHARS),
   agreement: newAgreementSchema,
@@ -60,6 +65,7 @@ export const requestChangesSchema = z.strictObject({
   message: z.string().trim().min(1).max(MAX_CHANGE_REQUEST_CHARS),
 });
 
+export type ExtractAgreementInput = z.input<typeof extractAgreementSchema>;
 export type CreateCommissionInput = z.input<typeof createCommissionSchema>;
 export type SaveAgreementVersionInput = z.input<
   typeof saveAgreementVersionSchema
