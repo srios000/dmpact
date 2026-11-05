@@ -218,9 +218,9 @@ States: `draft → negotiating → agreed → dp_paid → in_progress → delive
 
 | Component | Model | Technique | Output |
 |---|---|---|---|
-| DM extractor | Google Gemini 3.8 Flash (`GEMINI_MODEL=gemini-3.8-flash`) | Prompt + JSON-schema structured output + zod validation + 1 repair retry | Agreement JSON + ambiguities |
+| DM extractor | Google Gemini 3.5 Flash Lite (`GEMINI_MODEL=gemini-3.5-flash-lite`), fallback Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`) | Prompt + JSON-schema structured output + zod validation + 1 repair retry | Agreement JSON + ambiguities |
 | Ambiguity rules | Gemini + code checks | LLM flags + deterministic rules (missing fields, unsupported currency, past dates, deposit > total) | `ambiguities[]` |
-| Mismatch detector | Code + Gemini | Rate-card math gives the estimate; LLM writes the explanation | `mismatch{}` |
+| Mismatch detector | Code | Rate-card math gives the estimate and the explanation, with no model call (FR-3.5, FR-3.7) | `mismatch{}` |
 | Counteroffer generator | Gemini | Structured output: up to 3 options, each with message + full proposed agreement, validated in code | `counteroffers[]` |
 | Reminder nudge writer | Gemini | Short, polite message | `string` |
 
@@ -332,7 +332,7 @@ Day-by-day draft: [timeline.md](timeline.md).
 
 | # | Question | Decision |
 |---|---|---|
-| Q1 | Gemini: whose API key, which model, are free-tier limits enough for the demo? | **Gemini 3.8 Flash** (`gemini-3.8-flash`). Free-tier limits should be sufficient for the demo, but each teammate uses their own Google project for dev and evals so we don't share one daily quota. |
+| Q1 | Gemini: whose API key, which model, are free-tier limits enough for the demo? | **Gemini 3.5 Flash Lite** (`gemini-3.5-flash-lite`), with **Gemini 3.1 Flash Lite** (`gemini-3.1-flash-lite`) as fallback. On the 21 test DMs with prompt `extract-v2`, 3.5 Flash Lite passed 18 and 3.1 Flash Lite passed 14 (`evals/results/`). Free-tier limits should be sufficient for the demo, but each teammate uses their own Google project for dev and evals so we don't share one daily quota. |
 | Q2 | Deliver the final file before or after the balance is paid? | **After the balance is paid.** Final file delivery is gated on balance payment. |
 | Q3 | Store delivered files, or only their hashes? | **Store both files and hashes.** Files stored in Neon Object Storage; SHA-256 hash recorded for evidence. |
 | Q5 | Can we talk to real creators to validate the problem? | **No.** Pain points are scraped/gathered from creator communities online instead. |
