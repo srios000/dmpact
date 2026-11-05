@@ -16,6 +16,7 @@ export const envSchema = z.object({
   PAYPAL_CLIENT_ID: optional,
   PAYPAL_CLIENT_SECRET: optional,
   PAYPAL_WEBHOOK_ID: optional,
+  PAYPAL_MOCK: optional,
   AWS_ENDPOINT_URL_S3: optional,
   AWS_REGION: optional,
   AWS_ACCESS_KEY_ID: optional,
