@@ -1,21 +1,26 @@
-import { describe, expect, it } from "vitest";
-import type { ModelClient } from "@/lib/ai/gemini";
+import { describe, expect, it, vi } from "vitest";
+import {
+  withFallback,
+  type ModelAnswer,
+  type ModelClient,
+} from "@/lib/ai/gemini";
 import { ExtractionError, extractAgreement, todayInZone } from "./index";
 import { baseAgreement } from "./test-helpers";
 
 function mockClient(
-  responses: Array<string | Error>,
+  responses: Array<string | Error | ModelAnswer>,
+  model = "gemini-test",
 ): ModelClient & { calls: string[] } {
   const calls: string[] = [];
   return {
-    model: "gemini-test",
+    model,
     calls,
     async generateJson({ user }) {
       calls.push(user);
       const next = responses.shift();
       if (next === undefined) throw new Error("no more responses");
       if (next instanceof Error) throw next;
-      return next;
+      return typeof next === "string" ? { text: next, model } : next;
     },
   };
 }
@@ -143,6 +148,27 @@ describe("extractAgreement", () => {
       ]),
     );
     expect(agreement.extraction?.model).toBe("gemini-test");
+  });
+
+  it("records the fallback model when the main model's call fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const client = withFallback(
+      mockClient([new Error("429")], "main"),
+      mockClient([valid()], "backup"),
+    );
+    const { agreement, fallback } = await extractAgreement(input, client);
+    expect(fallback).toBe(false);
+    expect(agreement.extraction?.model).toBe("backup");
+  });
+
+  it("records the model of the last answer on the fallback draft", async () => {
+    const client = mockClient([
+      "not json",
+      { text: JSON.stringify({ title: 5 }), model: "backup" },
+    ]);
+    const { agreement, fallback } = await extractAgreement(input, client);
+    expect(fallback).toBe(true);
+    expect(agreement.extraction?.model).toBe("backup");
   });
 
   it("keeps valid fields in the fallback draft", async () => {
