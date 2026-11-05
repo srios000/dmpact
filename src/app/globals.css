@@ -84,6 +84,15 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.05);
   --sidebar-ring: #ff3b8e;
+
+  --status-draft: #64748b;
+  --status-negotiating: #d97706;
+  --status-agreed: #2563eb;
+  --status-dp-paid: #ea580c;
+  --status-in-progress: #0284c7;
+  --status-delivered: #0891b2;
+  --status-fully-paid: #059669;
+  --status-cancelled: #dc2626;
 }
 
 .dark {

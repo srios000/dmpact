@@ -161,17 +161,17 @@ export function ExtractionReview() {
       {phase === "idle" && (
         <div className="animate-in space-y-16 duration-1000 fade-in slide-in-from-top-4">
           <div className="relative text-center md:text-left">
-            <h1 className="text-glow-white pointer-events-none absolute -top-12 left-0 font-heading text-[8rem] leading-none font-black tracking-tighter text-white/[0.03] select-none md:text-[12rem] lg:left-[-4rem]">
+            <h1 className="text-glow-white pointer-events-none absolute -top-8 left-0 font-heading text-[6rem] leading-none font-black tracking-tighter text-white/[0.02] select-none md:text-[9rem] lg:left-[-2rem]">
               RAW
             </h1>
-            <div className="relative z-10 space-y-6">
-              <h2 className="font-heading text-5xl font-black tracking-tight text-white md:text-7xl lg:text-8xl">
+            <div className="relative z-10 space-y-4">
+              <h2 className="font-heading text-4xl font-black tracking-tight text-white md:text-5xl lg:text-6xl">
                 Extract{" "}
-                <span className="animate-gradient text-glow bg-gradient-to-r from-[#FF3B8E] via-[#9333EA] to-[#3B82F6] bg-[length:200%_auto] bg-clip-text text-transparent italic">
+                <span className="animate-gradient text-glow bg-gradient-to-r from-[#FF3B8E] via-blue-400 to-[#FF3B8E] bg-[length:200%_auto] bg-clip-text text-transparent">
                   Agreement.
                 </span>
               </h2>
-              <p className="mx-auto max-w-xl text-lg leading-relaxed font-medium text-slate-300 sm:text-xl md:mx-0">
+              <p className="mx-auto max-w-xl text-base leading-relaxed font-medium text-slate-300 sm:text-lg md:mx-0">
                 Drop your raw client DMs here. Our AI engine strips away the
                 noise and uncovers the core terms.
               </p>
@@ -181,11 +181,11 @@ export function ExtractionReview() {
           <div className="grid gap-12 lg:grid-cols-[1fr_320px]">
             <div className="space-y-8">
               <div className="group relative">
-                <div className="absolute -inset-1 rounded-[2.5rem] bg-gradient-to-r from-[#FF3B8E] via-[#9333EA] to-[#3B82F6] opacity-20 blur-2xl transition duration-1000 group-focus-within:opacity-40" />
+                <div className="absolute -inset-1 rounded-[2.5rem] bg-gradient-to-r from-[#FF3B8E] to-blue-500 opacity-20 blur-2xl transition duration-1000 group-focus-within:opacity-40" />
                 <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0F1014]/40 shadow-2xl backdrop-blur-3xl transition-all duration-500 hover:border-white/20">
                   <div className="relative z-10 p-2">
                     <textarea
-                      className="min-h-[400px] w-full resize-none rounded-[2rem] bg-transparent p-8 text-xl leading-relaxed font-medium text-white placeholder:text-slate-700 focus:ring-0 focus:outline-none"
+                      className="min-h-[300px] w-full resize-none rounded-[2rem] bg-transparent p-8 text-lg leading-relaxed font-medium text-white placeholder:text-slate-700 focus:ring-0 focus:outline-none"
                       placeholder="Paste the raw conversation here..."
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
@@ -204,19 +204,19 @@ export function ExtractionReview() {
               <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <Button
                   size="lg"
-                  className="group relative h-20 flex-1 overflow-hidden rounded-3xl bg-white text-lg font-black text-black shadow-2xl shadow-white/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="group relative h-14 flex-1 overflow-hidden rounded-2xl bg-white text-sm font-black text-black shadow-lg shadow-white/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   onClick={() => handleExtract()}
                   disabled={!inputText.trim()}
                 >
                   <span className="relative z-10 flex items-center gap-3">
                     ANALYZE REQUEST
-                    <ArrowRightIcon className="size-5 transition-transform group-hover:translate-x-1" />
+                    <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-20 w-full rounded-3xl border-2 border-white/10 bg-transparent px-12 text-lg font-black text-white transition-all hover:bg-white/5 sm:w-auto"
+                  className="h-14 w-full rounded-2xl border-2 border-white/10 bg-transparent px-8 text-sm font-black text-white transition-all hover:bg-white/5 sm:w-auto"
                   onClick={() => setPhase("manual")}
                 >
                   MANUAL
@@ -273,10 +273,10 @@ export function ExtractionReview() {
             <HeartIcon className="absolute -top-2 -right-2 size-8 animate-bounce fill-[#FF3B8E] text-[#FF3B8E] shadow-lg" />
           </div>
           <div className="space-y-4 text-center">
-            <h3 className="animate-gradient text-glow bg-gradient-to-r from-[#FF3B8E] via-blue-400 to-[#FF3B8E] bg-[length:200%_auto] bg-clip-text text-4xl font-black text-transparent">
+            <h3 className="animate-gradient text-glow bg-gradient-to-r from-[#FF3B8E] via-blue-400 to-[#FF3B8E] bg-[length:200%_auto] bg-clip-text text-3xl font-black text-transparent md:text-4xl">
               Analyzing your DM...
             </h3>
-            <p className="mx-auto max-w-xs text-lg leading-relaxed font-medium text-slate-500">
+            <p className="mx-auto max-w-xs text-base leading-relaxed font-medium text-slate-500">
               Our AI engine is stripping away the noise to uncover the core
               agreement.
             </p>
@@ -301,7 +301,7 @@ export function ExtractionReview() {
                 </p>
               </div>
               <Button
-                className="h-16 rounded-full bg-white px-10 text-base font-black text-black transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="h-12 rounded-xl bg-white px-8 text-sm font-black text-black transition-all hover:scale-[1.02] active:scale-[0.98]"
                 onClick={() => setPhase("idle")}
               >
                 BACK TO EXTRACTION
@@ -314,9 +314,8 @@ export function ExtractionReview() {
       {phase === "error" && (
         <ErrorState
           title="Extraction Failed"
-          message={error || "Something went wrong during extraction."}
+          description={error || "Something went wrong during extraction."}
           onRetry={() => setPhase("idle")}
-          className="rounded-[3rem] border-2 border-white shadow-2xl"
         />
       )}
 
@@ -363,12 +362,12 @@ export function ExtractionReview() {
                             {amb.message}
                           </p>
                           {amb.source_quote && (
-                            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5 text-sm font-medium text-slate-400 italic">
+                            <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5 text-sm font-medium text-slate-400">
                               &quot;{amb.source_quote}&quot;
                             </div>
                           )}
                           {amb.suggested_question && (
-                            <div className="flex items-center gap-2 text-xs font-black text-blue-400 italic">
+                            <div className="flex items-center gap-2 text-xs font-black text-blue-400">
                               <ZapIcon className="size-3 fill-blue-400/20" />
                               💡 {amb.suggested_question}
                             </div>
@@ -540,17 +539,17 @@ export function ExtractionReview() {
 
                 <div className="space-y-4">
                   <Button
-                    className="h-20 w-full rounded-full bg-white text-lg font-black text-black shadow-2xl shadow-white/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="h-14 w-full rounded-2xl bg-white text-sm font-black text-black shadow-lg shadow-white/5 transition-all hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => setPhase("idle")}
                   >
                     ADD FOLLOW-UP DM
                   </Button>
-                  <Button className="h-20 w-full rounded-full bg-gradient-to-r from-[#FF3B8E] to-[#D42A75] text-lg font-black text-white shadow-2xl shadow-[#FF3B8E]/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                  <Button className="h-14 w-full rounded-2xl bg-gradient-to-r from-[#FF3B8E] to-[#D42A75] text-sm font-black text-white shadow-lg shadow-[#FF3B8E]/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
                     SEND TO CLIENT
                   </Button>
                   <Button
                     variant="ghost"
-                    className="h-16 w-full rounded-full text-sm font-bold text-slate-500 hover:bg-white/5 hover:text-white"
+                    className="h-12 w-full rounded-xl text-sm font-bold text-slate-500 hover:bg-white/5 hover:text-white"
                     onClick={() => setPhase("idle")}
                   >
                     <RefreshCwIcon className="mr-3 size-4" />
