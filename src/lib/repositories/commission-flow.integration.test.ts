@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { db } from "@/lib/db";
@@ -172,10 +173,18 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
   it("generates a token that only opens the client view", async () => {
     const { id, token } = await sent();
+    const other = await sent();
+    const unknown = randomBytes(16).toString("base64url");
 
     expect(Buffer.from(token, "base64url")).toHaveLength(16);
-    expect(await getClientAgreement("wrong-token-wrong")).toBeNull();
-    expect(await getCommissionStatus(id, "wrong-token-wrong")).toBeNull();
+    expect(other.token).not.toBe(token);
+    expect(await getClientAgreement(unknown)).toBeNull();
+    expect(await getCommissionStatus(id, unknown)).toBeNull();
+    expect(await getCommissionStatus(other.id, token)).toBeNull();
+
+    vi.mocked(getCurrentCreator).mockResolvedValue(null);
+    expect(await getCommissionStatus(id, null)).toBeNull();
+    expect(await getCommissionStatus(id, token)).not.toBeNull();
 
     const view = await getClientAgreement(token);
     expect(view?.state).toBe("negotiating");

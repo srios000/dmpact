@@ -1,7 +1,12 @@
 import "server-only";
+import { randomBytes } from "node:crypto";
 import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import type { Prisma } from "@/generated/prisma/client";
 import { agreementSchema, type Agreement } from "@/lib/schema/agreement";
+import {
+  CLIENT_TOKEN_BYTES,
+  clientTokenSchema,
+} from "@/lib/schema/commission-forms";
 import { RepositoryError } from "./errors";
 
 export type Tx = Prisma.TransactionClient;
@@ -20,6 +25,14 @@ export async function requireCreator() {
 
 export function notFound(): RepositoryError {
   return new RepositoryError("not_found", "Commission not found.");
+}
+
+export function newClientToken(): string {
+  return randomBytes(CLIENT_TOKEN_BYTES).toString("base64url");
+}
+
+export function isClientToken(token: string): boolean {
+  return clientTokenSchema.safeParse(token).success;
 }
 
 export async function lockCommission(tx: Tx, commissionId: string) {
