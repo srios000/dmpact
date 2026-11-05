@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
+export const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.1-flash-lite";
 
 /** Everything the AI modules need from a model. Mockable in tests and evals. */
 export type ModelRequest = {
@@ -10,15 +11,50 @@ export type ModelRequest = {
   responseSchema: unknown;
 };
 
+export type ModelAnswer = {
+  /** The raw JSON text produced by the model. */
+  text: string;
+  /** The model that produced it, which is the fallback if the main call failed. */
+  model: string;
+};
+
 export type ModelClient = {
   model: string;
-  /** Returns the raw JSON text produced by the model. */
-  generateJson(request: ModelRequest): Promise<string>;
+  generateJson(request: ModelRequest): Promise<ModelAnswer>;
 };
 
 export function getGeminiModel(env: NodeJS.ProcessEnv = process.env): string {
   const configured = env.GEMINI_MODEL?.trim();
   return configured ? configured : DEFAULT_GEMINI_MODEL;
+}
+
+export function getGeminiFallbackModel(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const configured = env.GEMINI_FALLBACK_MODEL?.trim();
+  return configured ? configured : DEFAULT_GEMINI_FALLBACK_MODEL;
+}
+
+/** Sends the request to the fallback client when the primary call throws. */
+export function withFallback(
+  primary: ModelClient,
+  fallback: ModelClient,
+): ModelClient {
+  return {
+    model: primary.model,
+    async generateJson(request) {
+      try {
+        return await primary.generateJson(request);
+      } catch (error) {
+        console.warn("ai.fallback", {
+          from: primary.model,
+          to: fallback.model,
+          error: error instanceof Error ? error.message : "Model call failed",
+        });
+        return fallback.generateJson(request);
+      }
+    },
+  };
 }
 
 /** zod schema -> response schema for Gemini, without the meta key. */
@@ -44,6 +80,8 @@ export class StructuredOutputError extends Error {
     readonly errors: string[],
     /** The last JSON object the model returned, for partial recovery. */
     readonly candidate: Record<string, unknown> | null,
+    /** The model that gave the last answer. */
+    readonly model: string,
   ) {
     super("The model did not return valid output after one retry.");
     this.name = "StructuredOutputError";
@@ -107,13 +145,15 @@ export type StructuredOptions = {
   /** Defaults to the JSON Schema generated from the zod schema. */
   responseSchema?: unknown;
   /** Sets fields the app owns on the parsed object before validation. */
-  prepare?: (value: Record<string, unknown>) => void;
+  prepare?: (value: Record<string, unknown>, model: string) => void;
 };
 
 export type StructuredResult<T> = {
   data: T;
   /** 1 = valid on the first try, 2 = needed the repair retry. */
   attempts: 1 | 2;
+  /** The model that produced the valid answer. */
+  model: string;
 };
 
 /**
@@ -129,15 +169,15 @@ export async function generateStructured<S extends z.ZodType>(
   const responseSchema =
     options.responseSchema ?? toGeminiResponseSchema(schema);
 
-  const log = (ok: boolean, attempts: 1 | 2) =>
+  const log = (ok: boolean, attempts: 1 | 2, model: string) =>
     console.info("ai.generate", {
-      model: client.model,
+      model,
       prompt_version: promptVersion,
       attempts,
       ok,
     });
 
-  async function call(user: string): Promise<string> {
+  async function call(user: string): Promise<ModelAnswer> {
     try {
       return await client.generateJson({
         system: prompt.system,
@@ -152,11 +192,12 @@ export async function generateStructured<S extends z.ZodType>(
   }
 
   let candidate: Record<string, unknown> | null = null;
+  let candidateModel: string | null = null;
 
   function validate(
-    raw: string,
+    answer: ModelAnswer,
   ): { ok: true; data: z.output<S> } | { ok: false; errors: string[] } {
-    const parsed = parseJson(raw);
+    const parsed = parseJson(answer.text);
     if (!parsed.ok) {
       return {
         ok: false,
@@ -167,7 +208,8 @@ export async function generateStructured<S extends z.ZodType>(
       return { ok: false, errors: ["Output must be a single JSON object"] };
     }
     candidate = parsed.value;
-    prepare?.(candidate);
+    candidateModel = answer.model;
+    prepare?.(candidate, answer.model);
     const result = schema.safeParse(candidate);
     return result.success
       ? { ok: true, data: result.data }
@@ -177,21 +219,25 @@ export async function generateStructured<S extends z.ZodType>(
   const first = await call(prompt.user);
   const firstResult = validate(first);
   if (firstResult.ok) {
-    log(true, 1);
-    return { data: firstResult.data, attempts: 1 };
+    log(true, 1, first.model);
+    return { data: firstResult.data, attempts: 1, model: first.model };
   }
 
   const second = await call(
-    buildRepairMessage(prompt.user, first, firstResult.errors),
+    buildRepairMessage(prompt.user, first.text, firstResult.errors),
   );
   const secondResult = validate(second);
   if (secondResult.ok) {
-    log(true, 2);
-    return { data: secondResult.data, attempts: 2 };
+    log(true, 2, second.model);
+    return { data: secondResult.data, attempts: 2, model: second.model };
   }
 
-  log(false, 2);
-  throw new StructuredOutputError(secondResult.errors, candidate);
+  log(false, 2, second.model);
+  throw new StructuredOutputError(
+    secondResult.errors,
+    candidate,
+    candidateModel ?? second.model,
+  );
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -220,12 +266,11 @@ export function createGeminiClient(
   const apiKey = env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
-  const model = getGeminiModel(env);
   const ai = new GoogleGenAI({ apiKey });
   const timeoutMs = getTimeoutMs(env);
   const thinkingLevel = getThinkingLevel(env);
 
-  return {
+  const clientFor = (model: string): ModelClient => ({
     model,
     async generateJson({ system, user, responseSchema }) {
       // Gemini 3.8 Flash ignores temperature/top_p/top_k and rejects
@@ -244,7 +289,14 @@ export function createGeminiClient(
       } as unknown as Parameters<typeof ai.models.generateContent>[0];
 
       const response = await ai.models.generateContent(request);
-      return response.text ?? "";
+      return { text: response.text ?? "", model };
     },
-  };
+  });
+
+  const model = getGeminiModel(env);
+  const fallbackModel = getGeminiFallbackModel(env);
+  const primary = clientFor(model);
+  return fallbackModel === model
+    ? primary
+    : withFallback(primary, clientFor(fallbackModel));
 }
