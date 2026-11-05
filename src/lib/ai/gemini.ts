@@ -202,11 +202,15 @@ function getTimeoutMs(env: NodeJS.ProcessEnv): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
 }
 
-/** "minimal" is not supported on Gemini 3.8 Flash, so it is not accepted here. */
-function getThinkingLevel(
+/**
+ * "minimal" is not supported on Gemini 3.8 Flash, so it is not accepted here.
+ * "none" sends no thinking config, for models that reject it, such as Gemma.
+ */
+export function getThinkingLevel(
   env: NodeJS.ProcessEnv,
-): (typeof THINKING_LEVELS)[number] {
+): (typeof THINKING_LEVELS)[number] | null {
   const level = env.GEMINI_THINKING_LEVEL?.trim().toLowerCase();
+  if (level === "none") return null;
   return THINKING_LEVELS.find((l) => l === level) ?? "low";
 }
 
@@ -234,7 +238,7 @@ export function createGeminiClient(
           systemInstruction: system,
           responseMimeType: "application/json",
           responseJsonSchema: responseSchema,
-          thinkingConfig: { thinkingLevel },
+          ...(thinkingLevel && { thinkingConfig: { thinkingLevel } }),
           abortSignal: AbortSignal.timeout(timeoutMs),
         },
       } as unknown as Parameters<typeof ai.models.generateContent>[0];

@@ -6,6 +6,7 @@ import {
   DEFAULT_GEMINI_MODEL,
   generateStructured,
   getGeminiModel,
+  getThinkingLevel,
   ModelCallError,
   StructuredOutputError,
   toGeminiResponseSchema,
@@ -176,6 +177,21 @@ describe("getGeminiModel", () => {
       DEFAULT_GEMINI_MODEL,
     );
     expect(getGeminiModel({} as never)).toBe(DEFAULT_GEMINI_MODEL);
+  });
+});
+
+describe("getThinkingLevel", () => {
+  it("defaults to low, accepts known levels, and turns off with none", () => {
+    expect(getThinkingLevel({} as never)).toBe("low");
+    expect(
+      getThinkingLevel({ GEMINI_THINKING_LEVEL: " Medium " } as never),
+    ).toBe("medium");
+    expect(
+      getThinkingLevel({ GEMINI_THINKING_LEVEL: "minimal" } as never),
+    ).toBe("low");
+    expect(
+      getThinkingLevel({ GEMINI_THINKING_LEVEL: "none" } as never),
+    ).toBeNull();
   });
 });
 
