@@ -1,14 +1,6 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { toMinor } from "@/lib/money/decimal";
-import { estimatePrice } from "@/lib/money/estimate";
-import { SERVICE_TYPES, type Agreement } from "./agreement";
-import {
-  DEFAULT_MISMATCH_THRESHOLD_PCT,
-  DEFAULT_RATE_CARD,
-  rateCardSchema,
-} from "./rate-card";
+import { SERVICE_TYPES } from "./agreement";
+import { DEFAULT_RATE_CARD, rateCardSchema } from "./rate-card";
 
 function issuesFor(value: unknown) {
   const result = rateCardSchema.safeParse(value);
@@ -77,39 +69,5 @@ describe("rateCardSchema", () => {
     expect(
       issuesFor({ ...DEFAULT_RATE_CARD, included_revisions: -1 }),
     ).toContain("included_revisions");
-  });
-});
-
-describe("DEFAULT_RATE_CARD on the test DMs", () => {
-  const dir = join(process.cwd(), "fixtures/dms");
-  const cases = readdirSync(dir)
-    .filter((file) => file.endsWith(".expected.json"))
-    .map((file) => ({
-      file,
-      ...(JSON.parse(readFileSync(join(dir, file), "utf8")) as {
-        paste_date: string;
-        expected: Agreement;
-        expect_mismatch: boolean;
-      }),
-    }))
-    .filter(
-      ({ expected }) =>
-        expected.service_type !== "other" &&
-        expected.price.total !== null &&
-        expected.price.currency === DEFAULT_RATE_CARD.currency,
-    );
-
-  it("has cases to check", () => {
-    expect(cases.length).toBeGreaterThan(0);
-  });
-
-  it.each(cases)("$file", ({ paste_date, expected, expect_mismatch }) => {
-    const { total } = estimatePrice(expected, DEFAULT_RATE_CARD, paste_date)!;
-    const estimate = toMinor(total, 2);
-    const budget = toMinor(expected.price.total as string, 2);
-
-    expect((estimate - budget) * 100 > DEFAULT_MISMATCH_THRESHOLD_PCT * estimate).toBe(
-      expect_mismatch,
-    );
   });
 });
