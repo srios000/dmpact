@@ -12,6 +12,7 @@ export const envSchema = z.object({
   APP_BASE_URL: z.url(),
   GEMINI_API_KEY: optional,
   GEMINI_MODEL: optional,
+  GEMINI_FALLBACK_MODEL: optional,
   PAYPAL_API_BASE: optional,
   PAYPAL_CLIENT_ID: optional,
   PAYPAL_CLIENT_SECRET: optional,
