@@ -10,7 +10,7 @@ import {
   listCommissions,
   retryDepositInvoice,
 } from "./commission-repository";
-import { issueDepositInvoice } from "./invoice-repository";
+import { issueBalanceInvoice, issueDepositInvoice } from "./invoice-repository";
 import { toJson } from "./shared";
 
 vi.mock("server-only", () => ({}));
@@ -63,6 +63,7 @@ describe.skipIf(!url)("issueDepositInvoice (database)", () => {
   async function agreed(
     content: Agreement = agreement,
     clientToken = "token-for-tests",
+    state: "agreed" | "delivered" = "agreed",
   ) {
     const creator = await db.creator.create({
       data: {
@@ -81,7 +82,7 @@ describe.skipIf(!url)("issueDepositInvoice (database)", () => {
     const commission = await db.commission.create({
       data: {
         creatorId: creator.id,
-        state: "agreed",
+        state,
         sourceDm: "dm",
         clientToken,
       },
@@ -261,5 +262,57 @@ describe.skipIf(!url)("issueDepositInvoice (database)", () => {
       issueDepositInvoice(id, { ...options, paypal }),
     ).rejects.toThrow(/client's PayPal email/);
     expect(await db.invoice.count({ where: { commissionId: id } })).toBe(0);
+  });
+
+  describe("balance invoice", () => {
+    it("bills total − deposit on delivery, due in 7 days", async () => {
+      const id = await agreed(agreement, "token-for-tests", "delivered");
+      const result = await issueBalanceInvoice(id, { ...options, paypal });
+
+      expect(result).toMatchObject({ status: "sent" });
+      const [row] = await db.invoice.findMany({ where: { commissionId: id } });
+      expect(row).toMatchObject({ kind: "balance", status: "sent" });
+      expect(row.amount.toFixed(2)).toBe("75.00");
+      expect(row.dueDate?.toISOString().slice(0, 10)).toBe("2026-11-12");
+      expect(paypal.all()[0].invoiceNumber).toMatch(/-BAL$/);
+    });
+
+    it("never creates a second balance invoice", async () => {
+      const id = await agreed(agreement, "token-for-tests", "delivered");
+      await issueBalanceInvoice(id, { ...options, paypal });
+      const again = await issueBalanceInvoice(id, { ...options, paypal });
+
+      expect(again.status).toBe("exists");
+      expect(await db.invoice.count({ where: { commissionId: id } })).toBe(1);
+    });
+
+    it("skips a zero balance", async () => {
+      const id = await agreed(
+        {
+          ...agreement,
+          deposit: { type: "percent", percent: 100, fixed_amount: null },
+        },
+        "token-for-tests",
+        "delivered",
+      );
+      const result = await issueBalanceInvoice(id, { ...options, paypal });
+
+      expect(result).toEqual({
+        status: "skipped",
+        reason: "The balance is zero.",
+      });
+      expect(await db.invoice.count({ where: { commissionId: id } })).toBe(0);
+    });
+
+    it("is independent of the deposit invoice", async () => {
+      const id = await agreed();
+      await issueDepositInvoice(id, { ...options, paypal });
+      await issueBalanceInvoice(id, { ...options, paypal });
+
+      const kinds = (
+        await db.invoice.findMany({ where: { commissionId: id } })
+      ).map((i) => i.kind);
+      expect(kinds.sort()).toEqual(["balance", "deposit"]);
+    });
   });
 });
