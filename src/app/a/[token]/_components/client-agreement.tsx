@@ -40,6 +40,16 @@ function money(currency: string | null, amount: string | null | undefined) {
   return amount ? `${currency ?? ""} ${amount}`.trim() : "Not set";
 }
 
+const stampFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+  timeZoneName: "short",
+});
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -446,6 +456,45 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
           ))}
         </dl>
       </section>
+
+      {view.deliveryLog.length > 0 && (
+        <section
+          aria-labelledby="delivery-log-heading"
+          className="space-y-4 rounded-xl border bg-card p-5 md:p-6"
+        >
+          <div className="space-y-1">
+            <h2 id="delivery-log-heading" className="text-lg font-medium">
+              Delivery record
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Every file {view.creatorName} delivered, when it was logged, and
+              its SHA-256 fingerprint. A file with the same fingerprint is
+              byte-for-byte the same file.
+            </p>
+          </div>
+          <ul className="divide-y divide-border text-sm">
+            {view.deliveryLog.map((file) => (
+              <li key={file.id} className="space-y-1 py-3 first:pt-0 last:pb-0">
+                <div className="flex justify-between gap-4">
+                  <span className="min-w-0 truncate font-medium">
+                    {file.filename}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {file.isFinal ? "Final" : "Preview"} ·{" "}
+                    {formatBytes(file.sizeBytes)}
+                  </span>
+                </div>
+                <p className="text-muted-foreground">
+                  Logged {stampFormatter.format(new Date(file.loggedAt))}
+                </p>
+                <p className="font-mono text-xs break-all text-muted-foreground">
+                  SHA-256 {file.sha256}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {status.state === "fully_paid" && (
         <section

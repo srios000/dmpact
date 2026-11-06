@@ -10,6 +10,7 @@ import {
   ReceiptTextIcon,
   RefreshCwIcon,
   TriangleAlertIcon,
+  UploadIcon,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -56,6 +57,11 @@ const EVENT_STYLE: Record<string, EventStyle> = {
     icon: MessageSquareIcon,
     tone: "warning",
     title: "Client requested changes",
+  },
+  delivery_logged: {
+    icon: UploadIcon,
+    tone: "primary",
+    title: "Delivery logged",
   },
   invoice_sent: {
     icon: ReceiptTextIcon,

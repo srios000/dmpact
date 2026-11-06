@@ -10,6 +10,7 @@ import {
   uploadKey,
   type DeliveryStorage,
 } from "@/lib/storage/deliveries";
+import { getClientAgreement } from "./agreement-repository";
 import {
   createDeliveryUpload,
   recordDelivery,
@@ -257,8 +258,54 @@ describe.skipIf(!url)("delivery repository (database)", () => {
       const events = await db.commissionEvent.findMany({
         where: { commissionId: id },
       });
-      expect(events.map((e) => [e.fromState, e.toState, e.actor])).toEqual([
-        ["in_progress", "delivered", "creator"],
+      expect(
+        events
+          .filter((e) => e.type === "transition")
+          .map((e) => [e.fromState, e.toState, e.actor]),
+      ).toEqual([["in_progress", "delivered", "creator"]]);
+
+      const logged = events.find((e) => e.type === "delivery_logged");
+      expect(logged?.actor).toBe("creator");
+      expect(logged?.at.toISOString()).toBe(row.loggedAt.toISOString());
+      expect(logged?.meta).toMatchObject({
+        deliveryId: row.id,
+        filename: "final.png",
+        sha256: sha256(body),
+        isFinal: false,
+      });
+    });
+
+    it("logs each revision with its own event and shows the record to the client", async () => {
+      const id = await seed("in_progress");
+      const first = await deliver(id, Buffer.from("v1"), { isFinal: false });
+      const second = await deliver(id, Buffer.from("v2"), {
+        filename: "final-v2.png",
+      });
+
+      const logged = await db.commissionEvent.findMany({
+        where: { commissionId: id, type: "delivery_logged" },
+        orderBy: { at: "asc" },
+      });
+      expect(logged.map((e) => (e.meta as { sha256: string }).sha256)).toEqual([
+        first.delivery.sha256,
+        second.delivery.sha256,
+      ]);
+
+      // Before payment the client sees the record (hashes), not the files.
+      const view = await getClientAgreement(token);
+      expect(view?.state).toBe("delivered");
+      expect(view?.finalFiles).toEqual([]);
+      expect(view?.deliveryLog).toEqual([
+        expect.objectContaining({
+          filename: "final.png",
+          sha256: sha256(Buffer.from("v1")),
+          isFinal: false,
+        }),
+        expect.objectContaining({
+          filename: "final-v2.png",
+          sha256: sha256(Buffer.from("v2")),
+          isFinal: true,
+        }),
       ]);
     });
 
