@@ -128,6 +128,7 @@ export default async function CommissionDetailPage({
             balance={commission.balance}
             transition={transitionCommission}
             runReminder={runReminder}
+            initialNudge={commission.latestNudge}
           />
           <CommissionClientDownloads
             state={commission.state}

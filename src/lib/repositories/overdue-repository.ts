@@ -1,15 +1,16 @@
 import "server-only";
+import { todayInZone } from "@/lib/ai/extract";
 import type { ModelClient } from "@/lib/ai/gemini";
 import { writeNudge, type NudgeTone } from "@/lib/ai/nudge/nudge";
 import { db } from "@/lib/db";
 import { currencyExponent } from "@/lib/money/decimal";
 import { getPayPalClient, type PayPalClient } from "@/lib/paypal";
+import type { Actor } from "@/lib/state-machine/rules";
 import {
   agreementInForce,
   notFound,
   readAgreement,
   requireCreator,
-  utcToday,
 } from "./shared";
 
 /**
@@ -29,9 +30,10 @@ export type ReminderOptions = {
   paypal?: PayPalClient | null;
   /** null always uses the template nudge. */
   model?: ModelClient | null;
-  /** YYYY-MM-DD (UTC) */
+  /** YYYY-MM-DD (defaults to today in the creator's timezone). */
   today?: string;
   now?: Date;
+  actor?: Actor;
 };
 
 export type Nudge = {
@@ -92,10 +94,10 @@ async function findDueInvoices(
 
 async function remindOne(
   invoice: DueInvoice,
-  options: Required<Pick<ReminderOptions, "today" | "now">> &
+  options: Required<Pick<ReminderOptions, "today" | "now" | "actor">> &
     Pick<ReminderOptions, "paypal" | "model">,
 ): Promise<ReminderOutcome> {
-  const { today, now } = options;
+  const { today, now, actor } = options;
   const ids = { invoiceId: invoice.id, commissionId: invoice.commissionId };
   if (!invoice.dueDate) {
     return { ...ids, status: "skipped", reason: "No due date." };
@@ -152,7 +154,7 @@ async function remindOne(
       data: {
         commissionId: invoice.commissionId,
         type: "invoice_reminded",
-        actor: "system",
+        actor,
         reason: `${invoice.kind === "deposit" ? "Deposit" : "Balance"} is ${result.days_overdue} day${result.days_overdue === 1 ? "" : "s"} overdue.`,
         meta: { ...nudge, fallback: result.fallback },
       },
@@ -183,12 +185,14 @@ function paypalOrNull(): PayPalClient | null {
   }
 }
 
-function resolve(options: ReminderOptions) {
+function resolve(options: ReminderOptions, defaultActor: Actor = "system") {
+  const now = options.now ?? new Date();
   return {
     paypal: options.paypal === undefined ? paypalOrNull() : options.paypal,
     model: options.model ?? null,
-    today: options.today ?? utcToday(),
-    now: options.now ?? new Date(),
+    today: options.today ?? todayInZone(undefined, now),
+    now,
+    actor: options.actor ?? defaultActor,
   };
 }
 
@@ -199,13 +203,26 @@ function resolve(options: ReminderOptions) {
 export async function runOverdueReminders(
   options: ReminderOptions = {},
 ): Promise<ReminderOutcome[]> {
-  const resolved = resolve(options);
+  const resolved = resolve(options, "system");
   const invoices = await findDueInvoices(resolved.today, resolved.now);
   const outcomes: ReminderOutcome[] = [];
   for (const invoice of invoices) {
     outcomes.push(await remindOne(invoice, resolved));
   }
   return outcomes;
+}
+
+/** Extracts the latest nudge from an ordered list of commission events. */
+export function latestNudgeFromEvents(
+  events: readonly { type: string; meta?: unknown }[],
+): Nudge | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const event = events[i];
+    if (event.type === "invoice_reminded" && event.meta) {
+      return event.meta as Nudge;
+    }
+  }
+  return null;
 }
 
 /** The latest nudge stored on a commission, if any. */
@@ -234,7 +251,7 @@ export async function runCommissionReminder(
   });
   if (!owned) throw notFound();
 
-  const resolved = resolve(options);
+  const resolved = resolve(options, "creator");
   const invoices = await findDueInvoices(resolved.today, resolved.now, {
     commissionId,
   });

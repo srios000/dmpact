@@ -8,6 +8,7 @@ import { exampleAgreement } from "@/lib/schema/example-agreement";
 import {
   REMIND_INTERVAL_MS,
   latestNudge,
+  latestNudgeFromEvents,
   runCommissionReminder,
   runOverdueReminders,
 } from "./overdue-repository";
@@ -53,7 +54,7 @@ describe.skipIf(!url)("overdue reminders (database)", () => {
   beforeEach(async () => {
     paypal.reset();
     await db.$executeRawUnsafe(
-      "TRUNCATE creators, commissions, agreement_versions, confirmations, invoices, deliveries, commission_events, change_requests, rate_cards, webhook_events RESTART IDENTITY CASCADE",
+      "TRUNCATE creators, commissions, agreement_versions, confirmations, invoices, deliveries, delivery_downloads, commission_events, change_requests, follow_up_dms, rate_cards, webhook_events RESTART IDENTITY CASCADE",
     );
   });
 
@@ -226,6 +227,15 @@ describe.skipIf(!url)("overdue reminders (database)", () => {
     });
     expect(first.outcomes).toHaveLength(1);
     expect(first.nudge?.message).toContain("75.00 USD");
+
+    const events = await db.commissionEvent.findMany({
+      where: { commissionId },
+      orderBy: { at: "asc" },
+    });
+    expect(events.find((e) => e.type === "invoice_reminded")?.actor).toBe(
+      "creator",
+    );
+    expect(latestNudgeFromEvents(events)).toEqual(first.nudge);
 
     // Within 24 hours: nothing new is sent, but the nudge is still returned.
     const second = await runCommissionReminder(commissionId, {

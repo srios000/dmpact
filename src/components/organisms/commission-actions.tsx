@@ -24,10 +24,12 @@ type TransitionAction = (
   input: TransitionCommissionInput,
 ) => Promise<ActionResult<TransitionResult>>;
 
+type ReminderNudge = { message: string; daysOverdue: number; at: string };
+
 type ReminderAction = (input: { commissionId: string }) => Promise<
   ActionResult<{
     reminded: number;
-    nudge: { message: string; daysOverdue: number; at: string } | null;
+    nudge: ReminderNudge | null;
   }>
 >;
 
@@ -44,6 +46,8 @@ export interface CommissionActionsProps extends React.HTMLAttributes<HTMLElement
   transition: TransitionAction;
   /** Reminds overdue invoices now and returns the nudge to copy. */
   runReminder?: ReminderAction;
+  /** Latest nudge already stored on this commission, if any. */
+  initialNudge?: ReminderNudge | null;
 }
 
 const CANCELLABLE: CommissionState[] = ["draft", "negotiating", "agreed"];
@@ -102,6 +106,7 @@ function CommissionActions({
   balance,
   transition,
   runReminder,
+  initialNudge,
   ...props
 }: CommissionActionsProps) {
   const router = useRouter();
@@ -111,7 +116,14 @@ function CommissionActions({
   const [reminder, setReminder] = React.useState<{
     message: string | null;
     note: string;
-  } | null>(null);
+  } | null>(() =>
+    initialNudge
+      ? {
+          message: initialNudge.message,
+          note: "Latest reminder message. Copy it below to send in the DM.",
+        }
+      : null,
+  );
   const [copied, setCopied] = React.useState(false);
 
   function remind() {
