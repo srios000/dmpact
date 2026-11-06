@@ -60,7 +60,7 @@ describe("buildExtractSystemPrompt", () => {
   });
 
   it("has a stable version tag", () => {
-    expect(EXTRACT_PROMPT_VERSION).toBe("extract-v2");
+    expect(EXTRACT_PROMPT_VERSION).toBe("extract-v3");
   });
 });
 
