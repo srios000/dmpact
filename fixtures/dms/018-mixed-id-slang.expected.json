@@ -51,7 +51,8 @@
         "email": "rina.vtuber@example.com"
       }
     },
-    "notes": null
+    "notes": null,
+    "extraction": { "source_language": "id" }
   },
   "expected_ambiguity_codes": [],
   "expect_mismatch": false

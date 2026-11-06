@@ -45,7 +45,8 @@
         "email": "budi@example.com"
       }
     },
-    "notes": null
+    "notes": null,
+    "extraction": { "source_language": "id" }
   },
   "expected_ambiguity_codes": ["UNSUPPORTED_CURRENCY"],
   "expect_mismatch": false

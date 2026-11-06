@@ -51,7 +51,8 @@
         "email": "nova@example.com"
       }
     },
-    "notes": null
+    "notes": null,
+    "extraction": { "source_language": "en" }
   },
   "expected_ambiguity_codes": ["RELATIVE_DEADLINE"],
   "expect_mismatch": false

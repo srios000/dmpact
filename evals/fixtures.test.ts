@@ -13,6 +13,7 @@ import { scoreCase, type EvalFixture } from "./score";
 
 const DIR = join(process.cwd(), "fixtures", "dms");
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const SOURCE_LANGUAGES = ["en", "id", "ja", "mixed"];
 
 type Fixture = EvalFixture & { expect_mismatch?: boolean };
 type Expected = {
@@ -26,6 +27,7 @@ type Expected = {
   deadline?: { date?: string | null; is_relative?: boolean };
   service_type?: string;
   service_other?: string | null;
+  extraction?: { source_language?: string };
 };
 
 const files = readdirSync(DIR);
@@ -70,6 +72,8 @@ describe("fixtures/dms", () => {
       expect(new Set(fixture.expected_ambiguity_codes).size).toBe(
         fixture.expected_ambiguity_codes.length,
       );
+      const { extraction } = fixture.expected as Expected;
+      expect(SOURCE_LANGUAGES).toContain(extraction?.source_language);
     });
 
     it(`${name}: expected values follow the PRD rules`, () => {
