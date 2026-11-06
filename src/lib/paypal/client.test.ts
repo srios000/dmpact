@@ -279,6 +279,46 @@ describe("createPayPalClient", () => {
     });
     expect((await c.getInvoice("INV2-1")).paidAt).toBe("2026-11-03");
   });
+
+  it("verifies webhook signatures with the raw event", async () => {
+    for (const [answer, expected] of [
+      ["SUCCESS", true],
+      ["FAILURE", false],
+    ] as const) {
+      const f = fakeFetch(() => ({
+        status: 200,
+        body: { verification_status: answer },
+      }));
+      const c = createPayPalClient({
+        baseUrl: base,
+        clientId: "",
+        clientSecret: "",
+        fetch: f.fn,
+        tokenProvider: staticTokens(),
+      });
+      const ok = await c.verifyWebhookSignature({
+        headers: {
+          authAlgo: "SHA256withRSA",
+          certUrl: "https://cert",
+          transmissionId: "tx-1",
+          transmissionSig: "sig",
+          transmissionTime: "2026-11-06T01:00:00Z",
+        },
+        webhookId: "WEBHOOK-1",
+        rawBody: '{"id":"WH-1"}',
+      });
+
+      expect(ok).toBe(expected);
+      expect(f.calls[0].url).toBe(
+        `${base}/v1/notifications/verify-webhook-signature`,
+      );
+      expect(f.calls[0].body).toMatchObject({
+        webhook_id: "WEBHOOK-1",
+        transmission_id: "tx-1",
+        webhook_event: { id: "WH-1" },
+      });
+    }
+  });
 });
 
 describe("toDbInvoiceStatus", () => {

@@ -9,6 +9,8 @@ export interface MockPayPalClient extends PayPalClient {
   all(): Invoice[];
   /** Calls made, e.g. [["remindInvoice", "INV2-MOCK-0001"]]. */
   calls: Array<[method: string, ...args: unknown[]]>;
+  /** What verifyWebhookSignature answers. Defaults to true. */
+  webhookSignatureValid: boolean;
   reset(): void;
 }
 
@@ -130,6 +132,13 @@ export function createMockPayPalClient(
       update(id, { status: "CANCELLED" });
     },
 
+    webhookSignatureValid: true,
+
+    async verifyWebhookSignature(input) {
+      calls.push(["verifyWebhookSignature", input.headers.transmissionId]);
+      return client.webhookSignatureValid;
+    },
+
     async findInvoiceByNumber(number) {
       calls.push(["findInvoiceByNumber", number]);
       return (
@@ -153,6 +162,7 @@ export function createMockPayPalClient(
       store.clear();
       calls.length = 0;
       seq = 0;
+      client.webhookSignatureValid = true;
     },
   };
 
