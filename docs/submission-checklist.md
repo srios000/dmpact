@@ -20,24 +20,23 @@ Source: the official rules at https://paypalaihackathon.devpost.com
   - [ ] Link on the submission form
   - [ ] No third-party trademarks or copyrighted music/material without permission (use royalty-free music, fictional VTuber names, our own art/audio)
 
-## Devpost write-up sections
-- [ ] Inspiration: the creator pain, with quotes from public creator posts (#46)
-- [ ] What it does: the 7-step flow from PRD §7
-- [ ] How we built it: stack + PayPal APIs + Gemini usage
-- [ ] Tools used: Gemini (extraction, ambiguity, negotiation, nudges); PayPal Invoicing v2, Webhooks; AG Grid; APIMatic (if used)
-- [ ] Challenges
-- [ ] Accomplishments: eval numbers (extraction accuracy, ambiguity recall)
-- [ ] What we learned
-- [ ] What's next
-- [ ] Built with: tags
-- [ ] Team members added on Devpost (all 6)
+## Devpost write-up sections (see [docs/submission.md](submission.md))
+- [x] Inspiration: the creator pain, with quotes from public creator posts (#46)
+- [x] What it does: the 7-step flow from PRD §7
+- [x] How we built it: stack + PayPal APIs + Gemini usage
+- [x] Tools used: Gemini (extraction, ambiguity, negotiation, nudges); PayPal Invoicing v2, Webhooks; AG Grid
+- [x] Challenges
+- [x] Accomplishments: eval numbers (extraction accuracy, ambiguity recall)
+- [x] What we learned
+- [x] What's next
+- [x] Built with: tags
+- [x] Team members added on Devpost (all 6)
 
-## Prize categories to opt into
-- [ ] Best Use of PayPal + AI
-- [ ] Best Use of Agentic Commerce
-- [ ] Best Demo Delivery
-- [ ] Best Use of AG Grid
-- [ ] Best Use of APIMatic (only if we used it meaningfully)
+## Prize categories to opt into (see [docs/submission.md](submission.md))
+- [x] Best Use of PayPal + AI
+- [x] Best Use of Agentic Commerce
+- [x] Best Demo Delivery
+- [x] Best Use of AG Grid
 
 ## Video outline (≤ 2:50)
 | Time | Beat |
