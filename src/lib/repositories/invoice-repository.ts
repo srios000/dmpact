@@ -48,7 +48,7 @@ async function defaultAppBaseUrl(): Promise<string> {
  * or paid deposit invoice is never duplicated, and a half-finished attempt
  * (row saved, PayPal call failed) is resumed instead of starting over.
  *
- * Internal: called by the state machine, not by creators or clients.
+ * Called by the state machine and by the creator's retry, never by clients.
  */
 export async function issueDepositInvoice(
   commissionId: string,

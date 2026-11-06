@@ -3,7 +3,9 @@ export type RepositoryErrorCode =
   | "not_found"
   | "stale_version"
   | "edit_not_allowed"
-  | "invalid_agreement";
+  | "invalid_agreement"
+  | "retry_not_allowed"
+  | "invoice_failed";
 
 export class RepositoryError extends Error {
   readonly code: RepositoryErrorCode;

@@ -55,6 +55,10 @@ export const transitionCommissionSchema = z.strictObject({
   reason: z.string().trim().min(1).max(500).optional(),
 });
 
+export const retryDepositInvoiceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
 export const confirmAgreementSchema = z.strictObject({
   token: clientTokenSchema,
   versionHash: versionHashSchema,
@@ -73,4 +77,7 @@ export type SaveAgreementVersionInput = z.input<
 export type SendToClientInput = z.input<typeof sendToClientSchema>;
 export type TransitionCommissionInput = z.input<
   typeof transitionCommissionSchema
+>;
+export type RetryDepositInvoiceInput = z.input<
+  typeof retryDepositInvoiceSchema
 >;
