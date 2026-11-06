@@ -122,7 +122,7 @@ const DEFAULT_QUESTIONS_JA: Partial<Record<AmbiguityCode, string>> = {
     "請求書をお送りするPayPalのメールアドレスを教えていただけますか？",
 };
 
-const JAPANESE_TEXT = /[぀-ヿ一-鿿]/;
+const JAPANESE_KANA = /[぀-ヿ]/;
 const INDONESIAN_WORDS =
   /\b(kak|kakak|gak|nggak|enggak|ga|aja|dong|deh|sih|banget|bisa|boleh|berapa|harga|revisi|tanggal|tgl|bayar|udah|sudah|belum|nanti|makasih|terima kasih|sip|rb|ribu|juta|jt|buru-buru)\b/i;
 
@@ -130,9 +130,20 @@ function defaultQuestions(sourceLanguage: string | undefined, dmText: string) {
   if (sourceLanguage === "id") return DEFAULT_QUESTIONS_ID;
   if (sourceLanguage === "ja") return DEFAULT_QUESTIONS_JA;
   if (sourceLanguage === "en") return DEFAULT_QUESTIONS_EN;
-  if (JAPANESE_TEXT.test(dmText)) return DEFAULT_QUESTIONS_JA;
+  if (JAPANESE_KANA.test(dmText)) return DEFAULT_QUESTIONS_JA;
   if (INDONESIAN_WORDS.test(dmText)) return DEFAULT_QUESTIONS_ID;
   return DEFAULT_QUESTIONS_EN;
+}
+
+function isMisplacedIndonesian(
+  question: string,
+  sourceLanguage: string | undefined,
+  dmText: string,
+) {
+  if (!sourceLanguage || ["id", "mixed", "unknown"].includes(sourceLanguage)) {
+    return false;
+  }
+  return INDONESIAN_WORDS.test(question) && !INDONESIAN_WORDS.test(dmText);
 }
 
 export type PostCheckInput = {
@@ -433,18 +444,21 @@ export function runPostChecks({
   }
 
   // Blockers first; order is otherwise preserved. Questions the model left
-  // empty get a default in the chat's language.
-  const questions = defaultQuestions(
-    result.extraction?.source_language,
-    dmText,
-  );
+  // empty, or wrote in Indonesian for a chat with no Indonesian, get a default
+  // in the chat's language.
+  const sourceLanguage = result.extraction?.source_language;
+  const questions = defaultQuestions(sourceLanguage, dmText);
   result.ambiguities = [
     ...flags.filter((a) => a.severity === "blocker"),
     ...flags.filter((a) => a.severity !== "blocker"),
-  ].map((a) => ({
-    ...a,
-    suggested_question: a.suggested_question ?? questions[a.code] ?? null,
-  }));
+  ].map((a) => {
+    const own = a.suggested_question;
+    const keep = own && !isMisplacedIndonesian(own, sourceLanguage, dmText);
+    return {
+      ...a,
+      suggested_question: keep ? own : (questions[a.code] ?? null),
+    };
+  });
 
   // Confidence cannot stay high when blockers exist.
   const blockers = result.ambiguities.filter(

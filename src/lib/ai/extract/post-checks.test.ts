@@ -404,21 +404,94 @@ describe("runPostChecks: relative dates, vague phrases, question language", () =
     }
   });
 
-  it("never overwrites a question the model wrote", () => {
+  it("uses English defaults for Chinese chats, not Japanese", () => {
+    expect(priceQuestion("mixed", "你好！预算是80美元，可以改两次。")).toBe(
+      "What total price are we agreeing on?",
+    );
+    expect(priceQuestion("zh", "你好！预算是80美元")).toBe(
+      "What total price are we agreeing on?",
+    );
+  });
+
+  const modelQuestion = (
+    code: "MISSING_PRICE" | "OTHER",
+    question: string,
+    source_language: string,
+    dmText: string,
+  ) => {
     const a = baseAgreement({
-      price: { total: null, currency: null },
+      price:
+        code === "MISSING_PRICE"
+          ? { total: null, currency: null }
+          : { total: "150.00", currency: "USD" },
       ambiguities: [
         {
-          code: "MISSING_PRICE",
-          severity: "blocker",
-          field: "/price/total",
-          message: "No price.",
+          code,
+          severity: code === "MISSING_PRICE" ? "blocker" : "warning",
+          field: code === "MISSING_PRICE" ? "/price/total" : "/",
+          message: "Check this.",
           source_quote: null,
-          suggested_question: "Berapa budgetnya, Kak?",
+          suggested_question: question,
         },
       ],
+      extraction: {
+        model: "",
+        prompt_version: "",
+        confidence: 0.9,
+        source_language,
+      },
     });
-    const flag = run(a).ambiguities.find((x) => x.code === "MISSING_PRICE");
-    expect(flag?.suggested_question).toBe("Berapa budgetnya, Kak?");
+    return run(a, dmText).ambiguities.find((x) => x.code === code)
+      ?.suggested_question;
+  };
+
+  const ENGLISH_DM =
+    "I'm not really sure about prices, let me know what you think!";
+
+  it("keeps a question the model wrote in the chat's language", () => {
+    expect(
+      modelQuestion(
+        "MISSING_PRICE",
+        "Berapa budgetnya, Kak?",
+        "id",
+        "kak bisa bikin cover?",
+      ),
+    ).toBe("Berapa budgetnya, Kak?");
+    expect(
+      modelQuestion(
+        "MISSING_PRICE",
+        "What budget do you have in mind?",
+        "en",
+        ENGLISH_DM,
+      ),
+    ).toBe("What budget do you have in mind?");
+  });
+
+  it("replaces an Indonesian question on an English chat with the English default", () => {
+    expect(
+      modelQuestion(
+        "MISSING_PRICE",
+        "Kak, untuk harga komisinya kira-kira mau berapa ya?",
+        "en",
+        ENGLISH_DM,
+      ),
+    ).toBe("What total price are we agreeing on?");
+  });
+
+  it("drops an Indonesian question on an English chat when the code has no default", () => {
+    expect(
+      modelQuestion("OTHER", "Kak, sudah oke semua?", "en", ENGLISH_DM),
+    ).toBeNull();
+  });
+
+  it("keeps an Indonesian question when the chat has Indonesian in it", () => {
+    expect(
+      modelQuestion(
+        "MISSING_PRICE",
+        "Berapa budgetnya, Kak?",
+        "en",
+        "Can you do it? Gak buru-buru kok",
+      ),
+    ).toBe("Berapa budgetnya, Kak?");
   });
 });

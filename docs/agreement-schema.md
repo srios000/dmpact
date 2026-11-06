@@ -54,7 +54,7 @@ The source of truth is the zod schema in [`src/lib/schema/agreement.ts`](../src/
 | `extraction.model` | string | | e.g. the Gemini model ID |
 | `extraction.prompt_version` | string | | e.g. `extract-v3` |
 | `extraction.confidence` | number 0–1 | | Overall self-reported confidence |
-| `extraction.source_language` | string | | `en`, `id`, `ja`, `mixed` |
+| `extraction.source_language` | string | | `en`, `id`, `ja`, `mixed`, or another ISO 639-1 code (`zh`, `ko`, …) |
 
 **Stored outside the JSON (DB columns, not AI-writable):** `commission_id`, `version`, `content_hash`, `created_by`, `created_at`, original DM text. Creator and client confirmations are stored in `confirmations`, each tied to a version's `content_hash`.
 
