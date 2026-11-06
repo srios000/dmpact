@@ -51,6 +51,8 @@ import {
   daysLeft,
   deadlineTone,
   overduePayment,
+  paymentLabel,
+  paymentTone,
   summarize,
   type MoneyByCurrency,
   type QueueRow,
@@ -175,30 +177,6 @@ function isFooter(p: { node?: IRowNode | null }): boolean {
 
 function rowOf(p: { data?: QueueRow; node?: IRowNode | null }) {
   return p.data && !isFooter(p) ? p.data : null;
-}
-
-function paymentLabel(payment: PaymentStatus, late: boolean): string {
-  if (late) return "Overdue";
-  switch (payment.status) {
-    case "not_required":
-      return "None";
-    case "not_created":
-    case "draft":
-      return "Not sent";
-    case "sent":
-      return "Unpaid";
-    case "paid":
-      return "Paid";
-    case "cancelled":
-      return "Cancelled";
-  }
-}
-
-function paymentTone(payment: PaymentStatus, late: boolean) {
-  if (late) return "late" as const;
-  if (payment.status === "paid") return "paid" as const;
-  if (payment.status === "sent") return "waiting" as const;
-  return "idle" as const;
 }
 
 function canStartWork(row: QueueRow): boolean {
