@@ -87,6 +87,27 @@ export type PayPalClient = {
   cancelInvoice(id: string, opts?: { note?: string }): Promise<void>;
   /** Finds an invoice by number (recovery after a duplicate-number error). */
   findInvoiceByNumber(invoiceNumber: string): Promise<Invoice | null>;
+  /**
+   * Asks PayPal whether a webhook delivery is genuine. `rawBody` is the
+   * request body exactly as received; re-serializing it can break the check.
+   */
+  verifyWebhookSignature(input: VerifyWebhookInput): Promise<boolean>;
+};
+
+/** The PAYPAL-* headers PayPal signs each webhook delivery with. */
+export type WebhookHeaders = {
+  authAlgo: string;
+  certUrl: string;
+  transmissionId: string;
+  transmissionSig: string;
+  transmissionTime: string;
+};
+
+export type VerifyWebhookInput = {
+  headers: WebhookHeaders;
+  /** The webhook subscription ID (PAYPAL_WEBHOOK_ID). */
+  webhookId: string;
+  rawBody: string;
 };
 
 /** Maps a PayPal status to the `InvoiceStatus` enum in prisma/schema.prisma. */

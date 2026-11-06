@@ -9,6 +9,7 @@ import {
   type Invoice,
   type MessageOptions,
   type PayPalClient,
+  type VerifyWebhookInput,
 } from "./types";
 
 export type PayPalClientOptions = {
@@ -79,6 +80,28 @@ export function buildCreateInvoiceBody(input: CreateInvoiceInput) {
   };
 }
 
+/**
+ * Body for /v1/notifications/verify-webhook-signature. The event is embedded
+ * as the raw text PayPal sent, because parsing and re-serializing it can
+ * change the bytes (number formats, escaping) and fail verification.
+ */
+export function buildVerifyWebhookBody({
+  headers,
+  webhookId,
+  rawBody,
+}: VerifyWebhookInput): string {
+  const fields = {
+    auth_algo: headers.authAlgo,
+    cert_url: headers.certUrl,
+    transmission_id: headers.transmissionId,
+    transmission_sig: headers.transmissionSig,
+    transmission_time: headers.transmissionTime,
+    webhook_id: webhookId,
+  };
+  const head = JSON.stringify(fields).slice(0, -1);
+  return `${head},"webhook_event":${rawBody}}`;
+}
+
 function messageBody(opts: MessageOptions = {}) {
   return {
     send_to_recipient: true,
@@ -117,7 +140,12 @@ export function createPayPalClient(opts: PayPalClientOptions): PayPalClient {
           Accept: "application/json",
           ...extraHeaders,
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body:
+          body === undefined
+            ? undefined
+            : typeof body === "string"
+              ? body
+              : JSON.stringify(body),
         cache: "no-store",
       });
       if (res.status === 401 && attempt === 0) {
@@ -205,6 +233,17 @@ export function createPayPalClient(opts: PayPalClientOptions): PayPalClient {
         .find((item) => item.invoiceNumber === number);
       // search results are summaries; fetch the full invoice for payLink etc.
       return match ? client.getInvoice(match.id) : null;
+    },
+
+    async verifyWebhookSignature(input) {
+      const res = await request(
+        "POST",
+        "/v1/notifications/verify-webhook-signature",
+        "verify webhook signature",
+        buildVerifyWebhookBody(input),
+      );
+      const data = (await res.json()) as { verification_status?: string };
+      return data.verification_status === "SUCCESS";
     },
   };
 
