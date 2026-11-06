@@ -71,6 +71,7 @@ async function main() {
     let score: CaseScore;
     let note = "";
     let latency: number | null = null;
+    let model: string | null = null;
     const startedAt = performance.now();
     try {
       const { agreement, attempts, fallback } = await extractAgreement(
@@ -79,9 +80,11 @@ async function main() {
       );
       latency = performance.now() - startedAt;
       latencies.push(latency);
+      model = agreement.extraction?.model ?? null;
       score = scoreCase(fixture, agreement);
       if (attempts === 2) note = " (needed repair retry)";
       if (fallback) note = " (fell back to a draft)";
+      if (model !== client.model) note += ` (answered by ${model})`;
     } catch (error) {
       const detail =
         error instanceof ExtractionError
@@ -107,7 +110,13 @@ async function main() {
     }
 
     scores.push(score);
-    report.push({ name, latencyMs: latency, note: note.trim(), ...score });
+    report.push({
+      name,
+      model,
+      latencyMs: latency,
+      note: note.trim(),
+      ...score,
+    });
     console.log(
       `${score.pass ? "PASS" : "FAIL"}  ${name} [${seconds(latency)}]${note}`,
     );

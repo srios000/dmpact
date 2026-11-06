@@ -228,7 +228,7 @@ export async function extractAgreement(
         client,
         promptVersion: EXTRACT_PROMPT_VERSION,
         responseSchema: agreementResponseSchema(),
-        prepare: (value) => applyServerFields(value, client.model),
+        prepare: applyServerFields,
       },
     );
     agreement = result.data;
@@ -238,7 +238,7 @@ export async function extractAgreement(
       throw new ExtractionError("MODEL_CALL_FAILED", error.message);
     }
     if (!(error instanceof StructuredOutputError)) throw error;
-    agreement = buildFallbackDraft(error.candidate ?? {}, client.model);
+    agreement = buildFallbackDraft(error.candidate ?? {}, error.model);
     attempts = 2;
     fallback = true;
   }

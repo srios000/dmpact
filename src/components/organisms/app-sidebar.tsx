@@ -32,22 +32,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     .sort((a, b) => b.length - a.length)[0];
 
   return (
-    <Sidebar
-      variant="floating"
-      className="p-4 [&>[data-slot=sidebar-inner]]:rounded-[2.5rem] [&>[data-slot=sidebar-inner]]:shadow-xl"
-      {...props}
-    >
-      <SidebarHeader className="p-6 pb-4">
+    <Sidebar {...props}>
+      <SidebarHeader className="px-6 pt-6 pb-8">
         <Link
           href="/"
           onClick={() => setOpenMobile(false)}
-          className="w-fit rounded-md border-2 border-sidebar-border px-3 py-1 text-xs font-black tracking-[0.2em] text-sidebar-accent-foreground uppercase ring-sidebar-ring outline-hidden focus-visible:ring-2"
+          className="w-fit rounded-md text-lg font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           DMpact
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="px-4 py-6">
+      <SidebarContent className="px-4">
         <SidebarMenu className="gap-1">
           {navMain.map((item) => (
             <SidebarMenuItem key={item.title}>
@@ -55,10 +51,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 size="lg"
                 tooltip={item.title}
                 isActive={item.url === activeUrl}
+                className="relative h-10"
                 render={
                   <Link href={item.url} onClick={() => setOpenMobile(false)} />
                 }
               >
+                {item.url === activeUrl && (
+                  <span className="absolute left-0 h-6 w-1 rounded-full bg-primary" />
+                )}
                 <item.icon />
                 <span>{item.title}</span>
               </SidebarMenuButton>
@@ -70,8 +70,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter className="px-4 pb-6">
         <SidebarMenu>
           <SidebarMenuItem>
-            <form action={logout}>
-              <SidebarMenuButton size="lg" tooltip="Log out" type="submit">
+            <form action={logout} className="w-full">
+              <SidebarMenuButton
+                size="lg"
+                tooltip="Log out"
+                type="submit"
+                className="h-10"
+              >
                 <LogOutIcon />
                 <span>Log out</span>
               </SidebarMenuButton>
