@@ -151,3 +151,10 @@
     @apply bg-background font-sans;
   }
 }
+
+@layer components {
+  .ag-row.queue-row-overdue {
+    background-color: color-mix(in oklab, var(--destructive) 7%, transparent);
+    box-shadow: inset 3px 0 0 var(--destructive);
+  }
+}

@@ -49,8 +49,20 @@ describe("GET /api/commissions/[id]/status", () => {
       state: "agreed" as const,
       updatedAt: "2026-11-02T00:00:00.000Z",
       awaitingClient: false,
-      deposit: { status: "sent" as const, payLink: "link", paidAt: null },
-      balance: { status: "not_created" as const, payLink: null, paidAt: null },
+      deposit: {
+        status: "sent" as const,
+        amount: null,
+        payLink: "link",
+        dueDate: null,
+        paidAt: null,
+      },
+      balance: {
+        status: "not_created" as const,
+        amount: null,
+        payLink: null,
+        dueDate: null,
+        paidAt: null,
+      },
     };
     vi.mocked(getCommissionStatus).mockResolvedValue(status);
 
@@ -67,8 +79,20 @@ describe("GET /api/commissions/[id]/status", () => {
       state: "agreed",
       updatedAt: "2026-11-02T00:00:00.000Z",
       awaitingClient: false,
-      deposit: { status: "sent", payLink: "link", paidAt: null },
-      balance: { status: "not_created", payLink: null, paidAt: null },
+      deposit: {
+        status: "sent",
+        amount: null,
+        payLink: "link",
+        dueDate: null,
+        paidAt: null,
+      },
+      balance: {
+        status: "not_created",
+        amount: null,
+        payLink: null,
+        dueDate: null,
+        paidAt: null,
+      },
     });
 
     await call(id);
@@ -84,8 +108,20 @@ describe("GET /api/commissions/[id]/status", () => {
       state: "dp_paid",
       updatedAt: "2026-11-02T00:00:00.000Z",
       awaitingClient: false,
-      deposit: { status: "paid", payLink: "link", paidAt: null },
-      balance: { status: "not_created", payLink: null, paidAt: null },
+      deposit: {
+        status: "paid",
+        amount: null,
+        payLink: "link",
+        dueDate: null,
+        paidAt: null,
+      },
+      balance: {
+        status: "not_created",
+        amount: null,
+        payLink: null,
+        dueDate: null,
+        paidAt: null,
+      },
     });
 
     await call(id);
