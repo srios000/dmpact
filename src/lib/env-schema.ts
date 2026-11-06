@@ -12,15 +12,19 @@ export const envSchema = z.object({
   APP_BASE_URL: z.url(),
   GEMINI_API_KEY: optional,
   GEMINI_MODEL: optional,
+  GEMINI_FALLBACK_MODEL: optional,
   PAYPAL_API_BASE: optional,
   PAYPAL_CLIENT_ID: optional,
   PAYPAL_CLIENT_SECRET: optional,
   PAYPAL_WEBHOOK_ID: optional,
+  PAYPAL_MOCK: optional,
   AWS_ENDPOINT_URL_S3: optional,
   AWS_REGION: optional,
   AWS_ACCESS_KEY_ID: optional,
   AWS_SECRET_ACCESS_KEY: optional,
   CRON_SECRET: optional,
+  DEMO_CREATOR_EMAIL: optional,
+  DEMO_CLIENT_PAYPAL_EMAIL: optional,
 });
 
 export type Env = z.infer<typeof envSchema>;

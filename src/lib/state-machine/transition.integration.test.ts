@@ -7,6 +7,17 @@ import { TransitionError } from "./errors";
 import type { CommissionState } from "./rules";
 import { transition } from "./transition";
 
+const baseAgreement = {
+  ...exampleAgreement,
+  parties: {
+    client: {
+      display_name: "Ren",
+      handle: "@ren_ch",
+      email: "ren@example.com",
+    },
+  },
+};
+
 const url = process.env.TEST_DATABASE_URL;
 
 describe.skipIf(!url)("transition (database)", () => {
@@ -22,10 +33,7 @@ describe.skipIf(!url)("transition (database)", () => {
     );
   });
 
-  async function seed(
-    state: CommissionState,
-    content: object = exampleAgreement,
-  ) {
+  async function seed(state: CommissionState, content: object = baseAgreement) {
     const creator = await db.creator.create({
       data: {
         authUserId: crypto.randomUUID(),
@@ -173,7 +181,7 @@ describe.skipIf(!url)("transition (database)", () => {
     const c = await seed("negotiating");
     await confirm(c, "creator");
     await confirm(c, "client");
-    const newer: object = { ...exampleAgreement, title: "Changed title" };
+    const newer: object = { ...baseAgreement, title: "Changed title" };
     await db.agreementVersion.create({
       data: {
         commissionId: c.id,
@@ -191,7 +199,7 @@ describe.skipIf(!url)("transition (database)", () => {
 
   it("completes immediately when the balance is zero", async () => {
     const c = await seed("in_progress", {
-      ...exampleAgreement,
+      ...baseAgreement,
       deposit: { type: "percent", percent: 100, fixed_amount: null },
     });
     await db.delivery.create({

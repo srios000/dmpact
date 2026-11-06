@@ -20,3 +20,4 @@ uploads/
 .vscode/*
 !.vscode/extensions.json
 /docs/archive
+/.claude/
