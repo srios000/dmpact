@@ -35,6 +35,7 @@ function summarize(agreement: Agreement) {
       agreement.parties?.client?.display_name ??
       agreement.parties?.client?.handle ??
       null,
+    clientHandle: agreement.parties?.client?.handle ?? null,
     total: agreement.price.total,
     currency: agreement.price.currency,
     depositAmount: agreement.deposit.amount ?? null,
@@ -91,6 +92,7 @@ export async function listCommissions() {
     return {
       id: commission.id,
       state: commission.state,
+      clientToken: commission.clientToken,
       createdAt: commission.createdAt.toISOString(),
       updatedAt: commission.updatedAt.toISOString(),
       awaitingClient: latest.version !== inForce.version,

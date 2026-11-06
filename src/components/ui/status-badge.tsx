@@ -1,27 +1,23 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { STATE_LABELS } from "@/lib/state-machine/labels";
+import type { CommissionState } from "@/lib/state-machine/rules";
 import { cn } from "@/lib/utils";
 
 const statusBadgeVariants = cva(
-  "inline-flex w-fit items-center rounded-full border px-3 py-1 text-[10px] font-bold whitespace-nowrap uppercase",
+  "inline-flex h-6 w-fit items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium whitespace-nowrap text-foreground",
   {
     variants: {
       state: {
-        draft: "border-status-draft/20 bg-status-draft/10 text-status-draft",
-        negotiating:
-          "border-status-negotiating/20 bg-status-negotiating/10 text-status-negotiating",
-        agreed:
-          "border-status-agreed/20 bg-status-agreed/10 text-status-agreed",
-        dp_paid:
-          "border-status-dp-paid/20 bg-status-dp-paid/10 text-status-dp-paid",
-        in_progress:
-          "border-status-in-progress/20 bg-status-in-progress/10 text-status-in-progress",
-        delivered:
-          "border-status-delivered/20 bg-status-delivered/10 text-status-delivered",
-        fully_paid:
-          "border-status-fully-paid/20 bg-status-fully-paid/10 text-status-fully-paid",
+        draft: "border-status-draft/30 bg-status-draft/10",
+        negotiating: "border-status-negotiating/30 bg-status-negotiating/10",
+        agreed: "border-status-agreed/30 bg-status-agreed/10",
+        dp_paid: "border-status-dp-paid/30 bg-status-dp-paid/10",
+        in_progress: "border-status-in-progress/30 bg-status-in-progress/10",
+        delivered: "border-status-delivered/30 bg-status-delivered/10",
+        fully_paid: "border-status-fully-paid/30 bg-status-fully-paid/10",
         cancelled:
-          "border-status-cancelled/20 bg-status-cancelled/10 text-status-cancelled",
+          "border-status-cancelled/30 bg-status-cancelled/10 text-muted-foreground",
       },
     },
     defaultVariants: {
@@ -30,16 +26,36 @@ const statusBadgeVariants = cva(
   },
 );
 
+const statusDotVariants = cva("size-1.5 shrink-0 rounded-full", {
+  variants: {
+    state: {
+      draft: "bg-status-draft",
+      negotiating: "bg-status-negotiating",
+      agreed: "bg-status-agreed",
+      dp_paid: "bg-status-dp-paid",
+      in_progress: "bg-status-in-progress",
+      delivered: "bg-status-delivered",
+      fully_paid: "bg-status-fully-paid",
+      cancelled: "bg-status-cancelled",
+    },
+  },
+  defaultVariants: {
+    state: "draft",
+  },
+});
+
 export interface StatusBadgeProps
   extends
-    React.HTMLAttributes<HTMLDivElement>,
+    React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof statusBadgeVariants> {}
 
 function StatusBadge({ className, state, ...props }: StatusBadgeProps) {
+  const value: CommissionState = state ?? "draft";
   return (
-    <div className={cn(statusBadgeVariants({ state }), className)} {...props}>
-      {(state ?? "draft").replace("_", " ")}
-    </div>
+    <span className={cn(statusBadgeVariants({ state }), className)} {...props}>
+      <span aria-hidden className={statusDotVariants({ state })} />
+      {STATE_LABELS[value]}
+    </span>
   );
 }
 

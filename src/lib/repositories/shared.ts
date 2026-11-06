@@ -85,14 +85,18 @@ export function utcToday(): string {
 export type InvoiceRow = {
   kind: "deposit" | "balance";
   status: "draft" | "sent" | "paid" | "cancelled";
+  amount: { toString(): string };
   payLink: string | null;
+  dueDate: Date | null;
   paidAt: Date | null;
   createdAt: Date;
 };
 
 export type PaymentStatus = {
   status: "not_required" | "not_created" | InvoiceRow["status"];
+  amount: string | null;
   payLink: string | null;
+  dueDate: string | null;
   paidAt: string | null;
 };
 
@@ -107,13 +111,17 @@ function paymentStatus(
   if (!invoice) {
     return {
       status: required ? "not_created" : "not_required",
+      amount: null,
       payLink: null,
+      dueDate: null,
       paidAt: null,
     };
   }
   return {
     status: invoice.status,
+    amount: invoice.amount.toString(),
     payLink: invoice.payLink,
+    dueDate: invoice.dueDate?.toISOString().slice(0, 10) ?? null,
     paidAt: invoice.paidAt?.toISOString() ?? null,
   };
 }
