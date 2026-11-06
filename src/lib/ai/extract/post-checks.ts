@@ -104,8 +104,35 @@ const DEFAULT_QUESTIONS_ID: Partial<Record<AmbiguityCode, string>> = {
   MISSING_CLIENT_EMAIL: "Email PayPal Kakak apa untuk invoice-nya?",
 };
 
-function defaultQuestions(sourceLanguage: string | undefined) {
-  return sourceLanguage === "id" ? DEFAULT_QUESTIONS_ID : DEFAULT_QUESTIONS_EN;
+const DEFAULT_QUESTIONS_JA: Partial<Record<AmbiguityCode, string>> = {
+  MISSING_PRICE: "合計金額はおいくらでよろしいでしょうか？",
+  AMBIGUOUS_CURRENCY: "金額の通貨を教えていただけますか？",
+  UNSUPPORTED_CURRENCY:
+    "この通貨ではPayPalの請求書を作成できません。USDでもよろしいでしょうか？",
+  SCOPE_UNCLEAR: "具体的に何を納品すればよろしいでしょうか？",
+  MISSING_DEADLINE: "納品日は具体的に何月何日がよろしいでしょうか？",
+  RELATIVE_DEADLINE: "納品日を確認させていただけますか？",
+  PAST_DEADLINE: "その日付はすでに過ぎています。何日にしましょうか？",
+  MISSING_REVISIONS: "修正は何回まで含めればよろしいでしょうか？",
+  MISSING_DEPOSIT_TERMS: "前金50%でよろしいでしょうか？",
+  DEPOSIT_EXCEEDS_TOTAL: "前金はいくらにしましょうか？",
+  MISSING_USAGE_RIGHTS:
+    "商用で使用されますか？また、制作者としてのクレジット表記は可能でしょうか？",
+  MISSING_CLIENT_EMAIL:
+    "請求書をお送りするPayPalのメールアドレスを教えていただけますか？",
+};
+
+const JAPANESE_TEXT = /[぀-ヿ一-鿿]/;
+const INDONESIAN_WORDS =
+  /\b(kak|kakak|gak|nggak|enggak|ga|aja|dong|deh|sih|banget|bisa|boleh|berapa|harga|revisi|tanggal|tgl|bayar|udah|sudah|belum|nanti|makasih|terima kasih|sip|rb|ribu|juta|jt|buru-buru)\b/i;
+
+function defaultQuestions(sourceLanguage: string | undefined, dmText: string) {
+  if (sourceLanguage === "id") return DEFAULT_QUESTIONS_ID;
+  if (sourceLanguage === "ja") return DEFAULT_QUESTIONS_JA;
+  if (sourceLanguage === "en") return DEFAULT_QUESTIONS_EN;
+  if (JAPANESE_TEXT.test(dmText)) return DEFAULT_QUESTIONS_JA;
+  if (INDONESIAN_WORDS.test(dmText)) return DEFAULT_QUESTIONS_ID;
+  return DEFAULT_QUESTIONS_EN;
 }
 
 export type PostCheckInput = {
@@ -407,7 +434,10 @@ export function runPostChecks({
 
   // Blockers first; order is otherwise preserved. Questions the model left
   // empty get a default in the chat's language.
-  const questions = defaultQuestions(result.extraction?.source_language);
+  const questions = defaultQuestions(
+    result.extraction?.source_language,
+    dmText,
+  );
   result.ambiguities = [
     ...flags.filter((a) => a.severity === "blocker"),
     ...flags.filter((a) => a.severity !== "blocker"),
