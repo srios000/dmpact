@@ -49,6 +49,21 @@ Requires Node 24 and pnpm. Each teammate develops on their own Neon branch (`dev
 
 Set `DEMO_CREATOR_EMAIL`, `DEMO_CREATOR_PASSWORD`, and `DEMO_CREATOR_PAYPAL_EMAIL` (the PayPal sandbox business email) in `.env`, then run `pnpm db:seed`. It creates the Neon Auth user and its creator row, and is safe to run again. Log in at `/login`. Use sandbox-only credentials.
 
+## Troubleshooting
+
+### A PayPal payment doesn't show as paid
+
+Paid status normally arrives through the PayPal webhook (`/api/webhooks/paypal`). Sandbox webhooks can be slow or never arrive, so there are two fallbacks that ask PayPal directly and apply the result the same way the webhook does:
+
+- **Automatic:** while the client page or dashboard polls `/api/commissions/[id]/status`, any invoice still unpaid 10 minutes after it was sent is checked at PayPal (at most once a minute per commission).
+- **Manual:** `POST /api/commissions/[id]/refresh-payment` checks right away (at most every 10 seconds). Send the client token in the `x-client-token` header, or call it while signed in as the creator.
+
+If it still shows unpaid:
+
+1. In the PayPal developer dashboard (Sandbox), open **Event Logs → Webhooks Events** and check whether the event was sent and what the app answered. `401` means the signature didn't verify: check that `PAYPAL_WEBHOOK_ID` matches the webhook registered for that exact URL. `500` usually means `PAYPAL_WEBHOOK_ID` is missing.
+2. Check that the invoice was paid with the sandbox **Personal** account and shows **Paid** in the sandbox Business account.
+3. Local dev only receives webhooks through a tunnel (see [docs/paypal-sandbox.md](docs/paypal-sandbox.md)). Without one, use the manual refresh.
+
 ## Team
 
 [@srios000](https://github.com/srios000) · [@imjia05stay-star](https://github.com/imjia05stay-star) · [@Wynnzzz](https://github.com/Wynnzzz) · [@Firsta30](https://github.com/Firsta30) · [@hasnapriswati](https://github.com/hasnapriswati) · [@marshaniswah](https://github.com/marshaniswah)

@@ -10,9 +10,9 @@ import {
   type WebhookEvent,
 } from "@/lib/paypal/webhook";
 import { effectHandlers } from "@/lib/state-machine/effect-handlers";
-import { TransitionError } from "@/lib/state-machine/errors";
 import type { CommissionState } from "@/lib/state-machine/rules";
-import { transition } from "@/lib/state-machine/transition";
+import { applyTransition, runEffects } from "@/lib/state-machine/transition";
+import { lockCommission } from "./shared";
 
 /*
  * Internal: called by the PayPal webhook route after the signature is
@@ -45,7 +45,7 @@ export async function recordWebhookEvent(
   return { isNew: false, needsProcessing: !stored?.processedAt };
 }
 
-type InvoiceRow = {
+export type InvoiceRow = {
   id: string;
   commissionId: string;
   kind: "deposit" | "balance";
@@ -61,21 +61,38 @@ const PAID_TRANSITION: Record<
   balance: { from: "delivered", to: "fully_paid" },
 };
 
-async function handlePaid(
+/** Where a payment update came from, stored on the commission event. */
+export type PaymentSource = { webhookEventId: string } | { via: "polling" };
+
+/**
+ * Marks the invoice paid and moves the commission (deposit: agreed -> dp_paid,
+ * balance: delivered -> fully_paid) in one transaction under the commission
+ * lock. If the move fails, nothing is saved and the invoice stays sent, so the
+ * next webhook delivery or polling check retries. Safe to run twice.
+ */
+export async function markInvoicePaid(
   invoice: InvoiceRow,
   ref: InvoiceRef,
-  eventId: string,
+  source: PaymentSource,
 ) {
-  if (invoice.status !== "paid") {
-    await db.$transaction([
-      db.invoice.update({
+  const { from, to } = PAID_TRANSITION[invoice.kind];
+
+  const steps = await db.$transaction(async (tx) => {
+    await lockCommission(tx, invoice.commissionId);
+
+    const current = await tx.invoice.findUnique({
+      where: { id: invoice.id },
+      select: { status: true },
+    });
+    if (current?.status !== "paid") {
+      await tx.invoice.update({
         where: { id: invoice.id },
         data: {
           status: "paid",
           paidAt: ref.paidAt ? new Date(ref.paidAt) : new Date(),
         },
-      }),
-      db.commissionEvent.create({
+      });
+      await tx.commissionEvent.create({
         data: {
           commissionId: invoice.commissionId,
           type: "invoice_paid",
@@ -84,42 +101,36 @@ async function handlePaid(
             kind: invoice.kind,
             invoiceId: invoice.id,
             paypalInvoiceId: ref.paypalInvoiceId,
-            webhookEventId: eventId,
+            ...source,
           },
         },
-      }),
-    ]);
-  }
+      });
+    }
 
-  const { from, to } = PAID_TRANSITION[invoice.kind];
-  const commission = await db.commission.findUnique({
-    where: { id: invoice.commissionId },
-    select: { state: true },
+    const commission = await tx.commission.findUnique({
+      where: { id: invoice.commissionId },
+      select: { state: true },
+    });
+    if (commission?.state !== from) return [];
+
+    return applyTransition(tx, {
+      commissionId: invoice.commissionId,
+      to,
+      actor: "paypal",
+      reason: `PayPal invoice ${ref.paypalInvoiceId} paid.`,
+    });
   });
-  if (commission?.state !== from) return;
 
-  try {
-    await transition(
-      db,
-      {
-        commissionId: invoice.commissionId,
-        to,
-        actor: "paypal",
-        reason: `PayPal invoice ${ref.paypalInvoiceId} paid.`,
-      },
-      effectHandlers,
-    );
-  } catch (error) {
-    // Another delivery or the polling fallback moved it first.
-    if (error instanceof TransitionError && error.code === "conflict") return;
-    throw error;
+  if (steps.length > 0) {
+    await runEffects(db, invoice.commissionId, steps, effectHandlers);
   }
 }
 
-async function handleCancelled(
+/** Marks the invoice cancelled. The commission state doesn't change. */
+export async function markInvoiceCancelled(
   invoice: InvoiceRow,
   ref: InvoiceRef,
-  eventId: string,
+  source: PaymentSource,
 ) {
   if (invoice.status === "paid" || invoice.status === "cancelled") return;
   await db.$transaction([
@@ -136,7 +147,7 @@ async function handleCancelled(
           kind: invoice.kind,
           invoiceId: invoice.id,
           paypalInvoiceId: ref.paypalInvoiceId,
-          webhookEventId: eventId,
+          ...source,
         },
       },
     }),
@@ -174,9 +185,9 @@ export async function processWebhookEvent(
     if (invoice) {
       commissionId = invoice.commissionId;
       if (event.event_type === INVOICE_PAID) {
-        await handlePaid(invoice, ref, eventId);
+        await markInvoicePaid(invoice, ref, { webhookEventId: eventId });
       } else {
-        await handleCancelled(invoice, ref, eventId);
+        await markInvoiceCancelled(invoice, ref, { webhookEventId: eventId });
       }
     }
   }
