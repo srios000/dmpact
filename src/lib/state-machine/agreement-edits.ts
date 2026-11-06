@@ -9,6 +9,13 @@ const DEADLINE_ONLY_STATES: CommissionState[] = [
   "in_progress",
 ];
 
+export type AgreementEditMode = "full" | "deadline" | "locked";
+
+export function agreementEditMode(state: CommissionState): AgreementEditMode {
+  if (state === "draft" || state === "negotiating") return "full";
+  return DEADLINE_ONLY_STATES.includes(state) ? "deadline" : "locked";
+}
+
 export type AgreementEditInput = {
   state: CommissionState;
   current: Agreement;
