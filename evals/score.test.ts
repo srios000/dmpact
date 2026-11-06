@@ -80,6 +80,22 @@ describe("scoreCase", () => {
     ]);
   });
 
+  it("fails on a wrong source_language without touching key fields", () => {
+    const withLanguage: EvalFixture = {
+      ...fixture,
+      expected: { ...fixture.expected, extraction: { source_language: "id" } },
+    };
+    const score = scoreCase(withLanguage, {
+      ...actual,
+      extraction: { source_language: "mixed" },
+    });
+    expect(score.mismatches).toEqual([
+      { path: "/extraction/source_language", expected: "id", actual: "mixed" },
+    ]);
+    expect(score.keyFieldsMatched).toBe(score.keyFieldsTotal);
+    expect(score.pass).toBe(false);
+  });
+
   it("fails on missing expected codes and unexpected blockers", () => {
     const score = scoreCase(fixture, {
       ...actual,
