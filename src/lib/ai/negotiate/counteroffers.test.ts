@@ -63,8 +63,18 @@ function modelReturning(...outputs: unknown[]): ModelClient {
     generateJson: vi.fn(async () => {
       const next = queue.length > 1 ? queue.shift() : queue[0];
       if (next instanceof Error) throw next;
-      return typeof next === "string" ? next : JSON.stringify(next);
+      const text = typeof next === "string" ? next : JSON.stringify(next);
+      return { text, model: "test-model" };
     }),
+  };
+}
+
+// Mix & master with 2 revisions: 150.00 USD. Mastering only: 60.00 USD.
+function mixAndMaster(total: string): Agreement {
+  return {
+    ...exampleAgreement,
+    price: { total, currency: "USD" },
+    deadline: { date: "2026-12-01", raw_text: null, is_relative: false },
   };
 }
 
@@ -90,10 +100,16 @@ describe("generateCounteroffers", () => {
 
   it("offers all three strategies with amounts from the rate card", async () => {
     const result = await generateCounteroffers({
-      agreement: agreement(),
+      agreement: mixAndMaster("60.00"),
       settings,
       today,
-      client: modelReturning(drafts),
+      client: modelReturning(
+        withReduce({
+          keep_deliverable_ids: ["d2"],
+          service_type: "mastering",
+          revisions_included: 2,
+        }),
+      ),
     });
 
     expect(result.fallback).toBe(false);
@@ -102,25 +118,40 @@ describe("generateCounteroffers", () => {
 
     expect(reduce.id).toBe("opt1");
     expect(reduce.strategy).toBe("reduce_scope");
-    expect(reduce.proposed_agreement.price.total).toBe("100.00");
-    expect(reduce.proposed_agreement.revisions.included).toBe(2);
+    expect(reduce.proposed_agreement.service_type).toBe("mastering");
+    expect(reduce.proposed_agreement.price.total).toBe("60.00");
     expect(reduce.proposed_agreement.deliverables.map((d) => d.id)).toEqual([
-      "d1",
+      "d2",
     ]);
 
     expect(adjust.strategy).toBe("adjust_price");
-    expect(adjust.proposed_agreement.price.total).toBe("145.00");
+    expect(adjust.proposed_agreement.price.total).toBe("150.00");
     expect(adjust.proposed_agreement.deliverables).toHaveLength(2);
+    expect(adjust.proposed_agreement.deposit.amount).toBe("75.00");
 
     expect(split.strategy).toBe("split_milestones");
-    expect(split.proposed_agreement.price.total).toBe("145.00");
+    expect(split.proposed_agreement.price.total).toBe("150.00");
     expect(split.proposed_agreement.deposit).toEqual({
       type: "percent",
-      percent: 50,
+      percent: 40,
       fixed_amount: null,
-      amount: "72.50",
+      amount: "60.00",
     });
-    expect(split.proposed_agreement.balance_amount).toBe("72.50");
+    expect(split.proposed_agreement.balance_amount).toBe("90.00");
+  });
+
+  it("skips split_milestones when the deposit would not change", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client: modelReturning(drafts),
+    });
+    // 100.00 of 145.00 is over 50%, so the split deposit equals the 50% deposit.
+    expect(result.negotiation.options.map((o) => o.strategy)).toEqual([
+      "reduce_scope",
+      "adjust_price",
+    ]);
   });
 
   it("recomputes the deposit and balance for the new price", async () => {
@@ -164,33 +195,24 @@ describe("generateCounteroffers", () => {
     );
   });
 
-  it("never adds revisions in a smaller scope", async () => {
+  it("drops a smaller scope that adds revisions", async () => {
+    // Mixing at 100.00 would fit the budget, but the message names 5 revisions.
     const result = await generateCounteroffers({
-      agreement: agreement({
-        price: { total: "100.00", currency: "USD" },
-        revisions: { included: 1 },
-        deadline: { date: "2026-11-06", raw_text: null, is_relative: false },
-      }),
+      agreement: mixAndMaster("100.00"),
       settings,
       today,
-      client: modelReturning(withReduce({ revisions_included: 4 })),
+      client: modelReturning(
+        withReduce({ service_type: "mixing", revisions_included: 5 }),
+      ),
     });
-    const reduce = result.negotiation.options.find(
-      (o) => o.strategy === "reduce_scope",
+    expect(result.negotiation.options.map((o) => o.strategy)).not.toContain(
+      "reduce_scope",
     );
-    // 100.00 base + 60.00 rush = 160.00: still a mismatch, so no smaller scope.
-    expect(reduce).toBeUndefined();
   });
 
   it("lets mix and master drop to mixing only", async () => {
-    const mix: Agreement = {
-      ...exampleAgreement,
-      price: { total: "100.00", currency: "USD" },
-      usage_rights: { commercial: false },
-      deadline: { date: "2026-12-01", raw_text: null, is_relative: false },
-    };
     const result = await generateCounteroffers({
-      agreement: mix,
+      agreement: mixAndMaster("100.00"),
       settings,
       today,
       client: modelReturning(
@@ -224,7 +246,7 @@ describe("generateCounteroffers", () => {
 
   it("uses template messages when the model call fails", async () => {
     const result = await generateCounteroffers({
-      agreement: agreement(),
+      agreement: agreement({ price: { total: "40.00", currency: "USD" } }),
       settings,
       today,
       client: modelReturning(new Error("quota exceeded")),
@@ -235,13 +257,13 @@ describe("generateCounteroffers", () => {
       "split_milestones",
     ]);
     expect(result.negotiation.options[1].message_draft).toBe(
-      "Hi Ren! The full scope comes to 145.00 USD on my rates. To make it easier, you can pay 72.50 USD now and the remaining 72.50 USD on delivery.",
+      "Hi Ren! The full scope comes to 145.00 USD on my rates. To make it easier, you can pay 39.15 USD now and the remaining 105.85 USD on delivery.",
     );
   });
 
   it("uses template messages without a model client", async () => {
     const result = await generateCounteroffers({
-      agreement: agreement(),
+      agreement: agreement({ price: { total: "40.00", currency: "USD" } }),
       settings,
       today,
       client: null,

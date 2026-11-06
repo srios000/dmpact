@@ -1,6 +1,7 @@
 "use server";
 
 import { updateTag } from "next/cache";
+import { todayInZone } from "@/lib/ai/extract";
 import { createGeminiClient } from "@/lib/ai/gemini";
 import {
   generateCounteroffers,
@@ -78,13 +79,6 @@ export async function transitionCommission(
   }
 }
 
-/** Today's date (YYYY-MM-DD) in WIB, for the rush fee. */
-function todayInJakarta(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(
-    new Date(),
-  );
-}
-
 /** Proposals only: nothing is saved until the creator applies an option. */
 export async function suggestCounteroffers(
   input: SuggestCounteroffersInput,
@@ -102,7 +96,7 @@ export async function suggestCounteroffers(
     const data = await generateCounteroffers({
       agreement: latest.agreement,
       settings: await getRateCard(),
-      today: todayInJakarta(),
+      today: todayInZone(),
       // createGeminiClient reads the key and model from the environment.
       client: env.GEMINI_API_KEY ? createGeminiClient() : null,
     });
