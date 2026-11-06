@@ -27,7 +27,11 @@ function serviceText(agreement: Agreement): string {
 }
 
 function deliverablesText(agreement: Agreement): string {
-  return agreement.deliverables.map((d) => d.description).join(", ");
+  return agreement.deliverables
+    .map((d) =>
+      d.quantity > 1 ? `${d.quantity}× ${d.description}` : d.description,
+    )
+    .join(", ");
 }
 
 function depositText(agreement: Agreement): string {
@@ -107,18 +111,11 @@ export function diffAgreement(
 }
 
 export interface CounterofferDiffProps {
-  current: Agreement;
-  proposed: Agreement;
+  changes: AgreementChange[];
   className?: string;
 }
 
-function CounterofferDiff({
-  current,
-  proposed,
-  className,
-}: CounterofferDiffProps) {
-  const changes = diffAgreement(current, proposed);
-
+function CounterofferDiff({ changes, className }: CounterofferDiffProps) {
   if (changes.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">No agreement changes.</p>

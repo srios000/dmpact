@@ -5,10 +5,8 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { Agreement } from "@/lib/schema/agreement";
-import type { Counteroffer, Strategy } from "@/lib/schema/negotiation";
+import type { Strategy } from "@/lib/schema/negotiation";
 import { cn } from "@/lib/utils";
-import { CounterofferDiff } from "./counteroffer-diff";
 
 export const STRATEGY_LABELS: Record<Strategy, string> = {
   reduce_scope: "Reduce scope",
@@ -35,23 +33,27 @@ const strategyBadgeVariants = cva(
 );
 
 export interface CounterofferCardProps {
-  option: Counteroffer;
-  current: Agreement;
+  strategy: Strategy;
+  summary: string;
+  messageDraft: string;
+  diff: React.ReactNode;
   applying?: boolean;
   disabled?: boolean;
-  onApply: (option: Counteroffer) => void;
+  onApply: () => void;
   className?: string;
 }
 
 function CounterofferCard({
-  option,
-  current,
+  strategy,
+  summary,
+  messageDraft,
+  diff,
   applying,
   disabled,
   onApply,
   className,
 }: CounterofferCardProps) {
-  const [message, setMessage] = React.useState(option.message_draft);
+  const [message, setMessage] = React.useState(messageDraft);
   const [copied, setCopied] = React.useState(false);
   const messageId = React.useId();
 
@@ -64,25 +66,18 @@ function CounterofferCard({
   return (
     <article className={cn("rounded-2xl border bg-card p-5", className)}>
       <div className="flex items-center justify-between gap-3">
-        <span className={strategyBadgeVariants({ strategy: option.strategy })}>
-          {STRATEGY_LABELS[option.strategy]}
+        <span className={strategyBadgeVariants({ strategy })}>
+          {STRATEGY_LABELS[strategy]}
         </span>
       </div>
 
-      <p className="mt-3 text-sm font-medium text-foreground">
-        {option.summary}
-      </p>
+      <p className="mt-3 text-sm font-medium text-foreground">{summary}</p>
 
       <div className="mt-5">
         <h4 className="text-xs font-medium text-muted-foreground">
           What changes
         </h4>
-        <div className="mt-2">
-          <CounterofferDiff
-            current={current}
-            proposed={option.proposed_agreement}
-          />
-        </div>
+        <div className="mt-2">{diff}</div>
       </div>
 
       <div className="mt-5 space-y-2">
@@ -104,11 +99,7 @@ function CounterofferCard({
           {copied ? <CheckIcon /> : <CopyIcon />}
           {copied ? "Copied" : "Copy message"}
         </Button>
-        <Button
-          type="button"
-          disabled={applying || disabled}
-          onClick={() => onApply(option)}
-        >
+        <Button type="button" disabled={applying || disabled} onClick={onApply}>
           {applying ? "Applying..." : "Apply to agreement"}
         </Button>
       </div>

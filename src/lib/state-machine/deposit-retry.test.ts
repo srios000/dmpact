@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canRetryDepositInvoice, depositFailureMessage } from "./deposit-retry";
+import {
+  balanceFailureMessage,
+  canRetryBalanceInvoice,
+  canRetryDepositInvoice,
+  depositFailureMessage,
+} from "./deposit-retry";
 
 describe("canRetryDepositInvoice", () => {
   it.each(["not_created", "draft", "cancelled"] as const)(
@@ -24,27 +29,56 @@ describe("canRetryDepositInvoice", () => {
   );
 });
 
-describe("depositFailureMessage", () => {
-  const failed = (message: unknown) => ({
+describe("canRetryBalanceInvoice", () => {
+  it.each(["not_created", "draft", "cancelled"] as const)(
+    "allows a delivered commission whose balance invoice is %s",
+    (balance) => {
+      expect(canRetryBalanceInvoice("delivered", balance)).toBe(true);
+    },
+  );
+
+  it.each(["sent", "paid", "not_required"] as const)(
+    "refuses a delivered commission whose balance invoice is %s",
+    (balance) => {
+      expect(canRetryBalanceInvoice("delivered", balance)).toBe(false);
+    },
+  );
+
+  it.each(["agreed", "dp_paid", "in_progress", "fully_paid"] as const)(
+    "refuses a %s commission",
+    (state) => {
+      expect(canRetryBalanceInvoice(state, "not_created")).toBe(false);
+    },
+  );
+});
+
+describe("depositFailureMessage / balanceFailureMessage", () => {
+  const failed = (
+    reason: "createDepositInvoice" | "createBalanceInvoice",
+    message: unknown,
+  ) => ({
     type: "effect_failed",
-    reason: "createDepositInvoice",
+    reason,
     meta: { message },
   });
 
-  it("returns the latest deposit invoice failure", () => {
-    expect(
-      depositFailureMessage([
-        failed("first"),
-        { type: "effect_failed", reason: "createBalanceInvoice", meta: {} },
-        failed("second"),
-        { type: "transition", reason: null, meta: null },
-      ]),
-    ).toBe("second");
+  it("returns the latest failure for each invoice kind", () => {
+    const events = [
+      failed("createDepositInvoice", "first"),
+      failed("createBalanceInvoice", "balance failed"),
+      failed("createDepositInvoice", "second"),
+      { type: "transition", reason: null, meta: null },
+    ];
+    expect(depositFailureMessage(events)).toBe("second");
+    expect(balanceFailureMessage(events)).toBe("balance failed");
   });
 
   it("returns null without a usable message", () => {
     expect(depositFailureMessage([])).toBeNull();
-    expect(depositFailureMessage([failed(42)])).toBeNull();
+    expect(balanceFailureMessage([])).toBeNull();
+    expect(
+      depositFailureMessage([failed("createDepositInvoice", 42)]),
+    ).toBeNull();
     expect(
       depositFailureMessage([
         { type: "effect_failed", reason: "createDepositInvoice", meta: null },

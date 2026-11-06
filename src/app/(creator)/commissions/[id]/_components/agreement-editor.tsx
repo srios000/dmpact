@@ -13,7 +13,6 @@ import { CounterofferPanel } from "@/components/organisms/counteroffer-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { StatusBadge } from "@/components/ui/status-badge";
 import type { CounterofferResult } from "@/lib/ai/negotiate/counteroffers";
 import type { Agreement } from "@/lib/schema/agreement";
 import type { Counteroffer } from "@/lib/schema/negotiation";
@@ -21,6 +20,7 @@ import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
 import type { getCommission } from "@/lib/repositories/commission-repository";
 import {
+  retryBalanceInvoice,
   retryDepositInvoice,
   saveAgreementVersion,
   sendToClient,
@@ -32,18 +32,6 @@ import {
 } from "./agreement-version-history";
 
 type CommissionDetail = NonNullable<Awaited<ReturnType<typeof getCommission>>>;
-
-function intro(commission: CommissionDetail, mode: AgreementEditMode): string {
-  if (mode === "deadline") {
-    return "The client approved this agreement. Only the deadline can change now, until you deliver.";
-  }
-  if (mode === "locked") {
-    return "This agreement can't change any more.";
-  }
-  return commission.state === "draft"
-    ? "Change anything, save it as a new version, then send it to the client."
-    : "Sent to the client. They see the latest version you save, and you can change anything until they approve.";
-}
 
 function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
@@ -89,6 +77,20 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
           ? "Save your changes first. The client gets the saved version."
           : null;
 
+  const activeRetry = commission.depositRetry
+    ? {
+        kind: "deposit" as const,
+        error: commission.depositRetry.error,
+        action: retryDepositInvoice,
+      }
+    : commission.balanceRetry
+      ? {
+          kind: "balance" as const,
+          error: commission.balanceRetry.error,
+          action: retryBalanceInvoice,
+        }
+      : null;
+
   function handleSave(agreement: Agreement) {
     setError(null);
     setNotice(null);
@@ -99,6 +101,8 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
       });
       if (!result.ok) return setError(result.error.message);
       setLoaded(null);
+      setCounteroffer(null);
+      setCountererror(null);
       setNotice(`Saved as version ${result.data.version}.`);
       router.refresh();
     });
@@ -118,15 +122,17 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
     });
   }
 
-  function handleRetryDeposit() {
+  function handleRetryInvoice() {
+    if (!activeRetry) return;
     setError(null);
     setNotice(null);
     setRetryError(null);
     startRetrying(async () => {
-      const result = await retryDepositInvoice({ commissionId: commission.id });
+      const result = await activeRetry.action({ commissionId: commission.id });
       if (result.ok) {
+        const label = activeRetry.kind === "deposit" ? "Deposit" : "Balance";
         setNotice(
-          "Deposit invoice sent. The client can pay it from their link.",
+          `${label} invoice sent. The client can pay it from their link.`,
         );
       } else if (result.error.code === "invoice_failed") {
         setRetryError(result.error.message);
@@ -181,40 +187,31 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
 
   return (
     <div className="w-full space-y-8 pb-20">
-      <header className="max-w-2xl space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            {latest.agreement.title || "Untitled commission"}
-          </h1>
-          <StatusBadge state={commission.state} />
-        </div>
-        <p className="text-base leading-relaxed text-muted-foreground">
-          {intro(commission, mode)}
-        </p>
-      </header>
-
-      {commission.depositRetry && (
+      {activeRetry && (
         <Alert variant="destructive" className="max-w-2xl p-4">
           <CircleAlertIcon />
           <AlertTitle>
             {retryError
-              ? "The deposit invoice still wasn't sent"
-              : "The deposit invoice wasn't sent"}
+              ? `The ${activeRetry.kind} invoice still wasn't sent`
+              : `The ${activeRetry.kind} invoice wasn't sent`}
           </AlertTitle>
           <AlertDescription className="space-y-3">
-            <p>The client can&apos;t pay the deposit until it goes out.</p>
-            {(retryError ?? commission.depositRetry.error) && (
-              <p className="break-words">
-                {retryError ?? commission.depositRetry.error}
-              </p>
+            <p>
+              The client can&apos;t pay the {activeRetry.kind} until it goes
+              out.
+            </p>
+            {(retryError ?? activeRetry.error) && (
+              <p className="break-words">{retryError ?? activeRetry.error}</p>
             )}
             <Button
               type="button"
               variant="outline"
               disabled={retrying}
-              onClick={handleRetryDeposit}
+              onClick={handleRetryInvoice}
             >
-              {retrying ? "Sending..." : "Send deposit invoice again"}
+              {retrying
+                ? "Sending..."
+                : `Send ${activeRetry.kind} invoice again`}
             </Button>
           </AlertDescription>
         </Alert>
@@ -249,18 +246,27 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
                     get ready-to-send reply drafts.
                   </p>
                 </div>
-                {!counteroffer && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={checking}
-                    onClick={handleSuggest}
-                  >
-                    <SparklesIcon />
-                    {checking ? "Checking..." : "Suggest counteroffers"}
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={checking || applying || unsaved}
+                  onClick={handleSuggest}
+                >
+                  <SparklesIcon />
+                  {checking
+                    ? "Checking..."
+                    : counteroffer
+                      ? "Check again"
+                      : "Suggest counteroffers"}
+                </Button>
               </div>
+
+              {unsaved && (
+                <p className="text-xs text-muted-foreground">
+                  Save your agreement changes first to check the latest terms
+                  against your rate card.
+                </p>
+              )}
 
               {countererror && (
                 <p
@@ -271,7 +277,7 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
                 </p>
               )}
 
-              {counteroffer && (
+              {counteroffer && !unsaved && (
                 <CounterofferPanel
                   result={counteroffer}
                   current={latest.agreement}
@@ -383,20 +389,6 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
               onLoad={mode === "full" ? setLoaded : undefined}
             />
           </div>
-
-          {commission.sourceDm && (
-            <section
-              aria-labelledby="dm-heading"
-              className="space-y-3 rounded-xl border bg-card p-5"
-            >
-              <h2 id="dm-heading" className="font-medium text-foreground">
-                Original DM
-              </h2>
-              <p className="max-h-48 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                {commission.sourceDm}
-              </p>
-            </section>
-          )}
         </aside>
       </div>
     </div>

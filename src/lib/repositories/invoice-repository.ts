@@ -8,7 +8,12 @@ import {
   type Invoice as PayPalInvoice,
   type PayPalClient,
 } from "@/lib/paypal";
-import { planDepositInvoice } from "@/lib/paypal/deposit-invoice";
+import { planBalanceInvoice } from "@/lib/paypal/balance-invoice";
+import {
+  planDepositInvoice,
+  type PlanDepositInvoiceInput,
+  type DepositInvoicePlan,
+} from "@/lib/paypal/deposit-invoice";
 import {
   agreementInForce,
   lockCommission,
@@ -17,14 +22,27 @@ import {
   utcToday,
 } from "./shared";
 
-export type IssueDepositInvoiceOptions = {
+type InvoiceKind = "deposit" | "balance";
+
+const PLANNERS: Record<
+  InvoiceKind,
+  (input: PlanDepositInvoiceInput) => DepositInvoicePlan
+> = {
+  deposit: planDepositInvoice,
+  balance: planBalanceInvoice,
+};
+
+export type IssueInvoiceOptions = {
   paypal?: PayPalClient;
   appBaseUrl?: string;
   /** YYYY-MM-DD (UTC) */
   today?: string;
 };
 
-export type IssueDepositInvoiceResult =
+/** Kept for existing callers. */
+export type IssueDepositInvoiceOptions = IssueInvoiceOptions;
+
+export type IssueInvoiceResult =
   | { status: "skipped"; reason: string }
   | { status: "exists"; invoiceId: string }
   | {
@@ -33,6 +51,8 @@ export type IssueDepositInvoiceResult =
       paypalInvoiceId: string;
       payLink: string | null;
     };
+
+export type IssueDepositInvoiceResult = IssueInvoiceResult;
 
 async function defaultAppBaseUrl(): Promise<string> {
   // Loaded lazily so importing this module doesn't validate every env var.
@@ -50,10 +70,32 @@ async function defaultAppBaseUrl(): Promise<string> {
  *
  * Called by the state machine and by the creator's retry, never by clients.
  */
-export async function issueDepositInvoice(
+export function issueDepositInvoice(
   commissionId: string,
-  options: IssueDepositInvoiceOptions = {},
-): Promise<IssueDepositInvoiceResult> {
+  options: IssueInvoiceOptions = {},
+): Promise<IssueInvoiceResult> {
+  return issueInvoice(commissionId, "deposit", options);
+}
+
+/**
+ * Side effect of in_progress -> delivered: creates and sends the balance
+ * invoice (total − deposit, due in 7 days). Skipped for a zero balance, which
+ * the state machine moves straight to fully_paid. Same idempotency as the
+ * deposit invoice. When it's paid, the webhook or the polling fallback moves
+ * the commission delivered -> fully_paid.
+ */
+export function issueBalanceInvoice(
+  commissionId: string,
+  options: IssueInvoiceOptions = {},
+): Promise<IssueInvoiceResult> {
+  return issueInvoice(commissionId, "balance", options);
+}
+
+async function issueInvoice(
+  commissionId: string,
+  kind: InvoiceKind,
+  options: IssueInvoiceOptions,
+): Promise<IssueInvoiceResult> {
   const appBaseUrl = options.appBaseUrl ?? (await defaultAppBaseUrl());
   const today = options.today ?? utcToday();
 
@@ -68,7 +110,7 @@ export async function issueDepositInvoice(
           orderBy: { version: "desc" },
           include: { confirmations: true },
         },
-        invoices: { where: { kind: "deposit" }, orderBy: { createdAt: "asc" } },
+        invoices: { where: { kind }, orderBy: { createdAt: "asc" } },
       },
     });
     if (!commission) throw notFound();
@@ -83,7 +125,7 @@ export async function issueDepositInvoice(
       throw new Error("No agreement version is confirmed by both parties.");
     }
 
-    const plan = planDepositInvoice({
+    const plan = PLANNERS[kind]({
       agreement: readAgreement(inForce.content),
       version: inForce.version,
       contentHash: inForce.contentHash,
@@ -99,7 +141,7 @@ export async function issueDepositInvoice(
       (await tx.invoice.create({
         data: {
           commissionId,
-          kind: "deposit",
+          kind,
           status: "draft",
           amount: plan.amount,
           currency: plan.currency,
@@ -137,11 +179,11 @@ export async function issueDepositInvoice(
   if (row.paypalInvoiceId) {
     invoice = await paypal.getInvoice(row.paypalInvoiceId);
   } else {
-    const number = invoiceNumber(commissionId, "deposit", attempt);
+    const number = invoiceNumber(commissionId, kind, attempt);
     try {
       invoice = await paypal.createInvoice({
         commissionId,
-        kind: "deposit",
+        kind,
         attempt,
         invoicerEmail: plan.invoicerEmail,
         recipientEmail: plan.recipientEmail,
@@ -183,7 +225,7 @@ export async function issueDepositInvoice(
       type: "invoice_sent",
       actor: "system",
       meta: {
-        kind: "deposit",
+        kind,
         invoiceId: row.id,
         paypalInvoiceId: invoice.id,
         amount: plan.amount,

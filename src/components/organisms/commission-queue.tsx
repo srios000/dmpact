@@ -51,13 +51,18 @@ import {
   daysLeft,
   deadlineTone,
   overduePayment,
+  paymentLabel,
+  paymentTone,
   summarize,
   type MoneyByCurrency,
   type QueueRow,
 } from "@/lib/queue/queue";
 import type { PaymentStatus } from "@/lib/repositories/shared";
 import { SERVICE_LABELS, type ServiceType } from "@/lib/schema/agreement";
-import { canRetryDepositInvoice } from "@/lib/state-machine/deposit-retry";
+import {
+  canRetryBalanceInvoice,
+  canRetryDepositInvoice,
+} from "@/lib/state-machine/deposit-retry";
 import { STATE_LABELS } from "@/lib/state-machine/labels";
 import type { CommissionState } from "@/lib/state-machine/rules";
 
@@ -111,7 +116,11 @@ type RowAction = (
   commissionId: string,
 ) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
 
-type RowActionHandlers = { startWork: RowAction; retryDeposit: RowAction };
+type RowActionHandlers = {
+  startWork: RowAction;
+  retryDeposit: RowAction;
+  retryBalance: RowAction;
+};
 
 type QueueError = { title: string; message: string };
 
@@ -175,30 +184,6 @@ function isFooter(p: { node?: IRowNode | null }): boolean {
 
 function rowOf(p: { data?: QueueRow; node?: IRowNode | null }) {
   return p.data && !isFooter(p) ? p.data : null;
-}
-
-function paymentLabel(payment: PaymentStatus, late: boolean): string {
-  if (late) return "Overdue";
-  switch (payment.status) {
-    case "not_required":
-      return "None";
-    case "not_created":
-    case "draft":
-      return "Not sent";
-    case "sent":
-      return "Unpaid";
-    case "paid":
-      return "Paid";
-    case "cancelled":
-      return "Cancelled";
-  }
-}
-
-function paymentTone(payment: PaymentStatus, late: boolean) {
-  if (late) return "late" as const;
-  if (payment.status === "paid") return "paid" as const;
-  if (payment.status === "sent") return "waiting" as const;
-  return "idle" as const;
 }
 
 function canStartWork(row: QueueRow): boolean {
@@ -296,6 +281,16 @@ function RowActions({
           disabled={pending}
           onClick={() =>
             run(actions.retryDeposit, "Couldn't send the deposit invoice")
+          }
+        >
+          <RotateCwIcon />
+        </ActionButton>
+      ) : canRetryBalanceInvoice(row.state, row.balance.status) ? (
+        <ActionButton
+          label="Send balance invoice again"
+          disabled={pending}
+          onClick={() =>
+            run(actions.retryBalance, "Couldn't send the balance invoice")
           }
         >
           <RotateCwIcon />
@@ -528,6 +523,7 @@ export interface CommissionQueueProps {
   today: string;
   startWork: RowAction;
   retryDeposit: RowAction;
+  retryBalance: RowAction;
 }
 
 function CommissionQueue({
@@ -535,6 +531,7 @@ function CommissionQueue({
   today,
   startWork,
   retryDeposit,
+  retryBalance,
 }: CommissionQueueProps) {
   const router = useRouter();
   const gridRef = React.useRef<AgGridReact<QueueRow>>(null);
@@ -552,8 +549,8 @@ function CommissionQueue({
     return map;
   }, [rows]);
   const columns = React.useMemo(
-    () => buildColumns({ startWork, retryDeposit }, setError),
-    [startWork, retryDeposit],
+    () => buildColumns({ startWork, retryDeposit, retryBalance }, setError),
+    [startWork, retryDeposit, retryBalance],
   );
   const context = React.useMemo<GridContext>(
     () => ({ footer, today }),

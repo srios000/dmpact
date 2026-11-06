@@ -84,8 +84,7 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
   const currency = agreement.price.currency;
   const clientEmail = agreement.parties?.client?.email ?? null;
   const awaitingClient = view.awaitingClient && status.state === view.state;
-  const needsEmail =
-    !clientEmail && agreement.deposit.type !== "none" && awaitingClient;
+  const needsEmail = !clientEmail && awaitingClient;
   const invoiceOut =
     status.deposit.status === "sent" || status.balance.status === "sent";
 
@@ -308,8 +307,10 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
               <form onSubmit={handleEmail} className="space-y-2">
                 <Label htmlFor="paypal-email">Your PayPal email</Label>
                 <p className="text-sm text-muted-foreground">
-                  The deposit invoice goes to this address. You can confirm once{" "}
-                  {view.creatorName} adds it.
+                  {agreement.deposit.type === "none"
+                    ? "The invoice goes to this address."
+                    : "The deposit invoice goes to this address."}{" "}
+                  You can confirm once {view.creatorName} adds it.
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input

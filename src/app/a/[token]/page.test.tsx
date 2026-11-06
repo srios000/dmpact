@@ -5,6 +5,7 @@ import ClientAgreementPage from "./page";
 vi.mock("@/lib/repositories/agreement-repository", () => ({
   getClientAgreement: vi.fn(),
 }));
+vi.mock("@/lib/repositories/delivery-repository", () => ({}));
 
 const render = (token: string) =>
   ClientAgreementPage({

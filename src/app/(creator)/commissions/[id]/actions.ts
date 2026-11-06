@@ -10,6 +10,7 @@ import {
 import { env } from "@/lib/env";
 import * as agreements from "@/lib/repositories/agreement-repository";
 import * as commissions from "@/lib/repositories/commission-repository";
+import * as deliveries from "@/lib/repositories/delivery-repository";
 import { getRateCard } from "@/lib/repositories/rate-card-repository";
 import { notFound } from "@/lib/repositories/shared";
 import {
@@ -19,17 +20,25 @@ import {
 } from "@/lib/repositories/action-result";
 import { RepositoryError } from "@/lib/repositories/errors";
 import {
+  retryBalanceInvoiceSchema,
   retryDepositInvoiceSchema,
   saveAgreementVersionSchema,
   sendToClientSchema,
   suggestCounteroffersSchema,
   transitionCommissionSchema,
+  type RetryBalanceInvoiceInput,
   type RetryDepositInvoiceInput,
   type SaveAgreementVersionInput,
   type SendToClientInput,
   type SuggestCounteroffersInput,
   type TransitionCommissionInput,
 } from "@/lib/schema/commission-forms";
+import {
+  createDeliveryUploadSchema,
+  recordDeliverySchema,
+  type CreateDeliveryUploadInput,
+  type RecordDeliveryInput,
+} from "@/lib/schema/delivery";
 import type { TransitionResult } from "@/lib/state-machine/transition";
 
 function refresh(commissionId: string) {
@@ -127,6 +136,63 @@ export async function retryDepositInvoice(
     if (error instanceof RepositoryError && error.code === "invoice_failed") {
       refresh(parsed.data.commissionId);
     }
+    return toActionFailure(error);
+  }
+}
+
+export async function retryBalanceInvoice(
+  input: RetryBalanceInvoiceInput,
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof commissions.retryBalanceInvoice>>>
+> {
+  const parsed = retryBalanceInvoiceSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    const data = await commissions.retryBalanceInvoice(
+      parsed.data.commissionId,
+    );
+    refresh(parsed.data.commissionId);
+    return { ok: true, data };
+  } catch (error) {
+    if (error instanceof RepositoryError && error.code === "invoice_failed") {
+      refresh(parsed.data.commissionId);
+    }
+    return toActionFailure(error);
+  }
+}
+
+export async function createDeliveryUpload(
+  input: CreateDeliveryUploadInput,
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof deliveries.createDeliveryUpload>>>
+> {
+  const parsed = createDeliveryUploadSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    return {
+      ok: true,
+      data: await deliveries.createDeliveryUpload(parsed.data),
+    };
+  } catch (error) {
+    return toActionFailure(error);
+  }
+}
+
+export async function recordDelivery(
+  input: RecordDeliveryInput,
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof deliveries.recordDelivery>>>
+> {
+  const parsed = recordDeliverySchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    const data = await deliveries.recordDelivery(parsed.data);
+    refresh(parsed.data.commissionId);
+    return { ok: true, data };
+  } catch (error) {
     return toActionFailure(error);
   }
 }
