@@ -59,6 +59,10 @@ export const suggestCounteroffersSchema = z.strictObject({
   commissionId: commissionIdSchema,
 });
 
+export const retryDepositInvoiceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
 export const confirmAgreementSchema = z.strictObject({
   token: clientTokenSchema,
   versionHash: versionHashSchema,
@@ -80,4 +84,7 @@ export type TransitionCommissionInput = z.input<
 >;
 export type SuggestCounteroffersInput = z.input<
   typeof suggestCounteroffersSchema
+>;
+export type RetryDepositInvoiceInput = z.input<
+  typeof retryDepositInvoiceSchema
 >;

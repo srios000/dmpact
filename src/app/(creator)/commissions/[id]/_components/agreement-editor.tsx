@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CircleAlertIcon, CopyIcon } from "lucide-react";
 import { AgreementForm } from "@/components/organisms/agreement-form";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -11,7 +12,11 @@ import type { Agreement } from "@/lib/schema/agreement";
 import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
 import type { getCommission } from "@/lib/repositories/commission-repository";
-import { saveAgreementVersion, sendToClient } from "../actions";
+import {
+  retryDepositInvoice,
+  saveAgreementVersion,
+  sendToClient,
+} from "../actions";
 import {
   AgreementVersionHistory,
   type VersionItem,
@@ -51,6 +56,8 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
   const [copied, setCopied] = React.useState(false);
   const [saving, startSaving] = React.useTransition();
   const [sending, startSending] = React.useTransition();
+  const [retryError, setRetryError] = React.useState<string | null>(null);
+  const [retrying, startRetrying] = React.useTransition();
 
   const facts = readAgreementFacts(latest.agreement);
   const unsaved = dirty || loaded !== null;
@@ -96,6 +103,25 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
     });
   }
 
+  function handleRetryDeposit() {
+    setError(null);
+    setNotice(null);
+    setRetryError(null);
+    startRetrying(async () => {
+      const result = await retryDepositInvoice({ commissionId: commission.id });
+      if (result.ok) {
+        setNotice(
+          "Deposit invoice sent. The client can pay it from their link.",
+        );
+      } else if (result.error.code === "invoice_failed") {
+        setRetryError(result.error.message);
+      } else {
+        setError(result.error.message);
+      }
+      router.refresh();
+    });
+  }
+
   async function handleCopy() {
     if (!clientLink) return;
     await navigator.clipboard.writeText(
@@ -120,6 +146,33 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
           {intro(commission, mode)}
         </p>
       </header>
+
+      {commission.depositRetry && (
+        <Alert variant="destructive" className="max-w-2xl p-4">
+          <CircleAlertIcon />
+          <AlertTitle>
+            {retryError
+              ? "The deposit invoice still wasn't sent"
+              : "The deposit invoice wasn't sent"}
+          </AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>The client can&apos;t pay the deposit until it goes out.</p>
+            {(retryError ?? commission.depositRetry.error) && (
+              <p className="break-words">
+                {retryError ?? commission.depositRetry.error}
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={retrying}
+              onClick={handleRetryDeposit}
+            >
+              {retrying ? "Sending..." : "Send deposit invoice again"}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {error && (
         <p

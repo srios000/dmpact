@@ -17,11 +17,14 @@ import {
   toActionFailure,
   type ActionResult,
 } from "@/lib/repositories/action-result";
+import { RepositoryError } from "@/lib/repositories/errors";
 import {
+  retryDepositInvoiceSchema,
   saveAgreementVersionSchema,
   sendToClientSchema,
   suggestCounteroffersSchema,
   transitionCommissionSchema,
+  type RetryDepositInvoiceInput,
   type SaveAgreementVersionInput,
   type SendToClientInput,
   type SuggestCounteroffersInput,
@@ -102,6 +105,28 @@ export async function suggestCounteroffers(
     });
     return { ok: true, data };
   } catch (error) {
+    return toActionFailure(error);
+  }
+}
+
+export async function retryDepositInvoice(
+  input: RetryDepositInvoiceInput,
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof commissions.retryDepositInvoice>>>
+> {
+  const parsed = retryDepositInvoiceSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    const data = await commissions.retryDepositInvoice(
+      parsed.data.commissionId,
+    );
+    refresh(parsed.data.commissionId);
+    return { ok: true, data };
+  } catch (error) {
+    if (error instanceof RepositoryError && error.code === "invoice_failed") {
+      refresh(parsed.data.commissionId);
+    }
     return toActionFailure(error);
   }
 }

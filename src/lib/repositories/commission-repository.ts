@@ -4,6 +4,10 @@ import { withComputedAmounts } from "@/lib/money/agreement";
 import { currencyExponent } from "@/lib/money/decimal";
 import { contentHash } from "@/lib/schema/content-hash";
 import type { Agreement } from "@/lib/schema/agreement";
+import {
+  canRetryDepositInvoice,
+  depositFailureMessage,
+} from "@/lib/state-machine/deposit-retry";
 import { effectHandlers } from "@/lib/state-machine/effect-handlers";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import {
@@ -13,6 +17,10 @@ import {
 } from "@/lib/state-machine/transition";
 import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { RepositoryError } from "./errors";
+import {
+  issueDepositInvoice,
+  type IssueDepositInvoiceOptions,
+} from "./invoice-repository";
 import {
   agreementInForce,
   isClientToken,
@@ -123,6 +131,12 @@ export async function getCommission(id: string) {
   const versions = commission.agreementVersions;
   const inForce = agreementInForce(versions);
   const latest = versions[versions.length - 1];
+  const retryable =
+    !!inForce &&
+    canRetryDepositInvoice(
+      commission.state,
+      paymentsOf(inForce.content, commission.invoices).deposit.status,
+    );
 
   return {
     id: commission.id,
@@ -133,6 +147,9 @@ export async function getCommission(id: string) {
     updatedAt: commission.updatedAt.toISOString(),
     inForceVersion: inForce?.version ?? null,
     awaitingClient: !!inForce && inForce.version !== latest.version,
+    depositRetry: retryable
+      ? { error: depositFailureMessage(commission.events) }
+      : null,
     versions: versions.map((v) => ({
       id: v.id,
       version: v.version,
@@ -257,6 +274,57 @@ export async function transitionCommission(input: {
   if (!owned) throw notFound();
 
   return transition(db, { ...input, actor: "creator" }, effectHandlers);
+}
+
+export async function retryDepositInvoice(
+  commissionId: string,
+  options?: IssueDepositInvoiceOptions,
+) {
+  const creator = await requireCreator();
+  const commission = await db.commission.findFirst({
+    where: { id: commissionId, creatorId: creator.id },
+    include: {
+      agreementVersions: { include: { confirmations: true } },
+      invoices: true,
+    },
+  });
+  if (!commission) throw notFound();
+
+  const inForce = agreementInForce(commission.agreementVersions);
+  if (
+    !inForce ||
+    !canRetryDepositInvoice(
+      commission.state,
+      paymentsOf(inForce.content, commission.invoices).deposit.status,
+    )
+  ) {
+    throw new RepositoryError(
+      "retry_not_allowed",
+      "There is no deposit invoice to send again.",
+    );
+  }
+
+  let result: Awaited<ReturnType<typeof issueDepositInvoice>>;
+  try {
+    result = await issueDepositInvoice(commissionId, options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await db.commissionEvent.create({
+      data: {
+        commissionId,
+        type: "effect_failed",
+        actor: "creator",
+        reason: "createDepositInvoice",
+        meta: { message },
+      },
+    });
+    throw new RepositoryError("invoice_failed", message);
+  }
+
+  if (result.status === "skipped") {
+    throw new RepositoryError("retry_not_allowed", result.reason);
+  }
+  return result;
 }
 
 export async function getCommissionStatus(

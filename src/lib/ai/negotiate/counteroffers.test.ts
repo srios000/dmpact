@@ -303,9 +303,10 @@ describe("generateCounteroffers on the lowball test DMs", () => {
   });
 
   it.each(cases)("$file", async ({ paste_date, expected }) => {
+    // Fixtures list their flags in expected_ambiguity_codes instead, and their
+    // extraction block only holds source_language for the eval.
     const result = await generateCounteroffers({
-      // Fixtures list their flags in expected_ambiguity_codes instead.
-      agreement: { ...expected, ambiguities: [] },
+      agreement: { ...expected, ambiguities: [], extraction: undefined },
       settings,
       today: paste_date,
       client: null,
