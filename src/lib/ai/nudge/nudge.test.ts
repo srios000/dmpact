@@ -26,7 +26,8 @@ function modelReturning(...outputs: unknown[]): ModelClient {
     generateJson: vi.fn(async () => {
       const next = queue.length > 1 ? queue.shift() : queue[0];
       if (next instanceof Error) throw next;
-      return typeof next === "string" ? next : JSON.stringify(next);
+      const text = typeof next === "string" ? next : JSON.stringify(next);
+      return { text, model: "test-model" };
     }),
   };
 }
