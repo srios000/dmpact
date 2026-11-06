@@ -25,25 +25,14 @@ import { SUPPORTED_CURRENCIES } from "@/lib/ai/extract/post-checks";
 import { flagKey, reviewAgreement } from "@/lib/ai/extract/review";
 import {
   agreementSchema,
+  SERVICE_LABELS,
   SERVICE_TYPES,
   type Agreement,
   type Ambiguity,
-  type ServiceType,
 } from "@/lib/schema/agreement";
 import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 
 type AgreementInput = z.input<typeof agreementSchema>;
-
-const SERVICE_LABELS: Record<ServiceType, string> = {
-  mixing: "Mixing",
-  mastering: "Mastering",
-  mix_and_master: "Mix and master",
-  illustration: "Illustration",
-  live2d_rigging: "Live2D rigging",
-  mv_editing: "MV editing",
-  thumbnail: "Thumbnail",
-  other: "Other",
-};
 
 const SECTIONS = [
   { key: "title", label: "Title", prefixes: ["/title"] },
