@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "schema:generate": "tsx scripts/generate-json-schema.ts",
+    "eval:negotiate": "tsx evals/negotiate.ts",
     "prepare": "husky",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
