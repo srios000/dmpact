@@ -116,7 +116,7 @@ stateDiagram-v2
 | Transition | Trigger | Guard | Side effect |
 |---|---|---|---|
 | draft → negotiating | Creator | No `blocker` ambiguities, valid agreement | Generate client token |
-| negotiating → agreed | Client confirm | Valid agreement, both confirmations on the same `content_hash` | Create + send deposit invoice |
+| negotiating → agreed | Client confirm | Valid agreement, both confirmations on the same `content_hash`, client email set when there is a deposit | Create + send deposit invoice |
 | agreed → dp_paid | PayPal webhook | Verified signature, invoice = this commission's deposit | — |
 | dp_paid → in_progress | Creator | — | — |
 | in_progress → delivered | Delivery upload | ≥ 1 delivery log entry, valid agreement | Create + send balance invoice (skip if balance = 0 → straight to fully_paid) |
@@ -213,7 +213,7 @@ Vercel Cron (once a day, plus a manual "Run now" button for the demo) calls `GET
 | `DIRECT_URL` | Prisma CLI / migrations via `prisma.config.ts` (direct connection) |
 | `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET` | Neon Auth (creator login) |
 | `AWS_ENDPOINT_URL_S3`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Neon Object Storage (delivery files, server only) |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | AI modules |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL` | AI modules |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | PayPal client |
 | `PAYPAL_API_BASE` = `https://api-m.sandbox.paypal.com` | PayPal client |
 | `PAYPAL_WEBHOOK_ID` | Webhook signature verification |

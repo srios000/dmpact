@@ -286,3 +286,108 @@ describe("runPostChecks", () => {
     expect(a.deposit.amount).toBeUndefined();
   });
 });
+
+describe("runPostChecks: relative dates, vague phrases, question language", () => {
+  const withDeadline = (raw_text: string, date = "2026-11-20") =>
+    run(baseAgreement({ deadline: { date, raw_text, is_relative: false } }));
+
+  it("flags a relative phrase even when the model forgot is_relative", () => {
+    for (const raw of [
+      "before my debut on the 20th",
+      "next Friday",
+      "by friday",
+      "tomorrow",
+      "in 2 weeks",
+      "tanggal 20 ya",
+      "minggu depan",
+      "besok",
+      "3 hari lagi",
+      "hari jumat",
+    ]) {
+      const result = withDeadline(raw);
+      expect(result.deadline.is_relative).toBe(true);
+      expect(codes(result)).toContain("RELATIVE_DEADLINE");
+    }
+  });
+
+  it("does not flag absolute dates as relative", () => {
+    for (const raw of [
+      "November 20, 2026",
+      "Nov 20 2026",
+      "the 20th of November",
+      "20 November 2026",
+      "tanggal 20 November",
+      "2026-11-20",
+    ]) {
+      const result = withDeadline(raw);
+      expect(result.deadline.is_relative).toBe(false);
+      expect(codes(result)).not.toContain("RELATIVE_DEADLINE");
+    }
+  });
+
+  it("treats Indonesian vague deadlines as no exact date", () => {
+    for (const raw of [
+      "secepat mungkin",
+      "sebisanya aja",
+      "gak buru-buru kok",
+      "santai aja",
+      "kapan aja boleh",
+    ]) {
+      const result = withDeadline(raw);
+      expect(result.deadline.date).toBeNull();
+      expect(codes(result)).toContain("MISSING_DEADLINE");
+    }
+  });
+
+  it("fills default questions in Indonesian for Indonesian chats", () => {
+    const a = baseAgreement({
+      price: { total: null, currency: null },
+      extraction: {
+        model: "",
+        prompt_version: "",
+        confidence: 0.9,
+        source_language: "id",
+      },
+    });
+    const flag = run(a).ambiguities.find((x) => x.code === "MISSING_PRICE");
+    expect(flag?.suggested_question).toBe(
+      "Total harganya berapa yang kita sepakati, Kak?",
+    );
+  });
+
+  it("keeps English default questions for English, mixed and unknown chats", () => {
+    for (const source_language of ["en", "mixed", "unknown"]) {
+      const a = baseAgreement({
+        price: { total: null, currency: null },
+        extraction: {
+          model: "",
+          prompt_version: "",
+          confidence: 0.9,
+          source_language,
+        },
+      });
+      const flag = run(a).ambiguities.find((x) => x.code === "MISSING_PRICE");
+      expect(flag?.suggested_question).toBe(
+        "What total price are we agreeing on?",
+      );
+    }
+  });
+
+  it("never overwrites a question the model wrote", () => {
+    const a = baseAgreement({
+      price: { total: null, currency: null },
+      ambiguities: [
+        {
+          code: "MISSING_PRICE",
+          severity: "blocker",
+          field: "/price/total",
+          message: "No price.",
+          source_quote: null,
+          suggested_question: "Berapa budgetnya, Kak?",
+        },
+      ],
+    });
+    const flag = run(a).ambiguities.find((x) => x.code === "MISSING_PRICE");
+    expect(flag?.suggested_question).toBe("Berapa budgetnya, Kak?");
+  });
+});

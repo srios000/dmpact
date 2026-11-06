@@ -1,0 +1,388 @@
+{
+  "ranAt": "2026-11-05T14:20:21.459Z",
+  "model": "gemini-3.1-flash-lite",
+  "promptVersion": "extract-v2",
+  "filter": null,
+  "summary": {
+    "cases": 21,
+    "passed": 14,
+    "passRate": 0.6666666666666666,
+    "fieldAccuracy": 0.9791666666666666,
+    "keyFieldAccuracy": 0.9903846153846154,
+    "ambiguityRecall": 0.9090909090909091,
+    "ambiguityPrecision": 0.7142857142857143
+  },
+  "latencyMs": {
+    "p50": 3701.9865000000063,
+    "p95": 4569.895900000001,
+    "max": 4998.016
+  },
+  "gates": {
+    "pass": true,
+    "failures": []
+  },
+  "cases": [
+    {
+      "name": "001-mix-clear",
+      "latencyMs": 3387.2180000000003,
+      "note": "",
+      "fieldsTotal": 22,
+      "fieldsMatched": 22,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "002-illustration-clear",
+      "latencyMs": 1880.6459999999997,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "003-mv-edit-clear",
+      "latencyMs": 3165.4066999999995,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "004-live2d-clear",
+      "latencyMs": 3627.4354000000003,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "005-missing-price",
+      "latencyMs": 4569.895900000001,
+      "note": "",
+      "fieldsTotal": 18,
+      "fieldsMatched": 18,
+      "keyFieldsTotal": 9,
+      "keyFieldsMatched": 9,
+      "extraCodes": ["AMBIGUOUS_CURRENCY"],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": ["AMBIGUOUS_CURRENCY"],
+      "expectedCodes": 2,
+      "pass": false
+    },
+    {
+      "name": "006-vague-deadline-asap",
+      "latencyMs": 3816.1373999999996,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 19,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 9,
+      "extraCodes": [],
+      "mismatches": [
+        {
+          "path": "/deadline/is_relative",
+          "expected": false,
+          "actual": true
+        }
+      ],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": false
+    },
+    {
+      "name": "007-missing-revisions",
+      "latencyMs": 4998.016,
+      "note": "",
+      "fieldsTotal": 22,
+      "fieldsMatched": 21,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [
+        {
+          "path": "/service_type",
+          "expected": "thumbnail",
+          "actual": "other"
+        }
+      ],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": false
+    },
+    {
+      "name": "008-missing-usage-rights",
+      "latencyMs": 3847.4825999999994,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": true
+    },
+    {
+      "name": "009-relative-deadline",
+      "latencyMs": 3576.1578999999983,
+      "note": "",
+      "fieldsTotal": 22,
+      "fieldsMatched": 19,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 9,
+      "extraCodes": [],
+      "mismatches": [
+        {
+          "path": "/deliverables/1/id",
+          "expected": "d2"
+        },
+        {
+          "path": "/deliverables/1/quantity",
+          "expected": 1
+        },
+        {
+          "path": "/deadline/is_relative",
+          "expected": true,
+          "actual": false
+        }
+      ],
+      "missingCodes": ["RELATIVE_DEADLINE"],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": false
+    },
+    {
+      "name": "010-past-deadline",
+      "latencyMs": 4400.969499999999,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": true
+    },
+    {
+      "name": "011-unsupported-currency-idr",
+      "latencyMs": 3701.9865000000063,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": true
+    },
+    {
+      "name": "012-ambiguous-currency",
+      "latencyMs": 4373.447099999998,
+      "note": "",
+      "fieldsTotal": 22,
+      "fieldsMatched": 22,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": true
+    },
+    {
+      "name": "013-conflicting-price",
+      "latencyMs": 4438.714899999999,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 9,
+      "keyFieldsMatched": 9,
+      "extraCodes": ["MISSING_DEPOSIT_TERMS"],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": true
+    },
+    {
+      "name": "014-lowball-mix",
+      "latencyMs": 3898.4305999999997,
+      "note": "",
+      "fieldsTotal": 24,
+      "fieldsMatched": 23,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [
+        {
+          "path": "/deliverables/2/quantity",
+          "expected": 2,
+          "actual": 1
+        }
+      ],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": false
+    },
+    {
+      "name": "015-lowball-live2d",
+      "latencyMs": 4166.000199999995,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": ["OTHER"],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "016-lowball-illustration",
+      "latencyMs": 3572.4829000000027,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "017-lowball-mv",
+      "latencyMs": 1907.3411999999953,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    },
+    {
+      "name": "018-mixed-id-slang",
+      "latencyMs": 2219.8322000000044,
+      "note": "",
+      "fieldsTotal": 22,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [
+        {
+          "path": "/deliverables/1/id",
+          "expected": "d2"
+        },
+        {
+          "path": "/deliverables/1/quantity",
+          "expected": 1
+        }
+      ],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": false
+    },
+    {
+      "name": "019-mixed-jp-slang",
+      "latencyMs": 2505.4116000000067,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 19,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": ["MISSING_CLIENT_EMAIL"],
+      "mismatches": [
+        {
+          "path": "/parties/client/email",
+          "expected": "yuki.ch@example.com",
+          "actual": null
+        }
+      ],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": false
+    },
+    {
+      "name": "020-prompt-injection",
+      "latencyMs": 3703.5172999999922,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 1,
+      "pass": true
+    },
+    {
+      "name": "021-other-emote-pack",
+      "latencyMs": 3321.3540000000066,
+      "note": "",
+      "fieldsTotal": 20,
+      "fieldsMatched": 20,
+      "keyFieldsTotal": 10,
+      "keyFieldsMatched": 10,
+      "extraCodes": [],
+      "mismatches": [],
+      "missingCodes": [],
+      "unexpectedBlockers": [],
+      "expectedCodes": 0,
+      "pass": true
+    }
+  ]
+}

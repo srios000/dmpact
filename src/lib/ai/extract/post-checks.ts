@@ -39,10 +39,38 @@ export const DEFAULT_DEPOSIT_PERCENT = 50;
 
 /** Phrases that never count as an exact deadline (FR-1.9). */
 const VAGUE_DEADLINE =
-  /\b(asap|a\.s\.a\.p|as soon as possible|whenever|any ?time|no rush|secepatnya|sesegera mungkin|kapan (aja|saja|pun)|hayaku|itsudemo)\b/i;
+  /\b(asap|a\.s\.a\.p|as soon as possible|whenever|any ?time|no rush|no hurry|when you'?re free|secepatnya|secepat mungkin|sesegera mungkin|sebisanya|kapan[- ]?(aja|saja|pun|kapan)|(tidak|nggak|ngga|gak|ga) (usah )?buru[- ]?buru|santai (aja|saja)|hayaku|itsudemo)\b/i;
 
-/** Used when a flag has no question from the model (FR-1.4). */
-const DEFAULT_QUESTIONS: Partial<Record<AmbiguityCode, string>> = {
+/**
+ * Phrases that are relative to the paste date, so the AI's resolved date needs
+ * the creator's confirmation (FR-1.5). Backstop for when the model forgets
+ * `is_relative`.
+ */
+const WEEKDAY =
+  "(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?|senin|selasa|rabu|kamis|jum'?at|sabtu|minggu";
+const RELATIVE_DATE = new RegExp(
+  `\\b(today|tonight|tomorrow|besok|lusa|hari ini|nanti malam` +
+    `|(next|this|coming) (week|month|weekend|${WEEKDAY})` +
+    `|(by|on|before|until|sebelum|hari) (${WEEKDAY})` +
+    `|in (a|an|one|two|three|\\d+) (day|week|month)s?` +
+    `|\\d+ (day|week|month)s? (from now|later)` +
+    `|(minggu|pekan|bulan) (ini|depan)` +
+    `|\\d+ (hari|minggu|pekan|bulan) lagi` +
+    `|(${WEEKDAY}) (ini|depan))\\b`,
+  "i",
+);
+/** "the 20th", "tanggal 20": a day with no month or year. */
+const DAY_ONLY = /\b\d{1,2}(st|nd|rd|th)\b|\b(tanggal|tgl\.?) ?\d{1,2}\b/i;
+const HAS_MONTH_OR_YEAR =
+  /\b(jan(uary|uari)?|feb(ruary|ruari)?|mar(ch|et)?|apr(il)?|may|mei|june?|juni|july?|juli|aug(ust|ustus)?|agu(stus)?|sep(t(ember)?)?|oct(ober)?|okt(ober)?|nov(ember)?|dec(ember)?|des(ember)?)\b|\b\d{4}\b|\d{1,2}[/-]\d{1,2}/i;
+
+export function isRelativeDeadlineText(rawText: string): boolean {
+  if (RELATIVE_DATE.test(rawText)) return true;
+  return DAY_ONLY.test(rawText) && !HAS_MONTH_OR_YEAR.test(rawText);
+}
+
+/** Used when a flag has no question from the model (FR-1.4). English. */
+const DEFAULT_QUESTIONS_EN: Partial<Record<AmbiguityCode, string>> = {
   MISSING_PRICE: "What total price are we agreeing on?",
   AMBIGUOUS_CURRENCY: "Which currency is this price in?",
   UNSUPPORTED_CURRENCY: "PayPal can't invoice this currency. Can we use USD?",
@@ -57,6 +85,28 @@ const DEFAULT_QUESTIONS: Partial<Record<AmbiguityCode, string>> = {
     "Will this be used commercially, and do you need to credit me?",
   MISSING_CLIENT_EMAIL: "What is your PayPal email for the invoice?",
 };
+
+/** Same questions for Indonesian chats (source_language "id"). */
+const DEFAULT_QUESTIONS_ID: Partial<Record<AmbiguityCode, string>> = {
+  MISSING_PRICE: "Total harganya berapa yang kita sepakati, Kak?",
+  AMBIGUOUS_CURRENCY: "Harganya dalam mata uang apa, Kak?",
+  UNSUPPORTED_CURRENCY:
+    "PayPal tidak bisa membuat invoice dalam mata uang ini. Boleh pakai USD, Kak?",
+  SCOPE_UNCLEAR: "Apa saja yang harus saya kerjakan, Kak?",
+  MISSING_DEADLINE: "Deadline-nya tanggal berapa persisnya, Kak?",
+  RELATIVE_DEADLINE: "Boleh dikonfirmasi tanggal pengirimannya, Kak?",
+  PAST_DEADLINE: "Tanggal itu sudah lewat. Pakai tanggal berapa, Kak?",
+  MISSING_REVISIONS: "Berapa kali revisi yang sudah termasuk, Kak?",
+  MISSING_DEPOSIT_TERMS: "DP 50% oke ya, Kak?",
+  DEPOSIT_EXCEEDS_TOTAL: "DP-nya berapa yang kita pakai, Kak?",
+  MISSING_USAGE_RIGHTS:
+    "Hasilnya dipakai untuk komersial atau tidak, dan perlu kredit ke saya, Kak?",
+  MISSING_CLIENT_EMAIL: "Email PayPal Kakak apa untuk invoice-nya?",
+};
+
+function defaultQuestions(sourceLanguage: string | undefined) {
+  return sourceLanguage === "id" ? DEFAULT_QUESTIONS_ID : DEFAULT_QUESTIONS_EN;
+}
 
 export type PostCheckInput = {
   agreement: Agreement;
@@ -167,6 +217,14 @@ export function runPostChecks({
   ) {
     result.deadline.date = null;
     result.deadline.is_relative = false;
+  }
+  // The model can forget is_relative; the phrase itself decides (FR-1.5).
+  if (
+    result.deadline.date !== null &&
+    rawDeadline &&
+    isRelativeDeadlineText(rawDeadline)
+  ) {
+    result.deadline.is_relative = true;
   }
   const deadlineDate = result.deadline.date;
   if (
@@ -347,14 +405,15 @@ export function runPostChecks({
     });
   }
 
-  // Blockers first; order is otherwise preserved.
+  // Blockers first; order is otherwise preserved. Questions the model left
+  // empty get a default in the chat's language.
+  const questions = defaultQuestions(result.extraction?.source_language);
   result.ambiguities = [
     ...flags.filter((a) => a.severity === "blocker"),
     ...flags.filter((a) => a.severity !== "blocker"),
   ].map((a) => ({
     ...a,
-    suggested_question:
-      a.suggested_question ?? DEFAULT_QUESTIONS[a.code] ?? null,
+    suggested_question: a.suggested_question ?? questions[a.code] ?? null,
   }));
 
   // Confidence cannot stay high when blockers exist.
