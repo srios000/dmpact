@@ -1,5 +1,6 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import {
   invalidInput,
   toActionFailure,
@@ -19,6 +20,7 @@ export async function saveRateCardSettings(
 
   try {
     await rateCards.saveRateCard(parsed.data);
+    updateTag("rate-card");
     return { ok: true, data: parsed.data };
   } catch (error) {
     return toActionFailure(error);

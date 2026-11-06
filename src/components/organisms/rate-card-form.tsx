@@ -1,19 +1,21 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { get, useForm, type FieldErrors } from "react-hook-form";
-import { SaveIcon } from "lucide-react";
+import { CircleAlertIcon, CircleCheckIcon, SaveIcon } from "lucide-react";
 import { FormField } from "@/components/molecules/form-field";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { ActionResult } from "@/lib/repositories/action-result";
 import { SERVICE_LABELS, SERVICE_TYPES } from "@/lib/schema/agreement";
 import {
   rateCardSettingsSchema,
   type RateCard,
   type RateCardSettings,
 } from "@/lib/schema/rate-card";
-import { saveRateCardSettings } from "@/app/(creator)/settings/rate-card/actions";
 
 const SERVICE_FIELDS = SERVICE_TYPES.filter((type) => type !== "other");
 
@@ -33,12 +35,18 @@ function errorAt(errors: FieldErrors<RateCardSettings>, path: string) {
   return typeof found?.message === "string" ? found.message : undefined;
 }
 
+type SaveRateCardAction = (
+  input: RateCardSettings,
+) => Promise<ActionResult<RateCardSettings>>;
+
 export interface RateCardFormProps {
   settings: RateCardSettings;
+  save: SaveRateCardAction;
 }
 
-function RateCardForm({ settings }: RateCardFormProps) {
+function RateCardForm({ settings, save }: RateCardFormProps) {
   const id = React.useId();
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -55,9 +63,10 @@ function RateCardForm({ settings }: RateCardFormProps) {
     setNotice(null);
     setError(null);
     startTransition(async () => {
-      const result = await saveRateCardSettings(values);
+      const result = await save(values);
       if (!result.ok) return setError(result.error.message);
       setNotice("Rate card saved.");
+      router.refresh();
     });
   }
 
@@ -66,20 +75,17 @@ function RateCardForm({ settings }: RateCardFormProps) {
   return (
     <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {error && (
-        <p
-          role="alert"
-          className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive"
-        >
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <CircleAlertIcon />
+          <AlertTitle>Couldn&apos;t save rate card</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       {notice && (
-        <p
-          role="status"
-          className="rounded-lg border bg-card p-4 text-sm text-foreground"
-        >
-          {notice}
-        </p>
+        <Alert>
+          <CircleCheckIcon />
+          <AlertTitle>{notice}</AlertTitle>
+        </Alert>
       )}
 
       <section className="space-y-6 rounded-xl border bg-card p-5 md:p-8">

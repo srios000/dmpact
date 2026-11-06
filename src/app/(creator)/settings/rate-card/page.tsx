@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { RateCardForm } from "@/components/organisms/rate-card-form";
 import { getRateCard } from "@/lib/repositories/rate-card-repository";
+import { saveRateCardSettings } from "./actions";
+
+export const instant = false;
 
 export const metadata: Metadata = {
   title: "Rate card | DMpact",
@@ -27,7 +30,10 @@ export default async function RateCardPage() {
         </p>
       )}
 
-      <RateCardForm settings={{ rate_card, mismatch_threshold_pct }} />
+      <RateCardForm
+        settings={{ rate_card, mismatch_threshold_pct }}
+        save={saveRateCardSettings}
+      />
     </div>
   );
 }
