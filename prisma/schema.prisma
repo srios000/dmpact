@@ -68,6 +68,7 @@ model Commission {
   confirmations     Confirmation[]
   invoices          Invoice[]
   deliveries        Delivery[]
+  deliveryDownloads DeliveryDownload[]
   events            CommissionEvent[]
   changeRequests    ChangeRequest[]
   followUpDms       FollowUpDm[]
@@ -129,19 +130,34 @@ model Invoice {
 }
 
 model Delivery {
-  id           String     @id @default(uuid(7)) @db.Uuid
-  commissionId String     @map("commission_id") @db.Uuid
+  id           String             @id @default(uuid(7)) @db.Uuid
+  commissionId String             @map("commission_id") @db.Uuid
   filename     String
-  sha256       String     @db.Char(64)
-  sizeBytes    Int        @map("size_bytes")
-  mimeType     String     @map("mime_type")
-  storageKey   String?    @map("storage_key")
-  isFinal      Boolean    @default(false) @map("is_final")
-  loggedAt     DateTime   @default(now()) @map("logged_at") @db.Timestamptz
-  commission   Commission @relation(fields: [commissionId], references: [id])
+  sha256       String             @db.Char(64)
+  sizeBytes    Int                @map("size_bytes")
+  mimeType     String             @map("mime_type")
+  storageKey   String?            @unique @map("storage_key")
+  isFinal      Boolean            @default(false) @map("is_final")
+  loggedAt     DateTime           @default(now()) @map("logged_at") @db.Timestamptz
+  commission   Commission         @relation(fields: [commissionId], references: [id])
+  downloads    DeliveryDownload[]
 
   @@index([commissionId])
   @@map("deliveries")
+}
+
+model DeliveryDownload {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  deliveryId   String     @map("delivery_id") @db.Uuid
+  commissionId String     @map("commission_id") @db.Uuid
+  userAgent    String?    @map("user_agent")
+  requestedAt  DateTime   @default(now()) @map("requested_at") @db.Timestamptz
+  delivery     Delivery   @relation(fields: [deliveryId], references: [id])
+  commission   Commission @relation(fields: [commissionId], references: [id])
+
+  @@index([deliveryId])
+  @@index([commissionId, requestedAt])
+  @@map("delivery_downloads")
 }
 
 model CommissionEvent {
