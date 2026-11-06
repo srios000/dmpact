@@ -112,7 +112,7 @@ describe.skipIf(!url)("issueDepositInvoice (database)", () => {
 
     const [created] = paypal.all();
     expect(created.invoiceNumber).toBe(
-      `CD-${id.replace(/-/g, "").toUpperCase()}-DP`,
+      `CD-${id.replace(/-/g, "").toUpperCase().slice(-15)}-DP`,
     );
     expect(created.raw.detail).toMatchObject({
       note: expect.stringContaining("https://dmpact.test/a/token-for-tests"),
