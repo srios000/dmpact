@@ -6,6 +6,7 @@ import { CommissionActions } from "@/components/organisms/commission-actions";
 import { CommissionClientDownloads } from "@/components/organisms/commission-client-downloads";
 import { CommissionDeliveries } from "@/components/organisms/commission-deliveries";
 import { CommissionInvoices } from "@/components/organisms/commission-invoices";
+import { CommissionLiveRefresh } from "@/components/organisms/commission-live-refresh";
 import { CommissionMessages } from "@/components/organisms/commission-messages";
 import { CommissionSummary } from "@/components/organisms/commission-summary";
 import { CommissionTimeline } from "@/components/organisms/commission-timeline";
@@ -64,6 +65,15 @@ export default async function CommissionDetailPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 md:px-12 md:py-10">
+      <CommissionLiveRefresh
+        commissionId={commission.id}
+        status={{
+          state: commission.state,
+          updatedAt: commission.updatedAt,
+          deposit: { status: commission.deposit.status },
+          balance: { status: commission.balance.status },
+        }}
+      />
       <div className="space-y-4">
         <Button
           size="sm"

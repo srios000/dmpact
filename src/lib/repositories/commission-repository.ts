@@ -126,7 +126,15 @@ export async function getCommission(id: string) {
       followUpDms: { orderBy: { createdAt: "asc" } },
       changeRequests: { orderBy: { createdAt: "asc" } },
       invoices: { orderBy: { createdAt: "asc" } },
-      deliveries: { orderBy: { loggedAt: "asc" } },
+      deliveries: {
+        orderBy: { loggedAt: "asc" },
+        include: {
+          downloads: {
+            orderBy: { requestedAt: "asc" },
+            select: { requestedAt: true },
+          },
+        },
+      },
       events: { orderBy: { at: "asc" } },
     },
   });
@@ -205,6 +213,7 @@ export async function getCommission(id: string) {
       mimeType: d.mimeType,
       isFinal: d.isFinal,
       loggedAt: d.loggedAt.toISOString(),
+      downloadedAt: d.downloads.map((x) => x.requestedAt.toISOString()),
     })),
     events: commission.events.map((e) => ({
       id: e.id,

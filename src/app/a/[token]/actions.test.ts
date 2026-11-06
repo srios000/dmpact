@@ -2,10 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { updateTag } from "next/cache";
 import * as agreements from "@/lib/repositories/agreement-repository";
 import { RepositoryError } from "@/lib/repositories/errors";
-import { confirmAgreement, requestChanges } from "./actions";
+import { requestDeliveryDownload } from "@/lib/repositories/delivery-repository";
+import { confirmAgreement, downloadDelivery, requestChanges } from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ updateTag: vi.fn() }));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ "user-agent": "Mozilla/5.0 test" }),
+}));
+vi.mock("@/lib/repositories/delivery-repository", () => ({
+  requestDeliveryDownload: vi.fn(),
+}));
 vi.mock("@/lib/repositories/agreement-repository", () => ({
   confirmAgreement: vi.fn(),
   requestChanges: vi.fn(),
@@ -89,5 +96,62 @@ describe("client actions", () => {
       expect(updateTag).toHaveBeenCalledWith("commissions");
       expect(updateTag).toHaveBeenCalledWith(`commission-${commissionId}`);
     });
+  });
+});
+
+describe("downloadDelivery", () => {
+  const deliveryId = "0f8fad5b-d9cb-469f-a165-70867728950e";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("logs the request with the browser's user agent and returns the link", async () => {
+    vi.mocked(requestDeliveryDownload).mockResolvedValue({
+      commissionId,
+      url: "https://bucket.test/get",
+      filename: "final.png",
+      expiresAt: "2026-11-06T00:05:00.000Z",
+    });
+
+    await expect(downloadDelivery(validToken, deliveryId)).resolves.toEqual({
+      ok: true,
+      data: {
+        url: "https://bucket.test/get",
+        filename: "final.png",
+        expiresAt: "2026-11-06T00:05:00.000Z",
+      },
+    });
+    expect(requestDeliveryDownload).toHaveBeenCalledWith({
+      token: validToken,
+      deliveryId,
+      userAgent: "Mozilla/5.0 test",
+    });
+    expect(updateTag).toHaveBeenCalledWith(`commission-${commissionId}`);
+  });
+
+  it("passes on the refusal before full payment", async () => {
+    vi.mocked(requestDeliveryDownload).mockRejectedValue(
+      new RepositoryError(
+        "download_not_allowed",
+        "The final file unlocks once the balance is paid.",
+      ),
+    );
+    await expect(downloadDelivery(validToken, deliveryId)).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "download_not_allowed",
+        message: "The final file unlocks once the balance is paid.",
+      },
+    });
+  });
+
+  it("rejects malformed input without a lookup", async () => {
+    const result = await downloadDelivery("short", deliveryId);
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "invalid_input" },
+    });
+    expect(requestDeliveryDownload).not.toHaveBeenCalled();
   });
 });
