@@ -6,11 +6,13 @@ import {
 } from "@/lib/repositories/commission-repository";
 import * as deliveries from "@/lib/repositories/delivery-repository";
 import { RepositoryError } from "@/lib/repositories/errors";
+import { runCommissionReminder } from "@/lib/repositories/overdue-repository";
 import {
   createDeliveryUpload,
   recordDelivery,
   retryBalanceInvoice,
   retryDepositInvoice,
+  runReminder,
 } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -27,6 +29,9 @@ vi.mock("@/lib/repositories/commission-repository", () => ({
 // Imported by suggestCounteroffers, which these tests don't exercise.
 vi.mock("@/lib/env", () => ({ env: {} }));
 vi.mock("@/lib/repositories/rate-card-repository", () => ({}));
+vi.mock("@/lib/repositories/overdue-repository", () => ({
+  runCommissionReminder: vi.fn(),
+}));
 vi.mock("@/lib/repositories/shared", () => ({ notFound: vi.fn() }));
 
 const retryDeposit = vi.mocked(retryDepositInRepository);
@@ -200,5 +205,58 @@ describe("delivery actions", () => {
       error: { code: "invalid_upload", message: "The upload wasn't found." },
     });
     expect(tags).not.toHaveBeenCalled();
+  });
+});
+
+describe("runReminder action", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const nudge = {
+    invoiceId: "inv-1",
+    kind: "balance" as const,
+    message: "Hi Ren! The remaining balance of 75.00 USD is overdue.",
+    tone: "firm" as const,
+    daysOverdue: 5,
+    remindedAtPayPal: true,
+    at: "2026-11-10T01:00:00.000Z",
+  };
+
+  it("reminds and refreshes when something was sent", async () => {
+    vi.mocked(runCommissionReminder).mockResolvedValue({
+      outcomes: [
+        { invoiceId: "inv-1", commissionId, status: "reminded", nudge },
+      ],
+      nudge,
+    });
+
+    await expect(runReminder({ commissionId })).resolves.toEqual({
+      ok: true,
+      data: { reminded: 1, nudge },
+    });
+    expect(runCommissionReminder).toHaveBeenCalledWith(commissionId, {
+      model: null,
+    });
+    expect(tags).toHaveBeenCalledWith(`commission-${commissionId}`);
+  });
+
+  it("returns the latest nudge without refreshing when nothing was sent", async () => {
+    vi.mocked(runCommissionReminder).mockResolvedValue({
+      outcomes: [],
+      nudge,
+    });
+
+    await expect(runReminder({ commissionId })).resolves.toEqual({
+      ok: true,
+      data: { reminded: 0, nudge },
+    });
+    expect(tags).not.toHaveBeenCalled();
+  });
+
+  it("rejects a bad commission id", async () => {
+    const result = await runReminder({ commissionId: "nope" });
+    expect(result.ok).toBe(false);
+    expect(runCommissionReminder).not.toHaveBeenCalled();
   });
 });

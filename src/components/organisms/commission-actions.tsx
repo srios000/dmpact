@@ -4,7 +4,9 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   BellIcon,
+  CheckIcon,
   CircleAlertIcon,
+  CopyIcon,
   DownloadIcon,
   PlayIcon,
   UploadIcon,
@@ -22,6 +24,13 @@ type TransitionAction = (
   input: TransitionCommissionInput,
 ) => Promise<ActionResult<TransitionResult>>;
 
+type ReminderAction = (input: { commissionId: string }) => Promise<
+  ActionResult<{
+    reminded: number;
+    nudge: { message: string; daysOverdue: number; at: string } | null;
+  }>
+>;
+
 type PaymentLine = {
   status:
     "not_required" | "not_created" | "draft" | "sent" | "paid" | "cancelled";
@@ -33,6 +42,8 @@ export interface CommissionActionsProps extends React.HTMLAttributes<HTMLElement
   deposit: PaymentLine;
   balance: PaymentLine;
   transition: TransitionAction;
+  /** Reminds overdue invoices now and returns the nudge to copy. */
+  runReminder?: ReminderAction;
 }
 
 const CANCELLABLE: CommissionState[] = ["draft", "negotiating", "agreed"];
@@ -90,12 +101,51 @@ function CommissionActions({
   deposit,
   balance,
   transition,
+  runReminder,
   ...props
 }: CommissionActionsProps) {
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
+  const [reminder, setReminder] = React.useState<{
+    message: string | null;
+    note: string;
+  } | null>(null);
+  const [copied, setCopied] = React.useState(false);
+
+  function remind() {
+    if (!runReminder) return;
+    setError(null);
+    setCopied(false);
+    startTransition(async () => {
+      const result = await runReminder({ commissionId });
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      const { reminded, nudge } = result.data;
+      setReminder({
+        message: nudge?.message ?? null,
+        note:
+          reminded > 0
+            ? "Reminder sent. Copy the message below to send it in the DM."
+            : nudge
+              ? "Already reminded in the last 24 hours. Here's the latest message."
+              : "Nothing is overdue yet.",
+      });
+      if (reminded > 0) router.refresh();
+    });
+  }
+
+  async function copyNudge(message: string) {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   function run(to: "in_progress" | "delivered" | "cancelled") {
     setError(null);
@@ -159,13 +209,42 @@ function CommissionActions({
         ) : null}
 
         {needsReminder(deposit, balance) ? (
-          <ActionRow
-            label="Run reminder"
-            icon={BellIcon}
-            variant="outline"
-            disabled
-            hint="Automatic reminders ship with issue #18."
-          />
+          <div className="space-y-2">
+            <ActionRow
+              label="Run reminder"
+              icon={BellIcon}
+              variant="outline"
+              pending={pending}
+              disabled={!runReminder}
+              hint="Overdue invoices get a PayPal reminder (once a day) and a message you can copy."
+              onClick={remind}
+            />
+            {reminder ? (
+              <div className="space-y-2 rounded-lg border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">{reminder.note}</p>
+                {reminder.message ? (
+                  <>
+                    <p className="text-sm whitespace-pre-wrap text-foreground">
+                      {reminder.message}
+                    </p>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => copyNudge(reminder.message ?? "")}
+                    >
+                      {copied ? (
+                        <CheckIcon data-icon="inline-start" />
+                      ) : (
+                        <CopyIcon data-icon="inline-start" />
+                      )}
+                      {copied ? "Copied" : "Copy message"}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {state === "delivered" || state === "fully_paid" ? (
