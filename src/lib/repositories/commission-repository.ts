@@ -4,7 +4,10 @@ import { withComputedAmounts } from "@/lib/money/agreement";
 import { currencyExponent } from "@/lib/money/decimal";
 import { contentHash } from "@/lib/schema/content-hash";
 import type { Agreement } from "@/lib/schema/agreement";
-import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
+import {
+  canRetryDepositInvoice,
+  depositFailureMessage,
+} from "@/lib/state-machine/deposit-retry";
 import { effectHandlers } from "@/lib/state-machine/effect-handlers";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import {
@@ -15,6 +18,10 @@ import {
 import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { RepositoryError } from "./errors";
 import {
+  issueDepositInvoice,
+  type IssueDepositInvoiceOptions,
+} from "./invoice-repository";
+import {
   agreementInForce,
   isClientToken,
   isConfirmedBy,
@@ -22,54 +29,11 @@ import {
   lockCommission,
   newClientToken,
   notFound,
+  paymentsOf,
   readAgreement,
   requireCreator,
   toJson,
 } from "./shared";
-
-type InvoiceRow = {
-  kind: "deposit" | "balance";
-  status: "draft" | "sent" | "paid" | "cancelled";
-  payLink: string | null;
-  paidAt: Date | null;
-  createdAt: Date;
-};
-
-export type PaymentStatus = {
-  status: "not_required" | "not_created" | InvoiceRow["status"];
-  payLink: string | null;
-  paidAt: string | null;
-};
-
-function paymentStatus(
-  invoices: InvoiceRow[],
-  kind: InvoiceRow["kind"],
-  required: boolean,
-): PaymentStatus {
-  const invoice = invoices
-    .filter((i) => i.kind === kind)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-  if (!invoice) {
-    return {
-      status: required ? "not_created" : "not_required",
-      payLink: null,
-      paidAt: null,
-    };
-  }
-  return {
-    status: invoice.status,
-    payLink: invoice.payLink,
-    paidAt: invoice.paidAt?.toISOString() ?? null,
-  };
-}
-
-function paymentsOf(content: unknown, invoices: InvoiceRow[]) {
-  const facts = readAgreementFacts(content);
-  return {
-    deposit: paymentStatus(invoices, "deposit", facts.depositType !== "none"),
-    balance: paymentStatus(invoices, "balance", !facts.balanceIsZero),
-  };
-}
 
 function summarize(agreement: Agreement) {
   return {
@@ -79,6 +43,7 @@ function summarize(agreement: Agreement) {
       agreement.parties?.client?.display_name ??
       agreement.parties?.client?.handle ??
       null,
+    clientHandle: agreement.parties?.client?.handle ?? null,
     total: agreement.price.total,
     currency: agreement.price.currency,
     depositAmount: agreement.deposit.amount ?? null,
@@ -135,6 +100,7 @@ export async function listCommissions() {
     return {
       id: commission.id,
       state: commission.state,
+      clientToken: commission.clientToken,
       createdAt: commission.createdAt.toISOString(),
       updatedAt: commission.updatedAt.toISOString(),
       awaitingClient: latest.version !== inForce.version,
@@ -165,6 +131,12 @@ export async function getCommission(id: string) {
   const versions = commission.agreementVersions;
   const inForce = agreementInForce(versions);
   const latest = versions[versions.length - 1];
+  const retryable =
+    !!inForce &&
+    canRetryDepositInvoice(
+      commission.state,
+      paymentsOf(inForce.content, commission.invoices).deposit.status,
+    );
 
   return {
     id: commission.id,
@@ -175,6 +147,11 @@ export async function getCommission(id: string) {
     updatedAt: commission.updatedAt.toISOString(),
     inForceVersion: inForce?.version ?? null,
     awaitingClient: !!inForce && inForce.version !== latest.version,
+    depositRetry: retryable
+      ? { error: depositFailureMessage(commission.events) }
+      : null,
+    ...summarize(readAgreement((inForce ?? latest).content)),
+    ...paymentsOf((inForce ?? latest).content, commission.invoices),
     versions: versions.map((v) => ({
       id: v.id,
       version: v.version,
@@ -299,6 +276,57 @@ export async function transitionCommission(input: {
   if (!owned) throw notFound();
 
   return transition(db, { ...input, actor: "creator" }, effectHandlers);
+}
+
+export async function retryDepositInvoice(
+  commissionId: string,
+  options?: IssueDepositInvoiceOptions,
+) {
+  const creator = await requireCreator();
+  const commission = await db.commission.findFirst({
+    where: { id: commissionId, creatorId: creator.id },
+    include: {
+      agreementVersions: { include: { confirmations: true } },
+      invoices: true,
+    },
+  });
+  if (!commission) throw notFound();
+
+  const inForce = agreementInForce(commission.agreementVersions);
+  if (
+    !inForce ||
+    !canRetryDepositInvoice(
+      commission.state,
+      paymentsOf(inForce.content, commission.invoices).deposit.status,
+    )
+  ) {
+    throw new RepositoryError(
+      "retry_not_allowed",
+      "There is no deposit invoice to send again.",
+    );
+  }
+
+  let result: Awaited<ReturnType<typeof issueDepositInvoice>>;
+  try {
+    result = await issueDepositInvoice(commissionId, options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await db.commissionEvent.create({
+      data: {
+        commissionId,
+        type: "effect_failed",
+        actor: "creator",
+        reason: "createDepositInvoice",
+        meta: { message },
+      },
+    });
+    throw new RepositoryError("invoice_failed", message);
+  }
+
+  if (result.status === "skipped") {
+    throw new RepositoryError("retry_not_allowed", result.reason);
+  }
+  return result;
 }
 
 export async function getCommissionStatus(

@@ -4,5 +4,8 @@ export const config: VercelConfig = {
   framework: "nextjs",
   regions: ["sin1"],
   buildCommand: "pnpm db:deploy && pnpm build",
-  crons: [{ path: "/api/cron/overdue", schedule: "0 1 * * *" }],
+  crons: [
+    { path: "/api/cron/overdue", schedule: "0 1 * * *" },
+    { path: "/api/cron/reset-demo", schedule: "0 20 * * *" },
+  ],
 };

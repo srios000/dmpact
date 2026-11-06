@@ -89,12 +89,9 @@ function reducedScope(
 
   const current = agreement.revisions.included;
   const asked = draft.revisions_included;
-  const included =
-    asked === null
-      ? current
-      : current === null
-        ? asked
-        : Math.min(asked, current);
+  // The model's message names its count, so a higher one drops the option.
+  if (asked !== null && current !== null && asked > current) return null;
+  const included = asked ?? current;
 
   return withComputedAmounts({
     ...agreement,
@@ -210,7 +207,11 @@ export async function generateCounteroffers({
   ][] = [
     ["reduce_scope", reduced, drafts.reduce_scope],
     ["adjust_price", adjusted, drafts.adjust_price],
-    ["split_milestones", split, drafts.split_milestones],
+    [
+      "split_milestones",
+      split.deposit.amount === adjusted.deposit.amount ? null : split,
+      drafts.split_milestones,
+    ],
   ];
 
   const options: Counteroffer[] = [];

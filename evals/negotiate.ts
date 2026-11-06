@@ -58,8 +58,13 @@ function loadCases(nearMiss: boolean): EvalCase[] {
       readFileSync(join(FIXTURE_DIR, file), "utf8"),
     ) as { paste_date: string; expected: Agreement; expect_mismatch: boolean };
     const name = file.replace(".expected.json", "");
-    // Fixtures list their flags in expected_ambiguity_codes instead.
-    const agreement = { ...fixture.expected, ambiguities: [] };
+    // Fixtures list their flags in expected_ambiguity_codes instead, and their
+    // extraction block only holds source_language for the eval.
+    const agreement = {
+      ...fixture.expected,
+      ambiguities: [],
+      extraction: undefined,
+    };
     cases.push({
       name,
       today: fixture.paste_date,

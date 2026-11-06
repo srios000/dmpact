@@ -1,6 +1,7 @@
 "use server";
 
 import { updateTag } from "next/cache";
+import { todayInZone } from "@/lib/ai/extract";
 import { createGeminiClient } from "@/lib/ai/gemini";
 import {
   generateCounteroffers,
@@ -16,11 +17,14 @@ import {
   toActionFailure,
   type ActionResult,
 } from "@/lib/repositories/action-result";
+import { RepositoryError } from "@/lib/repositories/errors";
 import {
+  retryDepositInvoiceSchema,
   saveAgreementVersionSchema,
   sendToClientSchema,
   suggestCounteroffersSchema,
   transitionCommissionSchema,
+  type RetryDepositInvoiceInput,
   type SaveAgreementVersionInput,
   type SendToClientInput,
   type SuggestCounteroffersInput,
@@ -78,13 +82,6 @@ export async function transitionCommission(
   }
 }
 
-/** Today's date (YYYY-MM-DD) in WIB, for the rush fee. */
-function todayInJakarta(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta" }).format(
-    new Date(),
-  );
-}
-
 /** Proposals only: nothing is saved until the creator applies an option. */
 export async function suggestCounteroffers(
   input: SuggestCounteroffersInput,
@@ -102,12 +99,34 @@ export async function suggestCounteroffers(
     const data = await generateCounteroffers({
       agreement: latest.agreement,
       settings: await getRateCard(),
-      today: todayInJakarta(),
+      today: todayInZone(),
       // createGeminiClient reads the key and model from the environment.
       client: env.GEMINI_API_KEY ? createGeminiClient() : null,
     });
     return { ok: true, data };
   } catch (error) {
+    return toActionFailure(error);
+  }
+}
+
+export async function retryDepositInvoice(
+  input: RetryDepositInvoiceInput,
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof commissions.retryDepositInvoice>>>
+> {
+  const parsed = retryDepositInvoiceSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    const data = await commissions.retryDepositInvoice(
+      parsed.data.commissionId,
+    );
+    refresh(parsed.data.commissionId);
+    return { ok: true, data };
+  } catch (error) {
+    if (error instanceof RepositoryError && error.code === "invoice_failed") {
+      refresh(parsed.data.commissionId);
+    }
     return toActionFailure(error);
   }
 }

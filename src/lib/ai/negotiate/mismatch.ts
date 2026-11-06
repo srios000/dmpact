@@ -122,7 +122,8 @@ export function detectMismatch(
   // Gap = (Estimate - Budget) / Estimate × 100%, compared in integers.
   const gapMinor = estimateMinor - budgetMinor;
   const detected = gapMinor * 100 > threshold * estimateMinor;
-  const gapPct = Math.round((gapMinor * 100) / estimateMinor);
+  const rounded = Math.round((gapMinor * 100) / estimateMinor) || 0;
+  const gapPct = detected ? Math.max(rounded, threshold + 1) : rounded;
 
   const scope = describeScope(agreement.service_type, estimate);
   const estimateText = money(estimate.total, currency);
