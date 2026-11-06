@@ -6,26 +6,13 @@ import { AlertTriangleIcon, CheckIcon, CopyIcon, InfoIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const ambiguityFlagVariants = cva("flex gap-3 rounded-2xl border p-4 text-sm", {
-  variants: {
-    severity: {
-      blocker:
-        "border-destructive/40 bg-destructive/10 [&>svg]:text-destructive",
-      warning: "border-warning/30 bg-warning/5 [&>svg]:text-warning",
-    },
-  },
-  defaultVariants: {
-    severity: "warning",
-  },
-});
-
-const severityLabelVariants = cva(
-  "w-fit rounded-full px-2 py-0.5 text-[10px] font-black tracking-widest uppercase",
+const ambiguityFlagVariants = cva(
+  "flex gap-3 rounded-r-lg border-l-2 py-3 pr-3 pl-4 text-sm",
   {
     variants: {
       severity: {
-        blocker: "bg-destructive/20 text-destructive",
-        warning: "bg-warning/15 text-warning",
+        blocker: "border-destructive bg-destructive/5 [&>svg]:text-destructive",
+        warning: "border-warning bg-warning/5 [&>svg]:text-warning",
       },
     },
     defaultVariants: {
@@ -33,6 +20,18 @@ const severityLabelVariants = cva(
     },
   },
 );
+
+const severityTextVariants = cva("font-semibold", {
+  variants: {
+    severity: {
+      blocker: "text-destructive",
+      warning: "text-warning",
+    },
+  },
+  defaultVariants: {
+    severity: "warning",
+  },
+});
 
 export interface AmbiguityFlagProps extends VariantProps<
   typeof ambiguityFlagVariants
@@ -69,23 +68,21 @@ function AmbiguityFlag({
     >
       <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
       <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={severityLabelVariants({ severity })}>
-            {severity === "blocker" ? "Blocker" : "Warning"}
-          </span>
-          <span className="text-xs font-bold text-muted-foreground">
-            {label}
-          </span>
-        </div>
-        <p className="font-medium text-foreground">{message}</p>
+        <p className={severityTextVariants({ severity })}>
+          {label} {severity === "blocker" ? "blocker" : "warning"}
+        </p>
+        <p className="text-foreground">{message}</p>
         {quote && (
-          <blockquote className="border-l-2 border-border pl-3 text-muted-foreground italic">
+          <blockquote className="text-muted-foreground">
             &ldquo;{quote}&rdquo;
           </blockquote>
         )}
         {question && (
-          <div className="flex items-start justify-between gap-2 rounded-xl bg-background/60 p-3">
-            <p className="text-foreground">{question}</p>
+          <div className="flex items-start justify-between gap-2 rounded-md bg-background/60 p-3">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Ask the client</p>
+              <p className="text-foreground">{question}</p>
+            </div>
             <Button
               type="button"
               variant="ghost"

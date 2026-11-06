@@ -23,16 +23,11 @@ function FormField({
 }: FormFieldProps) {
   return (
     <div className={cn("space-y-2", className)}>
-      <Label
-        htmlFor={htmlFor}
-        className="text-xs font-black tracking-widest text-muted-foreground uppercase"
-      >
-        {label}
-      </Label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && (
-        <p role="alert" className="text-xs font-medium text-destructive">
+        <p role="alert" className="text-xs text-destructive">
           {error}
         </p>
       )}

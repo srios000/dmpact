@@ -33,32 +33,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="p-8 pb-12">
+      <SidebarHeader className="px-6 pt-6 pb-8">
         <Link
           href="/"
           onClick={() => setOpenMobile(false)}
-          className="group relative flex items-center gap-3"
+          className="w-fit rounded-md text-lg font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-            <span className="text-lg font-black text-primary-foreground">
-              D
-            </span>
-          </div>
-          <span className="text-2xl font-black tracking-tighter text-foreground transition-opacity group-hover:opacity-80">
-            /DMpact
-          </span>
+          DMpact
         </Link>
       </SidebarHeader>
 
       <SidebarContent className="px-4">
-        <SidebarMenu className="gap-2">
+        <SidebarMenu className="gap-1">
           {navMain.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 size="lg"
                 tooltip={item.title}
                 isActive={item.url === activeUrl}
-                className="relative h-12"
+                className="relative h-10"
                 render={
                   <Link href={item.url} onClick={() => setOpenMobile(false)} />
                 }
@@ -74,7 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="p-6 pb-10">
+      <SidebarFooter className="px-4 pb-6">
         <SidebarMenu>
           <SidebarMenuItem>
             <form action={logout} className="w-full">
@@ -82,7 +75,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 size="lg"
                 tooltip="Log out"
                 type="submit"
-                className="h-12"
+                className="h-10"
               >
                 <LogOutIcon />
                 <span>Log out</span>

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
+import { AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface ErrorStateProps {
@@ -20,27 +20,27 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center justify-center rounded-[2.5rem] border border-destructive/30 bg-destructive/5 p-12 text-center"
+      className="flex max-w-3xl gap-4 rounded-xl border border-destructive/30 bg-destructive/5 p-6"
     >
-      <div className="flex size-16 items-center justify-center rounded-3xl bg-destructive/15 text-destructive">
-        <AlertTriangleIcon className="size-8" />
-      </div>
-      <p className="mt-5 text-lg font-black tracking-tight text-foreground">
-        {title}
-      </p>
-      {description && (
-        <p className="mt-2 max-w-sm text-sm leading-relaxed font-medium text-muted-foreground">
-          {description}
-        </p>
-      )}
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        {onRetry && (
-          <Button size="lg" onClick={onRetry}>
-            <RefreshCwIcon data-icon="inline-start" />
-            {retryLabel ?? "Retry"}
-          </Button>
-        )}
-        {action}
+      <AlertTriangleIcon
+        aria-hidden
+        className="mt-1 size-5 shrink-0 text-destructive"
+      />
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <p className="font-semibold text-foreground">{title}</p>
+          {description && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {onRetry && (
+            <Button size="lg" onClick={onRetry}>
+              {retryLabel ?? "Try again"}
+            </Button>
+          )}
+          {action}
+        </div>
       </div>
     </div>
   );

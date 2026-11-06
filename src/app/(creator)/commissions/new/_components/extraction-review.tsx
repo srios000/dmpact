@@ -2,13 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  ArrowRightIcon,
-  CheckCircle2Icon,
-  LoaderCircleIcon,
-  MessageSquarePlusIcon,
-  PencilIcon,
-} from "lucide-react";
+import { LoaderCircleIcon } from "lucide-react";
 import { ErrorState } from "@/components/molecules/error-state";
 import { AgreementForm } from "@/components/organisms/agreement-form";
 import { Button } from "@/components/ui/button";
@@ -44,12 +38,9 @@ function todayInJakarta(): string {
   }).format(new Date());
 }
 
-const GUIDELINES = [
-  { text: "Paste the full conversation", dot: "bg-primary" },
-  { text: "Include price and currency", dot: "bg-accent" },
-  { text: "Include the deadline", dot: "bg-status-fully-paid" },
-  { text: "Slang, typos and Indonesian are fine", dot: "bg-warning" },
-];
+function blockerCount(agreement: Agreement): number {
+  return agreement.ambiguities.filter((a) => a.severity === "blocker").length;
+}
 
 export function ExtractionReview() {
   const [phase, setPhase] = React.useState<Phase>("paste");
@@ -135,105 +126,95 @@ export function ExtractionReview() {
     });
   }
 
+  const heading =
+    phase === "review"
+      ? "Check the agreement"
+      : isFollowUp
+        ? "Add a follow-up DM"
+        : "New commission";
+
   return (
-    <div className="w-full space-y-10 pb-20">
-      <header className="space-y-3">
-        <h1 className="font-heading text-4xl font-black tracking-tight text-foreground md:text-5xl">
-          {isFollowUp ? "Follow-up " : "Extract "}
-          <span className="animate-gradient text-glow bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] bg-clip-text text-transparent">
-            agreement.
-          </span>
+    <div className="w-full space-y-8 pb-20">
+      <header hidden={phase === "saved"} className="max-w-2xl space-y-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          {heading}
         </h1>
-        <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          {isFollowUp
-            ? "Paste the client's follow-up DM. The AI reads it with the original DM and the result is saved as a new version."
-            : "Paste the client's DM. The AI pulls out the terms and flags anything unclear before you send it."}
+        <p className="text-base leading-relaxed text-muted-foreground">
+          {phase === "review"
+            ? "Fix anything the AI got wrong. Flags sit under the field they belong to."
+            : isFollowUp
+              ? "Paste what the client sent next. It's read together with the first DM and saved as a new version."
+              : "Paste the client's DM. You'll get the terms back as a form, with anything unclear flagged."}
         </p>
       </header>
 
       {phase === "paste" && (
-        <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
-          <div className="space-y-6">
-            <div className="relative rounded-[2rem] border bg-card p-2 shadow-2xl backdrop-blur-3xl">
-              <Textarea
-                aria-label={isFollowUp ? "Follow-up DM" : "Client DM"}
-                className="min-h-72 resize-y rounded-[1.5rem] border-0 bg-transparent p-6 text-base leading-relaxed focus-visible:ring-0"
-                placeholder={
-                  isFollowUp
-                    ? "Paste the follow-up message here..."
-                    : "Paste the conversation here..."
-                }
-                maxLength={MAX_DM_CHARS}
-                value={dmText}
-                onChange={(e) => setDmText(e.target.value)}
-              />
-              <p className="px-6 pb-3 text-right text-xs text-muted-foreground">
-                {dmText.length.toLocaleString()} /{" "}
+        <div className="max-w-3xl space-y-4">
+          <div className="rounded-xl border bg-card">
+            <Textarea
+              aria-label={isFollowUp ? "Follow-up DM" : "Client DM"}
+              aria-describedby="dm-hint"
+              className="min-h-72 resize-y border-0 bg-transparent p-5 text-base leading-relaxed focus-visible:ring-0"
+              placeholder={
+                isFollowUp
+                  ? "Paste the follow-up message"
+                  : "Paste the whole conversation"
+              }
+              maxLength={MAX_DM_CHARS}
+              value={dmText}
+              onChange={(e) => setDmText(e.target.value)}
+            />
+            <div className="flex flex-wrap justify-between gap-2 border-t px-5 py-3 text-xs text-muted-foreground">
+              <span id="dm-hint">
+                Price, deadline and usage rights help most. Slang and Indonesian
+                are fine.
+              </span>
+              <span>
+                {dmText.length.toLocaleString()} of{" "}
                 {MAX_DM_CHARS.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button
-                size="lg"
-                className="h-12 flex-1"
-                onClick={handleExtract}
-                disabled={!dmText.trim()}
-              >
-                {isFollowUp ? "Analyze follow-up" : "Analyze DM"}
-                <ArrowRightIcon data-icon="inline-end" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-12"
-                onClick={handleManual}
-              >
-                <PencilIcon data-icon="inline-start" />
-                Fill in by hand
-              </Button>
-              {isFollowUp && (
-                <Button
-                  size="lg"
-                  variant="ghost"
-                  className="h-12"
-                  onClick={() => setPhase("saved")}
-                >
-                  Cancel
-                </Button>
-              )}
+              </span>
             </div>
           </div>
 
-          <aside className="hidden rounded-[2rem] border bg-card p-8 lg:block">
-            <h2 className="text-xs font-black tracking-widest text-muted-foreground uppercase">
-              Tips
-            </h2>
-            <ul className="mt-6 space-y-4">
-              {GUIDELINES.map((item) => (
-                <li
-                  key={item.text}
-                  className="flex items-center gap-3 text-sm font-bold text-foreground"
-                >
-                  <span className={`size-2 rounded-full ${item.dot}`} />
-                  {item.text}
-                </li>
-              ))}
-            </ul>
-          </aside>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              size="lg"
+              className="h-11 px-6"
+              onClick={handleExtract}
+              disabled={!dmText.trim()}
+            >
+              {isFollowUp ? "Read follow-up" : "Read DM"}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-11 px-6"
+              onClick={handleManual}
+            >
+              Fill in by hand
+            </Button>
+            {isFollowUp && (
+              <Button
+                size="lg"
+                variant="ghost"
+                className="h-11"
+                onClick={() => setPhase("saved")}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
       {phase === "loading" && (
         <div
           role="status"
-          className="flex min-h-80 flex-col items-center justify-center gap-6 text-center"
+          className="flex max-w-3xl items-center gap-4 rounded-xl border bg-card p-6"
         >
-          <LoaderCircleIcon className="size-12 animate-spin text-primary" />
-          <div className="space-y-2">
-            <p className="text-2xl font-black text-foreground">
-              Analyzing the DM...
-            </p>
+          <LoaderCircleIcon className="size-6 animate-spin text-primary motion-reduce:animate-none" />
+          <div>
+            <p className="font-medium text-foreground">Reading the DM</p>
             <p className="text-sm text-muted-foreground">
               This usually takes a few seconds.
             </p>
@@ -243,9 +224,10 @@ export function ExtractionReview() {
 
       {phase === "error" && (
         <ErrorState
-          title="Extraction failed"
-          description={error ?? "Something went wrong during extraction."}
+          title="Couldn't read this DM"
+          description={error ?? "Something went wrong while reading the DM."}
           onRetry={handleExtract}
+          retryLabel="Try again"
           action={
             <>
               <Button size="lg" variant="outline" onClick={handleManual}>
@@ -264,20 +246,20 @@ export function ExtractionReview() {
       )}
 
       {phase === "review" && draft && (
-        <section className="space-y-6 rounded-[2rem] border bg-card p-6 shadow-2xl backdrop-blur-3xl md:p-10">
+        <section className="space-y-6 rounded-xl border bg-card p-5 md:p-8">
           {draft.fallback && (
             <p
               role="alert"
-              className="rounded-2xl border border-warning/30 bg-warning/5 p-4 text-sm font-medium text-foreground"
+              className="rounded-lg border border-warning/30 bg-warning/5 p-4 text-sm text-foreground"
             >
-              The AI could not read every term from this DM. Check the flagged
-              fields and fill in the rest.
+              The AI couldn&apos;t read every term from this DM. Check the
+              flagged fields and fill in the rest.
             </p>
           )}
           {saveError && (
             <p
               role="alert"
-              className="rounded-2xl bg-destructive/10 p-4 text-sm font-medium text-destructive"
+              className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive"
             >
               {saveError}
             </p>
@@ -309,35 +291,27 @@ export function ExtractionReview() {
       )}
 
       {phase === "saved" && saved && (
-        <section className="space-y-6 rounded-[2rem] border bg-card p-6 md:p-10">
-          <div className="flex items-start gap-4">
-            <CheckCircle2Icon className="size-8 shrink-0 text-status-fully-paid" />
-            <div className="space-y-1">
-              <p className="text-xl font-black text-foreground">
-                {saved.version === 1
-                  ? "Commission created"
-                  : `Version ${saved.version} saved`}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {saved.agreement.title} · version {saved.version} ·{" "}
-                <span className="font-mono">
-                  {saved.contentHash.slice(0, 12)}
-                </span>
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {
-                  saved.agreement.ambiguities.filter(
-                    (a) => a.severity === "blocker",
-                  ).length
-                }{" "}
-                blockers left to resolve before sending.
-              </p>
-            </div>
+        <section className="max-w-3xl space-y-6 rounded-xl border bg-card p-6 md:p-8">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              {saved.version === 1
+                ? "Commission created"
+                : `Version ${saved.version} saved`}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {saved.agreement.title}, version {saved.version}.{" "}
+              {blockerCount(saved.agreement) === 0
+                ? "No blockers left."
+                : `${blockerCount(saved.agreement)} ${
+                    blockerCount(saved.agreement) === 1
+                      ? "blocker needs"
+                      : "blockers need"
+                  } an answer before you send it.`}
+            </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button size="lg" onClick={() => setPhase("paste")}>
-              <MessageSquarePlusIcon data-icon="inline-start" />
-              Paste a follow-up DM
+              Add a follow-up DM
             </Button>
             <Button
               size="lg"

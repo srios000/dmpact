@@ -21,6 +21,7 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { SUPPORTED_CURRENCIES } from "@/lib/ai/extract/post-checks";
 import { reviewAgreement } from "@/lib/ai/extract/review";
 import {
   agreementSchema,
@@ -212,20 +213,32 @@ function AgreementForm({
       onSubmit={handleSubmit((agreement) => onSubmit(review(agreement)))}
       className="space-y-8"
     >
-      <div
-        aria-live="polite"
-        className="flex flex-wrap items-center gap-3 text-sm font-bold"
-      >
-        <span className="rounded-full bg-destructive/15 px-3 py-1 text-destructive">
-          {blockers} {blockers === 1 ? "blocker" : "blockers"}
-        </span>
-        <span className="rounded-full bg-warning/15 px-3 py-1 text-warning">
-          {warnings} {warnings === 1 ? "warning" : "warnings"}
-        </span>
-        <span className="text-muted-foreground">
-          Blockers must be resolved before this can be sent to the client.
-        </span>
-      </div>
+      <p aria-live="polite" className="text-sm text-muted-foreground">
+        {blockers === 0 && warnings === 0 ? (
+          "Nothing flagged."
+        ) : (
+          <>
+            {blockers > 0 ? (
+              <span className="font-semibold text-destructive">
+                {blockers} {blockers === 1 ? "blocker" : "blockers"}
+              </span>
+            ) : (
+              "No blockers"
+            )}
+            {warnings > 0 && (
+              <>
+                {" and "}
+                <span className="font-semibold text-warning">
+                  {warnings} {warnings === 1 ? "warning" : "warnings"}
+                </span>
+              </>
+            )}
+            {blockers > 0
+              ? ". Blockers need an answer before you send this to the client."
+              : ". Warnings are worth a look but don't stop sending."}
+          </>
+        )}
+      </p>
 
       {flagsFor("general")}
 
@@ -361,13 +374,24 @@ function AgreementForm({
           error={errorAt(errors, "price.currency")}
           flags={flagsFor("currency")}
         >
-          <Input
+          <NativeSelect
             id={field("currency")}
-            maxLength={3}
-            placeholder="USD"
-            className="uppercase"
+            className="w-full"
             {...register("price.currency", { setValueAs: textOrNull })}
-          />
+          >
+            <NativeSelectOption value="">Not stated</NativeSelectOption>
+            {original.price.currency &&
+              !SUPPORTED_CURRENCIES.has(original.price.currency) && (
+                <NativeSelectOption value={original.price.currency}>
+                  {original.price.currency} (PayPal can&apos;t invoice this)
+                </NativeSelectOption>
+              )}
+            {[...SUPPORTED_CURRENCIES].map((code) => (
+              <NativeSelectOption key={code} value={code}>
+                {code}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
         </FormField>
 
         <FormField
@@ -379,7 +403,7 @@ function AgreementForm({
           }
           hint={
             live.deposit.amount && live.balance_amount
-              ? `Deposit ${currency} ${live.deposit.amount} · Balance ${currency} ${live.balance_amount}`
+              ? `Client pays ${currency} ${live.deposit.amount} up front and ${currency} ${live.balance_amount} on delivery.`
               : "Deposit and balance show once the price and currency are set."
           }
           flags={flagsFor("deposit")}

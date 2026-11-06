@@ -10,15 +10,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <div className="bg-mesh pointer-events-none fixed inset-0 opacity-60" />
         <AppSidebar />
-        <SidebarInset className="bg-transparent">
-          <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center px-4 md:px-8">
+        <SidebarInset>
+          <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center border-b bg-background/80 px-4 backdrop-blur md:px-8">
             <SidebarTrigger className="-ml-1" />
           </header>
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            {children}
-          </div>
+          <div className="flex min-w-0 flex-1 flex-col">{children}</div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
