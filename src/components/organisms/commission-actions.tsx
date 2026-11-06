@@ -259,14 +259,28 @@ function CommissionActions({
           </div>
         ) : null}
 
-        {state === "delivered" || state === "fully_paid" ? (
-          <ActionRow
-            label="Download evidence pack"
-            icon={DownloadIcon}
-            variant="outline"
-            disabled
-            hint="The PDF evidence pack ships with issue #20."
-          />
+        {state !== "draft" && state !== "negotiating" ? (
+          <div className="space-y-1.5">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full justify-start"
+              nativeButton={false}
+              render={
+                <a
+                  href={`/api/commissions/${commissionId}/evidence`}
+                  download
+                />
+              }
+            >
+              <DownloadIcon data-icon="inline-start" />
+              Download evidence pack
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              A PDF with the agreement, confirmations, payments, deliveries,
+              client downloads, and the full timeline.
+            </p>
+          </div>
         ) : null}
 
         {CANCELLABLE.includes(state) ? (
