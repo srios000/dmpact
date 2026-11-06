@@ -116,7 +116,7 @@ stateDiagram-v2
 | Transition | Trigger | Guard | Side effect |
 |---|---|---|---|
 | draft → negotiating | Creator | No `blocker` ambiguities, valid agreement | Generate client token |
-| negotiating → agreed | Client confirm | Valid agreement, both confirmations on the same `content_hash` | Create + send deposit invoice |
+| negotiating → agreed | Client confirm | Valid agreement, both confirmations on the same `content_hash`, client email set when there is a deposit | Create + send deposit invoice |
 | agreed → dp_paid | PayPal webhook | Verified signature, invoice = this commission's deposit | — |
 | dp_paid → in_progress | Creator | — | — |
 | in_progress → delivered | Delivery upload | ≥ 1 delivery log entry, valid agreement | Create + send balance invoice (skip if balance = 0 → straight to fully_paid) |

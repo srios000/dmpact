@@ -20,6 +20,7 @@ export type GuardContext = {
   blockerCount: number;
   confirmedBy: { creator: boolean; client: boolean };
   depositType: "percent" | "fixed" | "none" | null;
+  hasClientEmail: boolean;
   balanceIsZero: boolean;
   deliveryCount: number;
 };
@@ -60,6 +61,11 @@ const bothConfirmed: Guard = (ctx) =>
     ? null
     : "Creator and client must both confirm the current agreement version.";
 
+const clientEmailForDeposit: Guard = (ctx) =>
+  ctx.depositType === "none" || ctx.hasClientEmail
+    ? null
+    : "Add the client's PayPal email to the agreement so the deposit invoice can be sent.";
+
 const depositRequired: Guard = (ctx) =>
   ctx.depositType === "percent" || ctx.depositType === "fixed"
     ? null
@@ -85,7 +91,13 @@ const RULES: Rule[] = [
     from: "negotiating",
     to: "agreed",
     actors: ["creator", "client"],
-    guards: [hasAgreement, noBlockers, validAgreement, bothConfirmed],
+    guards: [
+      hasAgreement,
+      noBlockers,
+      validAgreement,
+      bothConfirmed,
+      clientEmailForDeposit,
+    ],
     effects: (ctx) =>
       ctx.depositType === "none" ? [] : ["createDepositInvoice"],
   },

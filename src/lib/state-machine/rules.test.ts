@@ -7,6 +7,7 @@ const ready: GuardContext = {
   blockerCount: 0,
   confirmedBy: { creator: true, client: true },
   depositType: "percent",
+  hasClientEmail: true,
   balanceIsZero: false,
   deliveryCount: 1,
 };
@@ -146,6 +147,25 @@ describe("guards", () => {
         "guard_failed",
       );
     }
+  });
+
+  it("agreed needs the client's email when there is a deposit", () => {
+    for (const actor of ["client", "creator"] as const) {
+      expectError(
+        checkTransition("negotiating", "agreed", actor, {
+          ...ready,
+          hasClientEmail: false,
+        }),
+        "guard_failed",
+      );
+    }
+    expect(
+      checkTransition("negotiating", "agreed", "client", {
+        ...ready,
+        depositType: "none",
+        hasClientEmail: false,
+      }).ok,
+    ).toBe(true);
   });
 
   it("deposit paid only when a deposit is required", () => {
