@@ -22,6 +22,9 @@ import type { CommissionState } from "@/lib/state-machine/rules";
 import { AgreementEditor } from "./_components/agreement-editor";
 import { transitionCommission } from "./actions";
 
+export const instant = false;
+export const maxDuration = 60;
+
 export const metadata: Metadata = {
   title: "Commission | DMpact",
   robots: { index: false, follow: false },

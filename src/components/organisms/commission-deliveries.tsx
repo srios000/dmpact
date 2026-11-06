@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
 import { FileBoxIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatSize } from "@/lib/utils";
 
 export type CommissionDelivery = {
   id: string;
@@ -37,18 +37,6 @@ const stampFormatter = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
   timeZone: "UTC",
 });
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value.toFixed(1)} ${units[unit]}`;
-}
 
 export interface CommissionDeliveriesProps extends React.HTMLAttributes<HTMLElement> {
   deliveries: CommissionDelivery[];

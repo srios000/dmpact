@@ -2,6 +2,7 @@ import * as React from "react";
 import { ExternalLinkIcon, ReceiptTextIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaymentBadge } from "@/components/ui/payment-badge";
+import { paymentTone } from "@/lib/queue/queue";
 import { cn } from "@/lib/utils";
 
 export type InvoiceStatusValue = "draft" | "sent" | "paid" | "cancelled";
@@ -52,16 +53,6 @@ function statusLabel(status: InvoiceStatusValue, late: boolean): string {
   }
 }
 
-function statusTone(
-  status: InvoiceStatusValue,
-  late: boolean,
-): "paid" | "waiting" | "late" | "idle" {
-  if (late) return "late";
-  if (status === "paid") return "paid";
-  if (status === "sent") return "waiting";
-  return "idle";
-}
-
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
@@ -94,7 +85,7 @@ function InvoiceCard({
             {invoice.kind === "deposit" ? "Deposit" : "Balance"}
           </span>
         </div>
-        <PaymentBadge tone={statusTone(invoice.status, late)}>
+        <PaymentBadge tone={paymentTone(invoice, late)}>
           {statusLabel(invoice.status, late)}
         </PaymentBadge>
       </div>
