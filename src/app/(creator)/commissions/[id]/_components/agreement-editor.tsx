@@ -7,7 +7,6 @@ import { AgreementForm } from "@/components/organisms/agreement-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { StatusBadge } from "@/components/ui/status-badge";
 import type { Agreement } from "@/lib/schema/agreement";
 import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
@@ -23,18 +22,6 @@ import {
 } from "./agreement-version-history";
 
 type CommissionDetail = NonNullable<Awaited<ReturnType<typeof getCommission>>>;
-
-function intro(commission: CommissionDetail, mode: AgreementEditMode): string {
-  if (mode === "deadline") {
-    return "The client approved this agreement. Only the deadline can change now, until you deliver.";
-  }
-  if (mode === "locked") {
-    return "This agreement can't change any more.";
-  }
-  return commission.state === "draft"
-    ? "Change anything, save it as a new version, then send it to the client."
-    : "Sent to the client. They see the latest version you save, and you can change anything until they approve.";
-}
 
 function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
@@ -135,18 +122,6 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
 
   return (
     <div className="w-full space-y-8 pb-20">
-      <header className="max-w-2xl space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            {latest.agreement.title || "Untitled commission"}
-          </h1>
-          <StatusBadge state={commission.state} />
-        </div>
-        <p className="text-base leading-relaxed text-muted-foreground">
-          {intro(commission, mode)}
-        </p>
-      </header>
-
       {commission.depositRetry && (
         <Alert variant="destructive" className="max-w-2xl p-4">
           <CircleAlertIcon />
@@ -291,20 +266,6 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
               onLoad={mode === "full" ? setLoaded : undefined}
             />
           </div>
-
-          {commission.sourceDm && (
-            <section
-              aria-labelledby="dm-heading"
-              className="space-y-3 rounded-xl border bg-card p-5"
-            >
-              <h2 id="dm-heading" className="font-medium text-foreground">
-                Original DM
-              </h2>
-              <p className="max-h-48 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                {commission.sourceDm}
-              </p>
-            </section>
-          )}
         </aside>
       </div>
     </div>
