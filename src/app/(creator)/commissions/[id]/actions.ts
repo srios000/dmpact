@@ -20,11 +20,13 @@ import {
 } from "@/lib/repositories/action-result";
 import { RepositoryError } from "@/lib/repositories/errors";
 import {
+  retryBalanceInvoiceSchema,
   retryDepositInvoiceSchema,
   saveAgreementVersionSchema,
   sendToClientSchema,
   suggestCounteroffersSchema,
   transitionCommissionSchema,
+  type RetryBalanceInvoiceInput,
   type RetryDepositInvoiceInput,
   type SaveAgreementVersionInput,
   type SendToClientInput,
@@ -126,6 +128,28 @@ export async function retryDepositInvoice(
 
   try {
     const data = await commissions.retryDepositInvoice(
+      parsed.data.commissionId,
+    );
+    refresh(parsed.data.commissionId);
+    return { ok: true, data };
+  } catch (error) {
+    if (error instanceof RepositoryError && error.code === "invoice_failed") {
+      refresh(parsed.data.commissionId);
+    }
+    return toActionFailure(error);
+  }
+}
+
+export async function retryBalanceInvoice(
+  input: RetryBalanceInvoiceInput,
+): Promise<
+  ActionResult<Awaited<ReturnType<typeof commissions.retryBalanceInvoice>>>
+> {
+  const parsed = retryBalanceInvoiceSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    const data = await commissions.retryBalanceInvoice(
       parsed.data.commissionId,
     );
     refresh(parsed.data.commissionId);

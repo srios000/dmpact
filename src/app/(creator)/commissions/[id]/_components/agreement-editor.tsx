@@ -12,6 +12,7 @@ import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
 import type { getCommission } from "@/lib/repositories/commission-repository";
 import {
+  retryBalanceInvoice,
   retryDepositInvoice,
   saveAgreementVersion,
   sendToClient,
@@ -61,6 +62,20 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
           ? "Save your changes first. The client gets the saved version."
           : null;
 
+  const activeRetry = commission.depositRetry
+    ? {
+        kind: "deposit" as const,
+        error: commission.depositRetry.error,
+        action: retryDepositInvoice,
+      }
+    : commission.balanceRetry
+      ? {
+          kind: "balance" as const,
+          error: commission.balanceRetry.error,
+          action: retryBalanceInvoice,
+        }
+      : null;
+
   function handleSave(agreement: Agreement) {
     setError(null);
     setNotice(null);
@@ -90,15 +105,17 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
     });
   }
 
-  function handleRetryDeposit() {
+  function handleRetryInvoice() {
+    if (!activeRetry) return;
     setError(null);
     setNotice(null);
     setRetryError(null);
     startRetrying(async () => {
-      const result = await retryDepositInvoice({ commissionId: commission.id });
+      const result = await activeRetry.action({ commissionId: commission.id });
       if (result.ok) {
+        const label = activeRetry.kind === "deposit" ? "Deposit" : "Balance";
         setNotice(
-          "Deposit invoice sent. The client can pay it from their link.",
+          `${label} invoice sent. The client can pay it from their link.`,
         );
       } else if (result.error.code === "invoice_failed") {
         setRetryError(result.error.message);
@@ -122,28 +139,31 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
 
   return (
     <div className="w-full space-y-8 pb-20">
-      {commission.depositRetry && (
+      {activeRetry && (
         <Alert variant="destructive" className="max-w-2xl p-4">
           <CircleAlertIcon />
           <AlertTitle>
             {retryError
-              ? "The deposit invoice still wasn't sent"
-              : "The deposit invoice wasn't sent"}
+              ? `The ${activeRetry.kind} invoice still wasn't sent`
+              : `The ${activeRetry.kind} invoice wasn't sent`}
           </AlertTitle>
           <AlertDescription className="space-y-3">
-            <p>The client can&apos;t pay the deposit until it goes out.</p>
-            {(retryError ?? commission.depositRetry.error) && (
-              <p className="break-words">
-                {retryError ?? commission.depositRetry.error}
-              </p>
+            <p>
+              The client can&apos;t pay the {activeRetry.kind} until it goes
+              out.
+            </p>
+            {(retryError ?? activeRetry.error) && (
+              <p className="break-words">{retryError ?? activeRetry.error}</p>
             )}
             <Button
               type="button"
               variant="outline"
               disabled={retrying}
-              onClick={handleRetryDeposit}
+              onClick={handleRetryInvoice}
             >
-              {retrying ? "Sending..." : "Send deposit invoice again"}
+              {retrying
+                ? "Sending..."
+                : `Send ${activeRetry.kind} invoice again`}
             </Button>
           </AlertDescription>
         </Alert>
