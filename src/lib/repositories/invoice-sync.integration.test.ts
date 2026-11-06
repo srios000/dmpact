@@ -1,11 +1,14 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import { createMockPayPalClient } from "@/lib/paypal/mock";
+import { contentHash } from "@/lib/schema/content-hash";
+import { exampleAgreement } from "@/lib/schema/example-agreement";
 import {
   refreshPayments,
   resetRefreshThrottle,
   syncCommissionInvoices,
 } from "./invoice-sync-repository";
+import { toJson } from "./shared";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/get-current-creator", () => ({
@@ -39,7 +42,19 @@ describe.skipIf(!url)("payment polling fallback (database)", () => {
   });
 
   /** An agreed commission with a sent deposit invoice that also exists in the mock. */
-  async function agreedWithSentDeposit() {
+  async function addAgreement(commissionId: string) {
+    await db.agreementVersion.create({
+      data: {
+        commissionId,
+        version: 1,
+        content: toJson(exampleAgreement),
+        contentHash: contentHash(exampleAgreement),
+        createdBy: "creator",
+      },
+    });
+  }
+
+  async function agreedWithSentDeposit({ withAgreement = true } = {}) {
     const creator = await db.creator.create({
       data: {
         authUserId: crypto.randomUUID(),
@@ -50,6 +65,7 @@ describe.skipIf(!url)("payment polling fallback (database)", () => {
     const commission = await db.commission.create({
       data: { creatorId: creator.id, state: "agreed", sourceDm: "dm" },
     });
+    if (withAgreement) await addAgreement(commission.id);
     const draft = await paypal.createInvoice({
       commissionId: commission.id,
       kind: "deposit",
@@ -107,6 +123,33 @@ describe.skipIf(!url)("payment polling fallback (database)", () => {
     expect(events.find((e) => e.type === "invoice_paid")?.meta).toMatchObject({
       via: "polling",
     });
+  });
+
+  it("keeps the invoice sent when the state change fails, so a later check retries", async () => {
+    const { commissionId, paypalInvoiceId } = await agreedWithSentDeposit({
+      withAgreement: false,
+    });
+    paypal.markPaid(paypalInvoiceId);
+
+    await expect(
+      syncCommissionInvoices(commissionId, { paypal }),
+    ).rejects.toThrow();
+    const invoice = await db.invoice.findFirstOrThrow({
+      where: { commissionId },
+    });
+    expect(invoice.status).toBe("sent");
+    expect(
+      await db.commissionEvent.count({
+        where: { commissionId, type: "invoice_paid" },
+      }),
+    ).toBe(0);
+
+    await addAgreement(commissionId);
+    expect(await syncCommissionInvoices(commissionId, { paypal })).toEqual({
+      checked: 1,
+      changed: 1,
+    });
+    expect(await stateOf(commissionId)).toBe("dp_paid");
   });
 
   it("only checks invoices sent 10+ minutes ago in the background", async () => {

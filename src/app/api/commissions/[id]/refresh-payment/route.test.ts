@@ -47,7 +47,9 @@ describe("POST /api/commissions/[id]/refresh-payment", () => {
       changed: 1,
       throttled: false,
     });
-    expect(revalidateTag).toHaveBeenCalledWith(`commission-${id}`, "max");
+    expect(revalidateTag).toHaveBeenCalledWith(`commission-${id}`, {
+      expire: 0,
+    });
   });
 
   it("doesn't revalidate when nothing changed", async () => {

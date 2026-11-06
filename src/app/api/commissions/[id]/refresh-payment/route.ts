@@ -30,8 +30,8 @@ export async function POST(
   try {
     const result = await refreshPayments(parsed.data, "manual");
     if (result.changed > 0) {
-      revalidateTag("commissions", "max");
-      revalidateTag(`commission-${parsed.data}`, "max");
+      revalidateTag("commissions", { expire: 0 });
+      revalidateTag(`commission-${parsed.data}`, { expire: 0 });
     }
     return NextResponse.json(result, {
       headers: { "Cache-Control": "no-store" },

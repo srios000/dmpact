@@ -28,8 +28,8 @@ export async function GET(
       try {
         const { changed } = await refreshPayments(commissionId, "background");
         if (changed > 0) {
-          revalidateTag("commissions", "max");
-          revalidateTag(`commission-${commissionId}`, "max");
+          revalidateTag("commissions", { expire: 0 });
+          revalidateTag(`commission-${commissionId}`, { expire: 0 });
         }
       } catch (error) {
         console.error(
