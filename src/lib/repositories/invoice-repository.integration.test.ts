@@ -8,6 +8,7 @@ import { exampleAgreement } from "@/lib/schema/example-agreement";
 import {
   getCommission,
   listCommissions,
+  retryBalanceInvoice,
   retryDepositInvoice,
 } from "./commission-repository";
 import { issueBalanceInvoice, issueDepositInvoice } from "./invoice-repository";
@@ -313,6 +314,28 @@ describe.skipIf(!url)("issueDepositInvoice (database)", () => {
         await db.invoice.findMany({ where: { commissionId: id } })
       ).map((i) => i.kind);
       expect(kinds.sort()).toEqual(["balance", "deposit"]);
+    });
+
+    it("sends the balance invoice again after PayPal failed", async () => {
+      const id = await agreed(agreement, "token-for-tests", "delivered");
+      const failing = createMockPayPalClient();
+      failing.createInvoice = async () => {
+        throw new Error("PayPal is down");
+      };
+
+      await expect(
+        retryBalanceInvoice(id, { ...options, paypal: failing }),
+      ).rejects.toMatchObject({
+        code: "invoice_failed",
+        message: "PayPal is down",
+      });
+      expect((await getCommission(id))?.balanceRetry).toEqual({
+        error: "PayPal is down",
+      });
+
+      const retry = await retryBalanceInvoice(id, { ...options, paypal });
+      expect(retry.status).toBe("sent");
+      expect((await getCommission(id))?.balanceRetry).toBeNull();
     });
   });
 });

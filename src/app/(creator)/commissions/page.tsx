@@ -5,7 +5,7 @@ import { CommissionQueue } from "@/components/organisms/commission-queue";
 import { Button } from "@/components/ui/button";
 import { todayInZone } from "@/lib/ai/extract";
 import { listCommissions } from "@/lib/repositories/commission-repository";
-import { retryDeposit, startWork } from "./actions";
+import { retryBalance, retryDeposit, startWork } from "./actions";
 
 export const instant = false;
 
@@ -50,6 +50,7 @@ export default async function CommissionsPage() {
           today={todayInZone()}
           startWork={startWork}
           retryDeposit={retryDeposit}
+          retryBalance={retryBalance}
         />
       )}
     </div>
