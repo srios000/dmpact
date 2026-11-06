@@ -18,28 +18,26 @@ export function ErrorState({
   action,
 }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-[2.5rem] border-2 border-white bg-rose-50/50 p-12 text-center shadow-xl shadow-rose-100/20">
-      <div className="relative">
-        <div className="flex size-16 items-center justify-center rounded-[1.5rem] border-2 border-white bg-white text-rose-500 shadow-lg shadow-rose-100">
-          <AlertTriangleIcon className="size-8" />
-        </div>
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center rounded-[2.5rem] border border-destructive/30 bg-destructive/5 p-12 text-center"
+    >
+      <div className="flex size-16 items-center justify-center rounded-3xl bg-destructive/15 text-destructive">
+        <AlertTriangleIcon className="size-8" />
       </div>
-      <p className="mt-5 text-lg font-black tracking-tight text-[#1E2F50] uppercase">
+      <p className="mt-5 text-lg font-black tracking-tight text-foreground">
         {title}
       </p>
       {description && (
-        <p className="mt-2 max-w-xs text-sm leading-relaxed font-medium text-slate-500">
+        <p className="mt-2 max-w-sm text-sm leading-relaxed font-medium text-muted-foreground">
           {description}
         </p>
       )}
-      <div className="mt-8 flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         {onRetry && (
-          <Button
-            onClick={onRetry}
-            className="h-12 rounded-full bg-[#1E2F50] px-8 font-black text-white shadow-lg transition-all hover:bg-[#2a3f6a] active:scale-[0.98]"
-          >
-            <RefreshCwIcon className="mr-2 h-4 w-4" />
-            {retryLabel || "Retry"}
+          <Button size="lg" onClick={onRetry}>
+            <RefreshCwIcon data-icon="inline-start" />
+            {retryLabel ?? "Retry"}
           </Button>
         )}
         {action}

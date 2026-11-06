@@ -1,5 +1,3 @@
-"use client";
-
 import {
   SidebarInset,
   SidebarProvider,
@@ -12,21 +10,16 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <div className="relative flex min-h-svh w-full bg-[#050608]">
-          {/* Dynamic Mesh Gradient Background */}
-          <div className="bg-mesh pointer-events-none fixed inset-0 z-0 opacity-60" />
-
-          <AppSidebar collapsible="offcanvas" />
-
-          <SidebarInset className="relative z-10 flex-1 bg-transparent p-0">
-            <header className="sticky top-0 z-50 flex h-20 shrink-0 items-center bg-transparent px-8">
-              <SidebarTrigger className="size-10 rounded-xl bg-white/5 text-white/40 backdrop-blur-xl transition-all hover:scale-110 hover:bg-white/10 hover:text-white" />
-            </header>
-            <main className="flex min-h-full w-full flex-col bg-transparent">
-              {children}
-            </main>
-          </SidebarInset>
-        </div>
+        <div className="bg-mesh pointer-events-none fixed inset-0 opacity-60" />
+        <AppSidebar />
+        <SidebarInset className="bg-transparent">
+          <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center px-4 md:px-8">
+            <SidebarTrigger className="-ml-1" />
+          </header>
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            {children}
+          </div>
+        </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>
   );

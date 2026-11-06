@@ -3,15 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "coresg-normal.trae.ai",
-        pathname: "/api/ide/v1/text_to_image",
-      },
-    ],
-  },
   async headers() {
     return [
       {
