@@ -23,6 +23,7 @@ import {
   DownloadIcon,
   LinkIcon,
   PlayIcon,
+  RotateCwIcon,
   SearchIcon,
   UploadIcon,
   XIcon,
@@ -56,6 +57,7 @@ import {
 } from "@/lib/queue/queue";
 import type { PaymentStatus } from "@/lib/repositories/shared";
 import { SERVICE_LABELS, type ServiceType } from "@/lib/schema/agreement";
+import { canRetryDepositInvoice } from "@/lib/state-machine/deposit-retry";
 import { STATE_LABELS } from "@/lib/state-machine/labels";
 import type { CommissionState } from "@/lib/state-machine/rules";
 
@@ -105,9 +107,13 @@ const EXPORT_COLUMNS = [
   "overdue",
 ];
 
-type StartWork = (
+type RowAction = (
   commissionId: string,
 ) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
+
+type RowActionHandlers = { startWork: RowAction; retryDeposit: RowAction };
+
+type QueueError = { title: string; message: string };
 
 type Footer = { count: number; totals: MoneyByCurrency };
 type GridContext = { footer: Footer; today: string };
@@ -237,12 +243,12 @@ function ActionButton({
 
 function RowActions({
   row,
-  startWork,
+  actions,
   onError,
 }: {
   row: QueueRow;
-  startWork: StartWork;
-  onError: (message: string | null) => void;
+  actions: RowActionHandlers;
+  onError: (error: QueueError | null) => void;
 }) {
   const router = useRouter();
   const [copied, setCopied] = React.useState(false);
@@ -257,12 +263,12 @@ function RowActions({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function start() {
+  function run(action: RowAction, title: string) {
     onError(null);
     startTransition(async () => {
-      const result = await startWork(row.id);
+      const result = await action(row.id);
       if (!result.ok) {
-        onError(`${row.title}. ${result.error.message}`);
+        onError({ title, message: `${row.title}. ${result.error.message}` });
         return;
       }
       router.refresh();
@@ -284,17 +290,29 @@ function RowActions({
       >
         {copied ? <CheckIcon /> : <LinkIcon />}
       </ActionButton>
-      <ActionButton
-        label={
-          canStartWork(row)
-            ? "Mark in progress"
-            : "Can start once the deposit is paid"
-        }
-        disabled={!canStartWork(row) || pending}
-        onClick={start}
-      >
-        <PlayIcon />
-      </ActionButton>
+      {canRetryDepositInvoice(row.state, row.deposit.status) ? (
+        <ActionButton
+          label="Send deposit invoice again"
+          disabled={pending}
+          onClick={() =>
+            run(actions.retryDeposit, "Couldn't send the deposit invoice")
+          }
+        >
+          <RotateCwIcon />
+        </ActionButton>
+      ) : (
+        <ActionButton
+          label={
+            canStartWork(row)
+              ? "Mark in progress"
+              : "Can start once the deposit is paid"
+          }
+          disabled={!canStartWork(row) || pending}
+          onClick={() => run(actions.startWork, "Couldn't start the work")}
+        >
+          <PlayIcon />
+        </ActionButton>
+      )}
       <ActionButton label="Delivery upload isn't available yet" disabled>
         <UploadIcon />
       </ActionButton>
@@ -329,8 +347,8 @@ function blankOnFooter(
 }
 
 function buildColumns(
-  startWork: StartWork,
-  onError: (message: string | null) => void,
+  actions: RowActionHandlers,
+  onError: (error: QueueError | null) => void,
 ): ColDef<QueueRow>[] {
   const paymentColumn = (kind: "deposit" | "balance"): ColDef<QueueRow> => ({
     headerName: kind === "deposit" ? "Deposit" : "Balance",
@@ -498,9 +516,7 @@ function buildColumns(
       cellRenderer: (p: ICellRendererParams<QueueRow>) => {
         const row = rowOf(p);
         return (
-          row && (
-            <RowActions row={row} startWork={startWork} onError={onError} />
-          )
+          row && <RowActions row={row} actions={actions} onError={onError} />
         );
       },
     },
@@ -510,15 +526,21 @@ function buildColumns(
 export interface CommissionQueueProps {
   rows: QueueRow[];
   today: string;
-  startWork: StartWork;
+  startWork: RowAction;
+  retryDeposit: RowAction;
 }
 
-function CommissionQueue({ rows, today, startWork }: CommissionQueueProps) {
+function CommissionQueue({
+  rows,
+  today,
+  startWork,
+  retryDeposit,
+}: CommissionQueueProps) {
   const router = useRouter();
   const gridRef = React.useRef<AgGridReact<QueueRow>>(null);
   const [search, setSearch] = React.useState("");
   const [state, setState] = React.useState<CommissionState | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<QueueError | null>(null);
   const [footer, setFooter] = React.useState<Footer>(() => footerOf(rows));
   const [initialState] = React.useState(savedLayout);
   const stateRef = React.useRef(state);
@@ -530,8 +552,8 @@ function CommissionQueue({ rows, today, startWork }: CommissionQueueProps) {
     return map;
   }, [rows]);
   const columns = React.useMemo(
-    () => buildColumns(startWork, setError),
-    [startWork],
+    () => buildColumns({ startWork, retryDeposit }, setError),
+    [startWork, retryDeposit],
   );
   const context = React.useMemo<GridContext>(
     () => ({ footer, today }),
@@ -629,8 +651,8 @@ function CommissionQueue({ rows, today, startWork }: CommissionQueueProps) {
       {error && (
         <Alert variant="destructive">
           <CircleAlertIcon />
-          <AlertTitle>Couldn&apos;t start the work</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle>{error.title}</AlertTitle>
+          <AlertDescription>{error.message}</AlertDescription>
           <AlertAction>
             <Button
               type="button"
