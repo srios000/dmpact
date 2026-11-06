@@ -2,13 +2,21 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon, CircleAlertIcon, CopyIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CircleAlertIcon,
+  CopyIcon,
+  SparklesIcon,
+} from "lucide-react";
 import { AgreementForm } from "@/components/organisms/agreement-form";
+import { CounterofferPanel } from "@/components/organisms/counteroffer-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { CounterofferResult } from "@/lib/ai/negotiate/counteroffers";
 import type { Agreement } from "@/lib/schema/agreement";
+import type { Counteroffer } from "@/lib/schema/negotiation";
 import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
 import type { getCommission } from "@/lib/repositories/commission-repository";
@@ -16,6 +24,7 @@ import {
   retryDepositInvoice,
   saveAgreementVersion,
   sendToClient,
+  suggestCounteroffers,
 } from "../actions";
 import {
   AgreementVersionHistory,
@@ -58,6 +67,12 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
   const [sending, startSending] = React.useTransition();
   const [retryError, setRetryError] = React.useState<string | null>(null);
   const [retrying, startRetrying] = React.useTransition();
+  const [counteroffer, setCounteroffer] =
+    React.useState<CounterofferResult | null>(null);
+  const [countererror, setCountererror] = React.useState<string | null>(null);
+  const [applyingId, setApplyingId] = React.useState<string | null>(null);
+  const [checking, startChecking] = React.useTransition();
+  const [applying, startApplying] = React.useTransition();
 
   const facts = readAgreementFacts(latest.agreement);
   const unsaved = dirty || loaded !== null;
@@ -118,6 +133,37 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
       } else {
         setError(result.error.message);
       }
+      router.refresh();
+    });
+  }
+
+  function handleSuggest() {
+    setCountererror(null);
+    startChecking(async () => {
+      const result = await suggestCounteroffers({
+        commissionId: commission.id,
+      });
+      if (!result.ok) return setCountererror(result.error.message);
+      setCounteroffer(result.data);
+    });
+  }
+
+  function handleApply(option: Counteroffer) {
+    setError(null);
+    setNotice(null);
+    setApplyingId(option.id);
+    startApplying(async () => {
+      const result = await saveAgreementVersion({
+        commissionId: commission.id,
+        agreement: option.proposed_agreement,
+      });
+      setApplyingId(null);
+      if (!result.ok) return setError(result.error.message);
+      setLoaded(null);
+      setCounteroffer(null);
+      setNotice(
+        `Applied "${option.summary}" and saved as version ${result.data.version}.`,
+      );
       router.refresh();
     });
   }
@@ -192,42 +238,88 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
       )}
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className="space-y-6 rounded-xl border bg-card p-5 md:p-8">
-          {loaded && (
-            <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
-              Showing version {loaded.version}. Save it to make it version{" "}
-              {latest.version + 1}, or discard to go back to version{" "}
-              {latest.version}.
-            </p>
-          )}
-          <AgreementForm
-            key={`${latest.version}-${loaded?.version ?? "latest"}`}
-            original={original}
-            dmText={commission.sourceDm}
-            pasteDate={today}
-            mode={mode}
-            pending={saving}
-            submitLabel={
-              mode === "deadline"
-                ? "Save new deadline"
-                : `Save as version ${latest.version + 1}`
-            }
-            onDirtyChange={setDirty}
-            onSubmit={handleSave}
-            secondaryAction={
-              loaded && (
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="ghost"
-                  onClick={() => setLoaded(null)}
+        <div className="space-y-6">
+          {mode === "full" && (
+            <section className="space-y-4 rounded-xl border bg-card p-5 md:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h2 className="font-medium text-foreground">Counteroffers</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Check the client&apos;s budget against your rate card and
+                    get ready-to-send reply drafts.
+                  </p>
+                </div>
+                {!counteroffer && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={checking}
+                    onClick={handleSuggest}
+                  >
+                    <SparklesIcon />
+                    {checking ? "Checking..." : "Suggest counteroffers"}
+                  </Button>
+                )}
+              </div>
+
+              {countererror && (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive"
                 >
-                  Discard
-                </Button>
-              )
-            }
-          />
-        </section>
+                  {countererror}
+                </p>
+              )}
+
+              {counteroffer && (
+                <CounterofferPanel
+                  result={counteroffer}
+                  current={latest.agreement}
+                  applying={applying}
+                  applyingId={applyingId}
+                  onApply={handleApply}
+                />
+              )}
+            </section>
+          )}
+
+          <section className="space-y-6 rounded-xl border bg-card p-5 md:p-8">
+            {loaded && (
+              <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+                Showing version {loaded.version}. Save it to make it version{" "}
+                {latest.version + 1}, or discard to go back to version{" "}
+                {latest.version}.
+              </p>
+            )}
+            <AgreementForm
+              key={`${latest.version}-${loaded?.version ?? "latest"}`}
+              original={original}
+              dmText={commission.sourceDm}
+              pasteDate={today}
+              mode={mode}
+              pending={saving}
+              submitLabel={
+                mode === "deadline"
+                  ? "Save new deadline"
+                  : `Save as version ${latest.version + 1}`
+              }
+              onDirtyChange={setDirty}
+              onSubmit={handleSave}
+              secondaryAction={
+                loaded && (
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="ghost"
+                    onClick={() => setLoaded(null)}
+                  >
+                    Discard
+                  </Button>
+                )
+              }
+            />
+          </section>
+        </div>
 
         <aside className="space-y-6 lg:sticky lg:top-20">
           <section
