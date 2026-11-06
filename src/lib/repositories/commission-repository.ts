@@ -4,7 +4,6 @@ import { withComputedAmounts } from "@/lib/money/agreement";
 import { currencyExponent } from "@/lib/money/decimal";
 import { contentHash } from "@/lib/schema/content-hash";
 import type { Agreement } from "@/lib/schema/agreement";
-import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
 import { effectHandlers } from "@/lib/state-machine/effect-handlers";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import {
@@ -22,54 +21,11 @@ import {
   lockCommission,
   newClientToken,
   notFound,
+  paymentsOf,
   readAgreement,
   requireCreator,
   toJson,
 } from "./shared";
-
-type InvoiceRow = {
-  kind: "deposit" | "balance";
-  status: "draft" | "sent" | "paid" | "cancelled";
-  payLink: string | null;
-  paidAt: Date | null;
-  createdAt: Date;
-};
-
-export type PaymentStatus = {
-  status: "not_required" | "not_created" | InvoiceRow["status"];
-  payLink: string | null;
-  paidAt: string | null;
-};
-
-function paymentStatus(
-  invoices: InvoiceRow[],
-  kind: InvoiceRow["kind"],
-  required: boolean,
-): PaymentStatus {
-  const invoice = invoices
-    .filter((i) => i.kind === kind)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-  if (!invoice) {
-    return {
-      status: required ? "not_created" : "not_required",
-      payLink: null,
-      paidAt: null,
-    };
-  }
-  return {
-    status: invoice.status,
-    payLink: invoice.payLink,
-    paidAt: invoice.paidAt?.toISOString() ?? null,
-  };
-}
-
-function paymentsOf(content: unknown, invoices: InvoiceRow[]) {
-  const facts = readAgreementFacts(content);
-  return {
-    deposit: paymentStatus(invoices, "deposit", facts.depositType !== "none"),
-    balance: paymentStatus(invoices, "balance", !facts.balanceIsZero),
-  };
-}
 
 function summarize(agreement: Agreement) {
   return {
@@ -79,6 +35,7 @@ function summarize(agreement: Agreement) {
       agreement.parties?.client?.display_name ??
       agreement.parties?.client?.handle ??
       null,
+    clientHandle: agreement.parties?.client?.handle ?? null,
     total: agreement.price.total,
     currency: agreement.price.currency,
     depositAmount: agreement.deposit.amount ?? null,
@@ -135,6 +92,7 @@ export async function listCommissions() {
     return {
       id: commission.id,
       state: commission.state,
+      clientToken: commission.clientToken,
       createdAt: commission.createdAt.toISOString(),
       updatedAt: commission.updatedAt.toISOString(),
       awaitingClient: latest.version !== inForce.version,

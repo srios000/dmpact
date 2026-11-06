@@ -18,6 +18,7 @@ import {
   latestVersion,
   lockCommission,
   notFound,
+  paymentsOf,
   readAgreement,
   requireCreator,
   toJson,
@@ -130,6 +131,8 @@ export async function getClientAgreement(token: string) {
     where: { clientToken: token },
     include: {
       creator: { select: { displayName: true } },
+      deliveries: { orderBy: { loggedAt: "asc" } },
+      invoices: true,
       agreementVersions: {
         orderBy: { version: "desc" },
         include: { confirmations: true },
@@ -160,16 +163,28 @@ export async function getClientAgreement(token: string) {
   return {
     commissionId: commission.id,
     state: commission.state,
+    updatedAt: commission.updatedAt.toISOString(),
     creatorName: commission.creator.displayName,
     version: latest.version,
     versionHash: latest.contentHash,
     agreement,
     clientConfirmed,
     awaitingClient: !clientConfirmed && canClientConfirm(commission.state),
+    ...paymentsOf((inForce ?? latest).content, commission.invoices),
     deadlineInForce:
       inForce && inForce.version !== latest.version
         ? readAgreement(inForce.content).deadline
         : null,
+    finalFiles:
+      commission.state === "fully_paid"
+        ? commission.deliveries
+            .filter((delivery) => delivery.isFinal)
+            .map((delivery) => ({
+              id: delivery.id,
+              filename: delivery.filename,
+              sizeBytes: delivery.sizeBytes,
+            }))
+        : [],
   };
 }
 

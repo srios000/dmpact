@@ -7,6 +7,7 @@ import {
   CLIENT_TOKEN_BYTES,
   clientTokenSchema,
 } from "@/lib/schema/commission-forms";
+import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
 import { RepositoryError } from "./errors";
 
 export type Tx = Prisma.TransactionClient;
@@ -79,4 +80,56 @@ export function toJson(agreement: Agreement): Prisma.InputJsonObject {
 
 export function utcToday(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+export type InvoiceRow = {
+  kind: "deposit" | "balance";
+  status: "draft" | "sent" | "paid" | "cancelled";
+  amount: { toString(): string };
+  payLink: string | null;
+  dueDate: Date | null;
+  paidAt: Date | null;
+  createdAt: Date;
+};
+
+export type PaymentStatus = {
+  status: "not_required" | "not_created" | InvoiceRow["status"];
+  amount: string | null;
+  payLink: string | null;
+  dueDate: string | null;
+  paidAt: string | null;
+};
+
+function paymentStatus(
+  invoices: InvoiceRow[],
+  kind: InvoiceRow["kind"],
+  required: boolean,
+): PaymentStatus {
+  const invoice = invoices
+    .filter((i) => i.kind === kind)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  if (!invoice) {
+    return {
+      status: required ? "not_created" : "not_required",
+      amount: null,
+      payLink: null,
+      dueDate: null,
+      paidAt: null,
+    };
+  }
+  return {
+    status: invoice.status,
+    amount: invoice.amount.toString(),
+    payLink: invoice.payLink,
+    dueDate: invoice.dueDate?.toISOString().slice(0, 10) ?? null,
+    paidAt: invoice.paidAt?.toISOString() ?? null,
+  };
+}
+
+export function paymentsOf(content: unknown, invoices: InvoiceRow[]) {
+  const facts = readAgreementFacts(content);
+  return {
+    deposit: paymentStatus(invoices, "deposit", facts.depositType !== "none"),
+    balance: paymentStatus(invoices, "balance", !facts.balanceIsZero),
+  };
 }
