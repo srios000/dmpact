@@ -23,6 +23,8 @@ export const envSchema = z.object({
   AWS_ACCESS_KEY_ID: optional,
   AWS_SECRET_ACCESS_KEY: optional,
   CRON_SECRET: optional,
+  DEMO_CREATOR_EMAIL: optional,
+  DEMO_CLIENT_PAYPAL_EMAIL: optional,
 });
 
 export type Env = z.infer<typeof envSchema>;
