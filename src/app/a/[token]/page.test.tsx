@@ -29,8 +29,20 @@ describe("/a/[token]", () => {
       agreement: { title: "Lyric video" },
       creatorName: "Test Creator",
       version: 2,
+      state: "negotiating",
+      deposit: { status: "not_created", payLink: null, paidAt: null },
+      balance: { status: "not_created", payLink: null, paidAt: null },
     } as Awaited<ReturnType<typeof getClientAgreement>>);
 
-    await expect(render("a".repeat(22))).resolves.toBeTruthy();
+    const page = await render("a".repeat(22));
+    expect(page).toBeTruthy();
+    expect(page.props).toMatchObject({
+      token: "a".repeat(22),
+      view: {
+        agreement: { title: "Lyric video" },
+        creatorName: "Test Creator",
+        version: 2,
+      },
+    });
   });
 });
