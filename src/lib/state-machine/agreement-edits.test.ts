@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Agreement } from "@/lib/schema/agreement";
 import { exampleAgreement } from "@/lib/schema/example-agreement";
 import {
+  agreementEditMode,
   canClientConfirm,
   canClientRequestChanges,
   checkAgreementEdit,
@@ -113,5 +114,24 @@ describe("client permissions", () => {
     expect(canClientRequestChanges("agreed", true)).toBe(true);
     expect(canClientRequestChanges("agreed", false)).toBe(false);
     expect(canClientRequestChanges("delivered", true)).toBe(false);
+  });
+});
+
+describe("agreementEditMode", () => {
+  it("allows every field until the client approves", () => {
+    expect(agreementEditMode("draft")).toBe("full");
+    expect(agreementEditMode("negotiating")).toBe("full");
+  });
+
+  it("allows only the deadline from approval until delivery", () => {
+    expect(agreementEditMode("agreed")).toBe("deadline");
+    expect(agreementEditMode("dp_paid")).toBe("deadline");
+    expect(agreementEditMode("in_progress")).toBe("deadline");
+  });
+
+  it("locks the agreement after delivery or cancellation", () => {
+    expect(agreementEditMode("delivered")).toBe("locked");
+    expect(agreementEditMode("fully_paid")).toBe("locked");
+    expect(agreementEditMode("cancelled")).toBe("locked");
   });
 });

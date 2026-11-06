@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { SUPPORTED_CURRENCIES } from "@/lib/ai/extract/post-checks";
-import { reviewAgreement } from "@/lib/ai/extract/review";
+import { flagKey, reviewAgreement } from "@/lib/ai/extract/review";
 import {
   agreementSchema,
   SERVICE_TYPES,
@@ -30,6 +30,7 @@ import {
   type Ambiguity,
   type ServiceType,
 } from "@/lib/schema/agreement";
+import type { AgreementEditMode } from "@/lib/state-machine/agreement-edits";
 
 type AgreementInput = z.input<typeof agreementSchema>;
 
@@ -129,8 +130,10 @@ export interface AgreementFormProps {
   dmText: string;
   pasteDate: string;
   submitLabel: string;
+  mode?: AgreementEditMode;
   pending?: boolean;
   secondaryAction?: React.ReactNode;
+  onDirtyChange?: (dirty: boolean) => void;
   onSubmit: (agreement: Agreement) => void;
 }
 
@@ -139,8 +142,10 @@ function AgreementForm({
   dmText,
   pasteDate,
   submitLabel,
+  mode = "full",
   pending,
   secondaryAction,
+  onDirtyChange,
   onSubmit,
 }: AgreementFormProps) {
   const id = React.useId();
@@ -148,18 +153,24 @@ function AgreementForm({
     control,
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<AgreementInput, unknown, Agreement>({
     defaultValues: original,
     resolver,
   });
   const deliverables = useFieldArray({ control, name: "deliverables" });
   const values = useWatch({ control }) as AgreementInput;
+  const [dismissed, setDismissed] = React.useState<string[]>([]);
+
+  const dirty = isDirty || dismissed.length > 0;
+  React.useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const review = React.useCallback(
-    (edited: Agreement) =>
-      reviewAgreement({ original, edited, dmText, pasteDate }),
-    [original, dmText, pasteDate],
+    (edited: Agreement, skip: readonly string[] = dismissed) =>
+      reviewAgreement({ original, edited, dmText, pasteDate, dismissed: skip }),
+    [original, dmText, pasteDate, dismissed],
   );
 
   const live = React.useMemo(() => {
@@ -167,6 +178,15 @@ function AgreementForm({
       return review(normalize(values));
     } catch {
       return original;
+    }
+  }, [review, values, original]);
+
+  const recreated = React.useMemo(() => {
+    try {
+      const all = original.ambiguities.map(flagKey);
+      return new Set(review(normalize(values), all).ambiguities.map(flagKey));
+    } catch {
+      return new Set<string>();
     }
   }, [review, values, original]);
 
@@ -184,6 +204,10 @@ function AgreementForm({
   ).length;
   const warnings = live.ambiguities.length - blockers;
 
+  function editable(key: SectionKey) {
+    return mode === "full" || (mode === "deadline" && key === "deadline");
+  }
+
   function flagsFor(key: SectionKey) {
     const list = flagsBySection.get(key);
     if (!list?.length) return null;
@@ -197,10 +221,29 @@ function AgreementForm({
             message={flag.message}
             quote={flag.source_quote}
             question={flag.suggested_question}
+            onDismiss={
+              editable(key) && !recreated.has(flagKey(flag))
+                ? () => setDismissed((keys) => [...keys, flagKey(flag)])
+                : undefined
+            }
           />
         ))}
       </div>
     );
+  }
+
+  function submit(agreement: Agreement) {
+    const reviewed = review(agreement);
+    if (mode !== "deadline") return onSubmit(reviewed);
+    const onDeadline = (flag: Ambiguity) => sectionOf(flag) === "deadline";
+    onSubmit({
+      ...original,
+      deadline: reviewed.deadline,
+      ambiguities: [
+        ...reviewed.ambiguities.filter(onDeadline),
+        ...original.ambiguities.filter((flag) => !onDeadline(flag)),
+      ],
+    });
   }
 
   const field = (name: string) => `${id}-${name}`;
@@ -209,8 +252,9 @@ function AgreementForm({
 
   return (
     <form
+      method="post"
       noValidate
-      onSubmit={handleSubmit((agreement) => onSubmit(review(agreement)))}
+      onSubmit={handleSubmit(submit)}
       className="space-y-8"
     >
       <p aria-live="polite" className="text-sm text-muted-foreground">
@@ -245,6 +289,7 @@ function AgreementForm({
       <div className="grid gap-6 md:grid-cols-2">
         <FormField
           label="Title"
+          disabled={mode !== "full"}
           htmlFor={field("title")}
           error={errorAt(errors, "title")}
           flags={flagsFor("title")}
@@ -255,6 +300,7 @@ function AgreementForm({
 
         <FormField
           label="Service"
+          disabled={mode !== "full"}
           htmlFor={field("service")}
           error={
             errorAt(errors, "service_type") ?? errorAt(errors, "service_other")
@@ -283,6 +329,7 @@ function AgreementForm({
 
         <FormField
           label="Deadline"
+          disabled={mode === "locked"}
           htmlFor={field("deadline")}
           error={errorAt(errors, "deadline.date")}
           flags={flagsFor("deadline")}
@@ -296,6 +343,7 @@ function AgreementForm({
 
         <FormField
           label="Deliverables"
+          disabled={mode !== "full"}
           error={errorAt(errors, "deliverables")}
           flags={flagsFor("deliverables")}
           className="md:col-span-2"
@@ -356,6 +404,7 @@ function AgreementForm({
 
         <FormField
           label="Total price"
+          disabled={mode !== "full"}
           htmlFor={field("total")}
           error={errorAt(errors, "price.total")}
           flags={flagsFor("total")}
@@ -370,6 +419,7 @@ function AgreementForm({
 
         <FormField
           label="Currency"
+          disabled={mode !== "full"}
           htmlFor={field("currency")}
           error={errorAt(errors, "price.currency")}
           flags={flagsFor("currency")}
@@ -396,6 +446,7 @@ function AgreementForm({
 
         <FormField
           label="Deposit"
+          disabled={mode !== "full"}
           htmlFor={field("deposit")}
           error={
             errorAt(errors, "deposit.percent") ??
@@ -443,6 +494,7 @@ function AgreementForm({
 
         <FormField
           label="Revisions included"
+          disabled={mode !== "full"}
           htmlFor={field("revisions")}
           error={errorAt(errors, "revisions.included")}
           flags={flagsFor("revisions")}
@@ -457,6 +509,7 @@ function AgreementForm({
 
         <FormField
           label="Usage rights"
+          disabled={mode !== "full"}
           htmlFor={field("commercial")}
           flags={flagsFor("usage")}
         >
@@ -506,6 +559,7 @@ function AgreementForm({
 
         <FormField
           label="Client"
+          disabled={mode !== "full"}
           htmlFor={field("client-name")}
           error={errorAt(errors, "parties.client.email")}
           flags={flagsFor("client")}
@@ -535,6 +589,7 @@ function AgreementForm({
 
         <FormField
           label="Notes"
+          disabled={mode !== "full"}
           htmlFor={field("notes")}
           flags={flagsFor("notes")}
           className="md:col-span-2"
@@ -548,9 +603,11 @@ function AgreementForm({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
         {secondaryAction}
-        <Button type="submit" size="lg" disabled={pending}>
-          {pending ? "Saving..." : submitLabel}
-        </Button>
+        {mode !== "locked" && (
+          <Button type="submit" size="lg" disabled={pending}>
+            {pending ? "Saving..." : submitLabel}
+          </Button>
+        )}
       </div>
     </form>
   );

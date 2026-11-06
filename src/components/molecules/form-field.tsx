@@ -8,6 +8,7 @@ export interface FormFieldProps {
   error?: string;
   hint?: React.ReactNode;
   flags?: React.ReactNode;
+  disabled?: boolean;
   className?: string;
   children: React.ReactNode;
 }
@@ -18,13 +19,16 @@ function FormField({
   error,
   hint,
   flags,
+  disabled,
   className,
   children,
 }: FormFieldProps) {
   return (
     <div className={cn("space-y-2", className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
+      <fieldset disabled={disabled} className="min-w-0 space-y-2">
+        {children}
+      </fieldset>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && (
         <p role="alert" className="text-xs text-destructive">

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Agreement } from "@/lib/schema/agreement";
-import { blankAgreement, keepUnresolvedFlags, reviewAgreement } from "./review";
+import {
+  blankAgreement,
+  flagKey,
+  keepUnresolvedFlags,
+  reviewAgreement,
+} from "./review";
 import { baseAgreement } from "./test-helpers";
 
 const PASTE = "2026-10-30";
@@ -111,6 +116,41 @@ describe("reviewAgreement", () => {
     });
     expect(result.deposit.amount).toBe("100.00");
     expect(result.balance_amount).toBe("100.00");
+  });
+
+  it("drops a flag the creator marked as answered", () => {
+    const original = baseAgreement({
+      ambiguities: [
+        {
+          code: "CONFLICTING_VALUES",
+          severity: "blocker",
+          field: "/price/total",
+          message: "Two prices were mentioned.",
+          source_quote: null,
+          suggested_question: null,
+        },
+      ],
+    });
+    const result = reviewAgreement({
+      original,
+      edited: original,
+      dmText: "deal",
+      pasteDate: PASTE,
+      dismissed: [flagKey(original.ambiguities[0])],
+    });
+    expect(codes(result)).not.toContain("CONFLICTING_VALUES");
+  });
+
+  it("brings back a missing-term flag even if it was dismissed", () => {
+    const original = withMissingDeadline();
+    const result = reviewAgreement({
+      original,
+      edited: original,
+      dmText: "deal",
+      pasteDate: PASTE,
+      dismissed: [flagKey(original.ambiguities[0])],
+    });
+    expect(codes(result)).toContain("MISSING_DEADLINE");
   });
 });
 
