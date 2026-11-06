@@ -1,0 +1,302 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
+import type { ModelClient } from "@/lib/ai/gemini";
+import { agreementSchema, type Agreement } from "@/lib/schema/agreement";
+import { exampleAgreement } from "@/lib/schema/example-agreement";
+import { negotiationSchema } from "@/lib/schema/negotiation";
+import {
+  DEFAULT_MISMATCH_THRESHOLD_PCT,
+  DEFAULT_RATE_CARD,
+  type RateCardSettings,
+} from "@/lib/schema/rate-card";
+import { generateCounteroffers, splitDepositPct } from "./counteroffers";
+import type { CounterofferDrafts } from "./prompt";
+
+const today = "2026-11-05";
+
+const settings: RateCardSettings = {
+  rate_card: DEFAULT_RATE_CARD,
+  mismatch_threshold_pct: DEFAULT_MISMATCH_THRESHOLD_PCT,
+};
+
+// Illustration with 5 revisions: 100.00 base + 3 × 15.00 = 145.00 USD.
+function agreement(overrides: Partial<Agreement> = {}): Agreement {
+  return {
+    ...exampleAgreement,
+    service_type: "illustration",
+    deliverables: [
+      { id: "d1", description: "Full-body illustration", quantity: 1 },
+      { id: "d2", description: "Transparent PNG", quantity: 1 },
+    ],
+    price: { total: "100.00", currency: "USD" },
+    revisions: { included: 5 },
+    usage_rights: { commercial: false },
+    deadline: { date: "2026-12-01", raw_text: null, is_relative: false },
+    ...overrides,
+  };
+}
+
+const drafts: CounterofferDrafts = {
+  reduce_scope: {
+    keep_deliverable_ids: ["d1"],
+    service_type: "illustration",
+    revisions_included: 2,
+    summary: "Illustration only, 2 revisions, for 100.00 USD",
+    message_draft:
+      "Hi Ren! For 100.00 USD I can do the illustration with 2 revisions.",
+  },
+  adjust_price: {
+    summary: "Keep everything for 145.00 USD",
+    message_draft: "Hi Ren! The full scope comes to 145.00 USD.",
+  },
+  split_milestones: {
+    summary: "145.00 USD in 2 payments",
+    message_draft: "Hi Ren! Pay 72.50 USD now and 72.50 USD on delivery.",
+  },
+};
+
+function modelReturning(...outputs: unknown[]): ModelClient {
+  const queue = [...outputs];
+  return {
+    model: "test-model",
+    generateJson: vi.fn(async () => {
+      const next = queue.length > 1 ? queue.shift() : queue[0];
+      if (next instanceof Error) throw next;
+      return typeof next === "string" ? next : JSON.stringify(next);
+    }),
+  };
+}
+
+function withReduce(
+  overrides: Partial<NonNullable<CounterofferDrafts["reduce_scope"]>>,
+): CounterofferDrafts {
+  return { ...drafts, reduce_scope: { ...drafts.reduce_scope!, ...overrides } };
+}
+
+describe("generateCounteroffers", () => {
+  it("offers nothing and skips the model when the budget is fair", async () => {
+    const client = modelReturning(drafts);
+    const result = await generateCounteroffers({
+      agreement: agreement({ price: { total: "145.00", currency: "USD" } }),
+      settings,
+      today,
+      client,
+    });
+    expect(result.check.outcome).toBe("fair");
+    expect(result.negotiation.options).toEqual([]);
+    expect(client.generateJson).not.toHaveBeenCalled();
+  });
+
+  it("offers all three strategies with amounts from the rate card", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client: modelReturning(drafts),
+    });
+
+    expect(result.fallback).toBe(false);
+    expect(negotiationSchema.safeParse(result.negotiation).success).toBe(true);
+    const [reduce, adjust, split] = result.negotiation.options;
+
+    expect(reduce.id).toBe("opt1");
+    expect(reduce.strategy).toBe("reduce_scope");
+    expect(reduce.proposed_agreement.price.total).toBe("100.00");
+    expect(reduce.proposed_agreement.revisions.included).toBe(2);
+    expect(reduce.proposed_agreement.deliverables.map((d) => d.id)).toEqual([
+      "d1",
+    ]);
+
+    expect(adjust.strategy).toBe("adjust_price");
+    expect(adjust.proposed_agreement.price.total).toBe("145.00");
+    expect(adjust.proposed_agreement.deliverables).toHaveLength(2);
+
+    expect(split.strategy).toBe("split_milestones");
+    expect(split.proposed_agreement.price.total).toBe("145.00");
+    expect(split.proposed_agreement.deposit).toEqual({
+      type: "percent",
+      percent: 50,
+      fixed_amount: null,
+      amount: "72.50",
+    });
+    expect(split.proposed_agreement.balance_amount).toBe("72.50");
+  });
+
+  it("recomputes the deposit and balance for the new price", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client: modelReturning(drafts),
+    });
+    const adjust = result.negotiation.options[1].proposed_agreement;
+    expect(adjust.deposit.amount).toBe("72.50");
+    expect(adjust.balance_amount).toBe("72.50");
+  });
+
+  it("drops a smaller scope the budget still doesn't cover", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement({ price: { total: "40.00", currency: "USD" } }),
+      settings,
+      today,
+      client: modelReturning(drafts),
+    });
+    expect(result.negotiation.options.map((o) => o.strategy)).toEqual([
+      "adjust_price",
+      "split_milestones",
+    ]);
+    expect(result.negotiation.options[0].id).toBe("opt1");
+  });
+
+  it.each([
+    ["an unknown deliverable", withReduce({ keep_deliverable_ids: ["d9"] })],
+    ["a different service", withReduce({ service_type: "live2d_rigging" })],
+  ])("drops a smaller scope with %s", async (_name, output) => {
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client: modelReturning(output),
+    });
+    expect(result.negotiation.options.map((o) => o.strategy)).not.toContain(
+      "reduce_scope",
+    );
+  });
+
+  it("never adds revisions in a smaller scope", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement({
+        price: { total: "100.00", currency: "USD" },
+        revisions: { included: 1 },
+        deadline: { date: "2026-11-06", raw_text: null, is_relative: false },
+      }),
+      settings,
+      today,
+      client: modelReturning(withReduce({ revisions_included: 4 })),
+    });
+    const reduce = result.negotiation.options.find(
+      (o) => o.strategy === "reduce_scope",
+    );
+    // 100.00 base + 60.00 rush = 160.00: still a mismatch, so no smaller scope.
+    expect(reduce).toBeUndefined();
+  });
+
+  it("lets mix and master drop to mixing only", async () => {
+    const mix: Agreement = {
+      ...exampleAgreement,
+      price: { total: "100.00", currency: "USD" },
+      usage_rights: { commercial: false },
+      deadline: { date: "2026-12-01", raw_text: null, is_relative: false },
+    };
+    const result = await generateCounteroffers({
+      agreement: mix,
+      settings,
+      today,
+      client: modelReturning(
+        withReduce({ service_type: "mixing", revisions_included: 2 }),
+      ),
+    });
+    const reduce = result.negotiation.options[0];
+    expect(reduce.strategy).toBe("reduce_scope");
+    expect(reduce.proposed_agreement.service_type).toBe("mixing");
+    expect(reduce.proposed_agreement.price.total).toBe("100.00");
+  });
+
+  it("rejects a price from the model and falls back to templates", async () => {
+    const withPrice = {
+      ...drafts,
+      adjust_price: { ...drafts.adjust_price, price: "1.00" },
+    };
+    const client = modelReturning(withPrice);
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client,
+    });
+    expect(client.generateJson).toHaveBeenCalledTimes(2);
+    expect(result.fallback).toBe(true);
+    expect(result.negotiation.options[0].proposed_agreement.price.total).toBe(
+      "145.00",
+    );
+  });
+
+  it("uses template messages when the model call fails", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client: modelReturning(new Error("quota exceeded")),
+    });
+    expect(result.fallback).toBe(true);
+    expect(result.negotiation.options.map((o) => o.strategy)).toEqual([
+      "adjust_price",
+      "split_milestones",
+    ]);
+    expect(result.negotiation.options[1].message_draft).toBe(
+      "Hi Ren! The full scope comes to 145.00 USD on my rates. To make it easier, you can pay 72.50 USD now and the remaining 72.50 USD on delivery.",
+    );
+  });
+
+  it("uses template messages without a model client", async () => {
+    const result = await generateCounteroffers({
+      agreement: agreement(),
+      settings,
+      today,
+      client: null,
+    });
+    expect(result.fallback).toBe(true);
+    expect(result.negotiation.options).toHaveLength(2);
+  });
+});
+
+describe("splitDepositPct", () => {
+  it("is the share of the price the budget covers", () => {
+    expect(splitDepositPct("30.00", "100.00", "USD")).toBe(30);
+  });
+
+  it("stays between 10% and 50%", () => {
+    expect(splitDepositPct("5.00", "100.00", "USD")).toBe(10);
+    expect(splitDepositPct("90.00", "100.00", "USD")).toBe(50);
+  });
+});
+
+describe("generateCounteroffers on the lowball test DMs", () => {
+  const dir = join(process.cwd(), "fixtures/dms");
+  const cases = readdirSync(dir)
+    .filter((file) => file.endsWith(".expected.json"))
+    .map((file) => ({
+      file,
+      ...(JSON.parse(readFileSync(join(dir, file), "utf8")) as {
+        paste_date: string;
+        expected: Agreement;
+        expect_mismatch: boolean;
+      }),
+    }))
+    .filter((c) => c.expect_mismatch);
+
+  it("has lowball cases", () => {
+    expect(cases.length).toBeGreaterThan(0);
+  });
+
+  it.each(cases)("$file", async ({ paste_date, expected }) => {
+    const result = await generateCounteroffers({
+      // Fixtures list their flags in expected_ambiguity_codes instead.
+      agreement: { ...expected, ambiguities: [] },
+      settings,
+      today: paste_date,
+      client: null,
+    });
+    const { options } = result.negotiation;
+    expect(options.length).toBeGreaterThan(0);
+    for (const option of options) {
+      expect(agreementSchema.safeParse(option.proposed_agreement).success).toBe(
+        true,
+      );
+      expect(option.proposed_agreement.price.total).toBe(
+        result.check.mismatch.estimated_price,
+      );
+    }
+  });
+});
