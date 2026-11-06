@@ -75,6 +75,37 @@ function unpaid(payment: PaymentStatus): boolean {
   return payment.status !== "paid" && payment.status !== "not_required";
 }
 
+export type PaymentTone = "paid" | "waiting" | "late" | "idle";
+
+export type PaymentLike = {
+  status: PaymentStatus["status"];
+  dueDate: string | null;
+};
+
+export function paymentLabel(payment: PaymentLike, late: boolean): string {
+  if (late) return "Overdue";
+  switch (payment.status) {
+    case "not_required":
+      return "None";
+    case "not_created":
+    case "draft":
+      return "Not sent";
+    case "sent":
+      return "Unpaid";
+    case "paid":
+      return "Paid";
+    case "cancelled":
+      return "Cancelled";
+  }
+}
+
+export function paymentTone(payment: PaymentLike, late: boolean): PaymentTone {
+  if (late) return "late";
+  if (payment.status === "paid") return "paid";
+  if (payment.status === "sent") return "waiting";
+  return "idle";
+}
+
 export type MoneyByCurrency = { currency: string; amount: string }[];
 
 function addTo(totals: Map<string, number>, currency: string, amount: string) {

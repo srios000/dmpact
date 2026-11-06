@@ -150,6 +150,8 @@ export async function getCommission(id: string) {
     depositRetry: retryable
       ? { error: depositFailureMessage(commission.events) }
       : null,
+    ...summarize(readAgreement((inForce ?? latest).content)),
+    ...paymentsOf((inForce ?? latest).content, commission.invoices),
     versions: versions.map((v) => ({
       id: v.id,
       version: v.version,
