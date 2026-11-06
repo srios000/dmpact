@@ -47,14 +47,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
 
-  const { isNew } = await recordWebhookEvent(event);
-  if (isNew) {
+  const { needsProcessing } = await recordWebhookEvent(event);
+  if (needsProcessing) {
     after(async () => {
       try {
         const { commissionId } = await processWebhookEvent(event.id);
         if (commissionId) {
-          revalidateTag("commissions", "max");
-          revalidateTag(`commission-${commissionId}`, "max");
+          revalidateTag("commissions", { expire: 0 });
+          revalidateTag(`commission-${commissionId}`, { expire: 0 });
         }
       } catch (error) {
         console.error(`PayPal webhook ${event.id} failed to process.`, error);

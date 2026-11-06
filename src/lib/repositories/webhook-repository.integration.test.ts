@@ -2,7 +2,10 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import type { WebhookEvent } from "@/lib/paypal/webhook";
 import type { CommissionState } from "@/lib/state-machine/rules";
+import { contentHash } from "@/lib/schema/content-hash";
+import { exampleAgreement } from "@/lib/schema/example-agreement";
 import { processWebhookEvent, recordWebhookEvent } from "./webhook-repository";
+import { toJson } from "./shared";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/get-current-creator", () => ({
@@ -55,6 +58,15 @@ describe.skipIf(!url)("PayPal webhook processing (database)", () => {
     const commission = await db.commission.create({
       data: { creatorId: creator.id, state, sourceDm: "dm" },
     });
+    await db.agreementVersion.create({
+      data: {
+        commissionId: commission.id,
+        version: 1,
+        content: toJson(exampleAgreement),
+        contentHash: contentHash(exampleAgreement),
+        createdBy: "creator",
+      },
+    });
     const paypalInvoiceId = `INV2-${crypto.randomUUID()}`;
     const invoice = await db.invoice.create({
       data: {
@@ -74,9 +86,9 @@ describe.skipIf(!url)("PayPal webhook processing (database)", () => {
   }
 
   async function deliver(event: WebhookEvent) {
-    const { isNew } = await recordWebhookEvent(event);
-    if (isNew) await processWebhookEvent(event.id);
-    return isNew;
+    const { needsProcessing } = await recordWebhookEvent(event);
+    if (needsProcessing) await processWebhookEvent(event.id);
+    return needsProcessing;
   }
 
   it("marks a paid deposit and moves agreed -> dp_paid", async () => {
@@ -133,6 +145,28 @@ describe.skipIf(!url)("PayPal webhook processing (database)", () => {
     });
     expect(events.filter((e) => e.type === "invoice_paid")).toHaveLength(1);
     expect(events.filter((e) => e.toState === "dp_paid")).toHaveLength(1);
+  });
+
+  it("finishes a redelivered event whose first processing never ran", async () => {
+    const { commissionId, paypalInvoiceId } = await withInvoice(
+      "agreed",
+      "deposit",
+    );
+    const event = paidEvent("WH-8", paypalInvoiceId);
+    expect(await recordWebhookEvent(event)).toEqual({
+      isNew: true,
+      needsProcessing: true,
+    });
+
+    expect(await deliver(event)).toBe(true);
+    expect(
+      (await db.commission.findUniqueOrThrow({ where: { id: commissionId } }))
+        .state,
+    ).toBe("dp_paid");
+    expect(await recordWebhookEvent(event)).toEqual({
+      isNew: false,
+      needsProcessing: false,
+    });
   });
 
   it("doesn't move the commission twice for a second PAID event", async () => {

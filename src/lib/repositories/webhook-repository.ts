@@ -20,12 +20,12 @@ import { transition } from "@/lib/state-machine/transition";
  */
 
 /**
- * Stores a verified event once. Returns false for an event ID already seen,
- * so redelivered events are no-ops.
+ * Stores a verified event once. `needsProcessing` stays true for a redelivered
+ * event whose earlier processing failed, so a resend can finish it.
  */
 export async function recordWebhookEvent(
   event: WebhookEvent,
-): Promise<{ isNew: boolean }> {
+): Promise<{ isNew: boolean; needsProcessing: boolean }> {
   const { count } = await db.webhookEvent.createMany({
     data: [
       {
@@ -36,7 +36,13 @@ export async function recordWebhookEvent(
     ],
     skipDuplicates: true,
   });
-  return { isNew: count === 1 };
+  if (count === 1) return { isNew: true, needsProcessing: true };
+
+  const stored = await db.webhookEvent.findUnique({
+    where: { id: event.id },
+    select: { processedAt: true },
+  });
+  return { isNew: false, needsProcessing: !stored?.processedAt };
 }
 
 export type InvoiceRow = {

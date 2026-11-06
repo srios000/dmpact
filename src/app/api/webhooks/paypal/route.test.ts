@@ -66,7 +66,10 @@ describe("POST /api/webhooks/paypal", () => {
     vi.clearAllMocks();
     state.env.PAYPAL_WEBHOOK_ID = "WEBHOOK-1";
     state.verification = true;
-    vi.mocked(recordWebhookEvent).mockResolvedValue({ isNew: true });
+    vi.mocked(recordWebhookEvent).mockResolvedValue({
+      isNew: true,
+      needsProcessing: true,
+    });
     vi.mocked(processWebhookEvent).mockResolvedValue({ commissionId: "c-1" });
   });
 
@@ -96,15 +99,32 @@ describe("POST /api/webhooks/paypal", () => {
 
     await runAfter();
     expect(processWebhookEvent).toHaveBeenCalledWith("WH-1");
-    expect(revalidateTag).toHaveBeenCalledWith("commission-c-1", "max");
+    expect(revalidateTag).toHaveBeenCalledWith("commission-c-1", {
+      expire: 0,
+    });
   });
 
-  it("treats a redelivered event as a no-op", async () => {
-    vi.mocked(recordWebhookEvent).mockResolvedValue({ isNew: false });
+  it("treats a redelivered, already processed event as a no-op", async () => {
+    vi.mocked(recordWebhookEvent).mockResolvedValue({
+      isNew: false,
+      needsProcessing: false,
+    });
     const response = await post(JSON.stringify(event));
 
     expect(response.status).toBe(200);
     expect(after).not.toHaveBeenCalled();
+  });
+
+  it("processes a redelivered event whose earlier processing failed", async () => {
+    vi.mocked(recordWebhookEvent).mockResolvedValue({
+      isNew: false,
+      needsProcessing: true,
+    });
+    const response = await post(JSON.stringify(event));
+
+    expect(response.status).toBe(200);
+    await runAfter();
+    expect(processWebhookEvent).toHaveBeenCalledWith("WH-1");
   });
 
   it("asks PayPal to retry when it can't verify", async () => {
