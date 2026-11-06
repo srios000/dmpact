@@ -10,6 +10,10 @@ vi.mock("@/lib/repositories/agreement-repository", () => ({}));
 vi.mock("@/lib/repositories/commission-repository", () => ({
   retryDepositInvoice: vi.fn(),
 }));
+// Imported by suggestCounteroffers, which these tests don't exercise.
+vi.mock("@/lib/env", () => ({ env: {} }));
+vi.mock("@/lib/repositories/rate-card-repository", () => ({}));
+vi.mock("@/lib/repositories/shared", () => ({ notFound: vi.fn() }));
 
 const retry = vi.mocked(retryInRepository);
 const tags = vi.mocked(updateTag);

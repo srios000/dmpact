@@ -355,19 +355,50 @@ describe("runPostChecks: relative dates, vague phrases, question language", () =
     );
   });
 
-  it("keeps English default questions for English, mixed and unknown chats", () => {
-    for (const source_language of ["en", "mixed", "unknown"]) {
-      const a = baseAgreement({
-        price: { total: null, currency: null },
-        extraction: {
-          model: "",
-          prompt_version: "",
-          confidence: 0.9,
-          source_language,
-        },
-      });
-      const flag = run(a).ambiguities.find((x) => x.code === "MISSING_PRICE");
-      expect(flag?.suggested_question).toBe(
+  const priceQuestion = (source_language: string, dmText: string) => {
+    const a = baseAgreement({
+      price: { total: null, currency: null },
+      extraction: {
+        model: "",
+        prompt_version: "",
+        confidence: 0.9,
+        source_language,
+      },
+    });
+    return run(a, dmText).ambiguities.find((x) => x.code === "MISSING_PRICE")
+      ?.suggested_question;
+  };
+
+  it("keeps English default questions for English chats", () => {
+    expect(priceQuestion("en", "deal, can you do it by Friday?")).toBe(
+      "What total price are we agreeing on?",
+    );
+  });
+
+  it("uses Indonesian defaults for mixed chats that contain Indonesian", () => {
+    for (const dm of [
+      "kak bisa bikin logo? deadline next week ya",
+      "oke deal, revisi 2x aja",
+      "Can you do it? Gak buru-buru kok",
+    ]) {
+      expect(priceQuestion("mixed", dm)).toBe(
+        "Total harganya berapa yang kita sepakati, Kak?",
+      );
+    }
+  });
+
+  it("uses Japanese defaults for Japanese chats and mixed chats with Japanese text", () => {
+    expect(priceQuestion("ja", "deal")).toBe(
+      "合計金額はおいくらでよろしいでしょうか？",
+    );
+    expect(
+      priceQuestion("mixed", "Can you draw this? 来週までにお願いします"),
+    ).toBe("合計金額はおいくらでよろしいでしょうか？");
+  });
+
+  it("falls back to English for mixed or unknown chats with no Indonesian or Japanese", () => {
+    for (const source_language of ["mixed", "unknown"]) {
+      expect(priceQuestion(source_language, "deal, see you Friday")).toBe(
         "What total price are we agreeing on?",
       );
     }
