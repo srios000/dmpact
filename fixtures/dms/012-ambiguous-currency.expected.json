@@ -51,7 +51,8 @@
         "email": "shadow@example.com"
       }
     },
-    "notes": null
+    "notes": null,
+    "extraction": { "source_language": "en" }
   },
   "expected_ambiguity_codes": ["AMBIGUOUS_CURRENCY"],
   "expect_mismatch": false

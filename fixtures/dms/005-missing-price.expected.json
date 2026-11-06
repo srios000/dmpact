@@ -43,7 +43,8 @@
         "email": "astra@example.com"
       }
     },
-    "notes": null
+    "notes": null,
+    "extraction": { "source_language": "en" }
   },
   "expected_ambiguity_codes": ["MISSING_PRICE", "MISSING_DEPOSIT_TERMS"],
   "expect_mismatch": false
