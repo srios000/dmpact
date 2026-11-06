@@ -1,154 +1,118 @@
 # DMpact — Demo Video Script & Storyboard
 
-**Owner:** Marsha · **Target Video Length:** 2:45 (Strictly under 3:00 / ≤ 2:50)  
+**Owner:** Marsha · **Target Video Length:** 2:42 (Strictly under 3:00 / ≤ 2:50 target)  
 **Milestone:** M2 — Full Flow · **Issue Reference:** [#48](https://github.com/srios000/dmpact/issues/48)  
 **Hero Fixture:** `fixtures/dms/001-mix-clear.txt` (Luna Echo debut cover mix & master)  
-**Feature Highlight Fixture:** `fixtures/dms/014-lowball-mix.txt` (AI negotiation counteroffers)
+**Feature Highlight Fixture:** `fixtures/dms/014-lowball-mix.txt` (AI negotiation counteroffers)  
+**Rehearsal Dates:** Rehearsal 1: Nov 5, 2026 · Rehearsal 2 (Final Run): Nov 9, 2026
 
 ---
 
-## 1. Video Production Overview
+## 1. Hackathon Judging Criteria Alignment Matrix
 
-| Specification | Target Requirement |
-|---|---|
-| **Max Runtime** | 02:45 (Devpost strict limit < 03:00) |
-| **Resolution** | 1080p Full HD (1920x1080, 60 fps) |
-| **Aspect Ratio** | 16:9 widescreen (with simulated 9:16 mobile frame for client view) |
-| **Audio / Voiceover** | Clear, enthusiastic English voiceover + soft royalty-free lo-fi background music (ducked at -24 dB during voiceover) |
-| **No Trademarks / Copyright** | Uses fictional creator/client identities (`Luna Echo`, `Alex River`), royalty-free UI icons, and custom generated artwork |
-| **Tech Stack Callouts** | PayPal Invoicing v2, PayPal Webhooks, Google Gemini 1.5, Next.js App Router, AG Grid Community, SHA-256 |
+This demo video is engineered specifically to hit all 5 criteria of the **PayPal & Google AI Hackathon**:
+
+| Judging Criterion | Key Question Evaluated | How DMpact Demonstrates It in the Video | Exact Timestamp |
+|---|---|---|---|
+| **Technological Implementation** | Thorough and skillful use of PayPal Platform and AI? Non-trivial working implementation? | Demonstrates **PayPal Invoicing v2 API** (auto-generating deposit and balance invoices) + **PayPal Webhooks (`INVOICING.INVOICE.PAID`)** updating dashboard state in real time + **Google Gemini 3.8 Flash** structured extraction with Zod schema validation & deterministic ambiguity guardrails + SHA-256 cryptographic file hashing. | `0:20 - 0:50`<br>`1:18 - 1:48`<br>`1:48 - 2:12` |
+| **Design** | Complete, coherent product experience — not just a technical POC? | Shows a polished, end-to-end dual-perspective flow: Creator desktop dashboard (`/commissions`), interactive agreement review form with ambiguity badges, zero-login mobile client agreement page (`/a/[token]`), PayPal Sandbox checkout modal, and high-performance **AG Grid** commission pipeline. | `0:20 - 2:32` |
+| **Potential Impact** | Credible, specific case solving a real problem for a real audience? | Tackles the $250B+ creator economy's #1 livelihood crisis: 70% of creative freelancers experience ghosted balances, scope creep, and digital chargebacks. Validated by public creator cases (`docs/research.md`). Demonstrates **gated file delivery (FR-6.10)** and **50% deposit standard (FR-6.7)**. | `0:00 - 0:20`<br>`1:48 - 2:12` |
+| **Innovation / Idea** | Creative and novel concept differing from existing solutions? | Introduces **Agentic Commerce in DMs**: Instead of trapping users in high-fee (20%) marketplaces like Fiverr or Upwork, DMpact meets creators *where deals actually happen* (social media DMs), extracting structured contracts, enforcing payment guardrails, and generating 3-way AI counteroffers. | `0:50 - 1:18`<br>`2:12 - 2:32` |
+| **Presentation** | Clear end-to-end demonstration, easy to follow, communicates what/who/why? | Paced at exactly 02:42. Starts with a high-stakes emotional hook, moves through one complete uninterrupted commission lifecycle with real UI clicks, displays live PayPal checkout, and closes on quantitative creator impact. | `0:00 - 2:42` |
 
 ---
 
-## 2. Timing Breakdown & Storyboard Matrix
+## 2. Seeded Data & Hero Commission Profile
+
+* **Hero DM Fixture:** `fixtures/dms/001-mix-clear.txt`
+* **Creator Persona:** `Alex River` (Freelance Audio Engineer & Vocal Mixer)
+* **Client Persona:** `Luna Echo` (`@luna_echo` on Twitter/Discord, email: `luna@example.com`, VTuber preparing for debut)
+* **Project Title:** Original Song Debut Cover — *"Starlight Echo"*
+* **Deliverables:**
+  * `d1`: Vocal mix (Lead vocal + 2 harmony tracks + instrumental mix)
+  * `d2`: Master (WAV 48kHz/24bit format)
+* **Agreed Financials:**
+  * Total Price: **$150.00 USD**
+  * Deposit (50%): **$75.00 USD** (via PayPal Invoicing v2)
+  * Final Balance: **$75.00 USD** (due upon preview delivery)
+* **Agreed Terms:**
+  * Revisions Included: **2 rounds**
+  * Deadline: **November 25, 2026**
+  * Commercial Usage: **Commercial monetization permitted (YouTube & Spotify, credit mandatory)**
+* **PayPal Sandbox Accounts:**
+  * Creator / Seller: `sb-creator@business.example.com`
+  * Client / Buyer: `sb-buyer@personal.example.com`
+* **Delivery Asset:** `starlight_echo_master_v1.wav` (Mock WAV stem file, SHA-256 fingerprint verified)
+
+---
+
+## 3. Master Timing Breakdown & Storyboard Matrix
 
 ```
-0:00 ──────────────── 0:20 ──────────────── 0:55 ──────────────── 1:25 ──────────────── 1:55 ──────────────── 2:25 ──────── 2:45
- Hook & Problem        Paste DM & Gemini     AI Counteroffer      Client Mobile         Delivery & Webhook   AG Grid &      Impact &
- (Creator Pain)        Extraction Engine     (Lowball Shield)     & Sandbox DP          Balance Invoice      PDF Pack       Credits
+0:00 ───────────── 0:20 ───────────── 0:50 ───────────── 1:18 ───────────── 1:48 ───────────── 2:12 ───────── 2:32 ───── 2:42
+ Hook & Problem     DM Paste & AI      AI Counteroffer    Client Mobile &    Work Delivery &    AG Grid Pipeline &  Impact &
+ (Creator Pain)     Extraction         (Lowball Shield)   Sandbox Deposit    Balance Invoice    Evidence Pack PDF   Sign-off
 ```
 
-| Scene # | Timecode | Beat / Focus | Visual Framing | Narration / Voiceover Script | On-Screen Graphic / Callout |
-|---|---|---|---|---|---|
-| **Scene 1** | `0:00 - 0:20` (20s) | **The Creator Pain (Hook)** | Split screen: Fast montage of chaotic Discord/Twitter DMs, spreadsheet with red unpaid rows, quote callout overlay. | *"Every day, millions of gig creators take commissions over messy chat DMs. But without clear contracts or upfront deposits, 70% of creative freelancers experience ghosted balances, endless scope creep, and PayPal dispute nightmares. What if turning a chaotic chat into a legally binding agreement and guaranteed PayPal payment took just 10 seconds?"* | 🔴 *"Client ghosted after stems sent"*<br>⚠️ *No DP = Zero protection*<br>⚡ *Introducing DMpact* |
-| **Scene 2** | `0:20 - 0:55` (35s) | **DM Extraction & Gemini Guardrails** | Full Desktop: Creator dashboard (`/dashboard`). Clicks **"New Commission"**. Pastes DM text from `fixtures/dms/001-mix-clear.txt` (Luna Echo). Clicks **"Analyze DM"**. | *"Meet DMpact: the AI-powered commerce shield for gig creators. Watch this: we copy a real chat DM from VTuber Luna Echo requesting a song mix. With one click, our Gemini-powered engine instantly extracts structured agreement terms: deliverables, deadline, revisions, and usage rights. Notice how DMpact automatically catches required payment milestones, calculating a 50% PayPal deposit before any work starts."* | 🤖 **Gemini 1.5 Structured Extraction**<br>✅ Deliverable: Vocal Mix + Master ($150.00 USD)<br>✅ Deposit: 50% ($75.00 USD)<br>🛡️ Ambiguity Guard: Commercial Rights Verified |
-| **Scene 3** | `0:55 - 1:25` (30s) | **Lowball & Scope Creep Shield** | Quick cut to negotiation tab. Demonstrates lowball DM handling (`014-lowball-mix.txt`). 3 AI counteroffer options appear. Creator selects "Compromise" and clicks "Copy Reply". | *"What if the client tries to lowball or scope-creep? DMpact's negotiation engine generates three instant, professional counteroffers: conservative, compromise, or value-add. No awkward haggling—just copy the polite, assertively phrased response directly back to the DM to protect your rates."* | 💬 **AI Negotiation Engine**<br>Option A: Firm Rate ($150)<br>Option B: Trim Scope ($100 basic)<br>Option C: Split Milestone Plan |
-| **Scene 4** | `1:25 - 1:55` (30s) | **Client Confirmation & PayPal Sandbox Deposit** | Mobile device mockup side-by-side. Client opens `/c/[token]`. Clean responsive summary. Clicks **"Confirm & Pay Deposit"**. PayPal Sandbox modal opens, pays $75.00 USD. Dashboard immediately flashes green: `DP_PAID`. | *"Once locked, DMpact creates a clean, mobile-optimized client review page. The client reviews the exact terms, clicks 'Confirm & Pay Deposit', and checks out seamlessly with PayPal. Behind the scenes, PayPal Invoicing v2 generates the invoice, and an instant PayPal Webhook updates the creator's dashboard in real-time. Production can now safely begin."* | 📱 **Mobile Client View (`/c/[token]`)**<br>💳 **PayPal Invoicing v2 API**<br>⚡ **Webhook event:** `INVOICING.INVOICE.PAID`<br>🟢 State: `DRAFT` ➔ `DP_PAID` |
-| **Scene 5** | `1:55 - 2:20` (25s) | **Work Delivery & Balance Invoice** | Creator uploads `starlight_echo_master_v1.wav`. System calculates cryptographic SHA-256 hash. One-click "Send Final Balance Invoice" ($75.00). | *"When the music is ready, the creator uploads the finished master. DMpact logs an immutable SHA-256 file hash to cryptographically prove exact delivery. With one tap, DMpact triggers the remaining PayPal balance invoice. If a client goes quiet, DMpact drafts friendly, context-aware payment reminders."* | 🔒 **SHA-256 Delivery Fingerprint**<br>`e3b0c44298fc1c149afbf4c899...`<br>🧾 Final Invoice Sent ($75.00 USD) |
-| **Scene 6** | `2:20 - 2:38` (18s) | **AG Grid Dashboard & Evidence Pack PDF** | Client pays final balance. Creator dashboard updates to `COMPLETED`. Opens AG Grid commission pipeline. Clicks **"Download Evidence Pack"**. PDF opens with full audit trail. | *"Once the final payment clears, the entire commission lifecycle is tracked on our AG Grid dashboard with filtering, search, and live totals. And for total peace of mind? A one-click PDF Evidence Pack containing the signed agreement, chat timestamps, delivery hashes, and PayPal transaction IDs—airtight defense against fraudulent chargebacks."* | 📊 **AG Grid Pipeline Overview**<br>📄 **Dispute-Proof Evidence Pack**<br>• Signed Agreement v1<br>• Delivery Hash & Timestamp<br>• PayPal Payment Reference |
-| **Scene 7** | `2:38 - 2:45` (7s) | **Vision & Closing Call to Action** | Splash screen with DMpact logo, team credits, PayPal + Google AI hackathon banner, GitHub URL. | *"DMpact: Protecting creator livelihoods, turning messy DMs into guaranteed PayPal payments. Built with love by Team DMpact for the PayPal & Google AI Hackathon."* | 🏆 **PayPal & Google AI Hackathon**<br>github.com/srios000/dmpact<br>✨ *Empowering 50M+ Creators* |
+| Scene # | Timecode | Beat / Focus | Visual Framing | Narration Script (Voiceover) | Exact Clicks & UI Actions | On-Screen Graphic Callout |
+|---|---|---|---|---|---|---|
+| **1** | `0:00 - 0:20` (20s) | **The Hook: The DM Chaos** | Split screen montage: Scrolling messy Discord/Twitter DMs, followed by a red-highlighted spreadsheet with overdue balances. | *"Every day, millions of artists, musicians, and animators take commissions inside messy chat DMs. But without upfront deposits or written contracts, 70% of creative freelancers get burned by ghosted balances, endless scope creep, and digital payment disputes. What if turning any chaotic DM into a locked agreement and guaranteed PayPal payment took just 10 seconds?"* | Camera pans across Discord messages: *"Can you do 5 more tweaks?"*, *"Will pay rest next week promise"*. Fast whoosh transition into DMpact UI. | 🔴 **70% of Freelancers Experience Payment Disputes**<br>⚠️ *No Deposit = Zero Protection*<br>⚡ *Introducing DMpact* |
+| **2** | `0:20 - 0:50` (30s) | **DM Extraction & Gemini Guardrails** | Full Desktop (1080p): Creator dashboard at `/commissions`. | *"Meet DMpact: the AI commerce shield for gig creators. Watch: we copy a raw chat DM from VTuber Luna Echo requesting a vocal mix and master. We click 'New Commission', paste the text, and hit 'Analyze DM'. In just one second, Google Gemini extracts structured agreement terms: deliverables, deadline, revision limits, and commercial usage rights. Notice how DMpact automatically enforces safe commerce rules, calculating a 50% PayPal deposit before any work begins."* | 1. Click **`+ New Commission`** at `/commissions`.<br>2. Paste raw text from `001-mix-clear.txt`.<br>3. Click **`Analyze DM`** button.<br>4. Extraction form populates instantly with deliverables (`d1`, `d2`), price ($150), deposit ($75), deadline (Nov 25, 2026), and green status: `0 Blockers · Ready to Lock`. | 🤖 **Google Gemini 3.8 Flash**<br>✅ Structured Agreement JSON<br>✅ Deposit: 50% ($75.00 USD)<br>🛡️ Ambiguity Guard: Commercial Rights Verified |
+| **3** | `0:50 - 1:18` (28s) | **AI Negotiation & Lowball Shield** | Desktop: Quick cut to lowball DM demonstration (`014-lowball-mix.txt`). | *"What if a client tries to lowball your rates? In this second case, a client offers $40 for a $150 package. DMpact detects the rate mismatch and generates three professional, tailored counteroffers: reduce scope, adjust price, or split into milestones. No awkward haggling—just copy the polite, assertively phrased response directly back to the DM to protect your creative value."* | 1. Show lowball paste ($40 offer vs $150 rate card).<br>2. Rate card mismatch triggers counteroffer drawer.<br>3. Show 3 cards: Option 1 (Trim scope), Option 2 (Adjust price to $150), Option 3 (Milestone split).<br>4. Click **`Copy Response`** with toast notification: *"Copied to clipboard!"*. | 💬 **AI Negotiation Engine**<br>• Option A: Firm Rate ($150)<br>• Option B: Trim Scope ($40 basic)<br>• Option C: Milestone Plan |
+| **4** | `1:18 - 1:48` (30s) | **Client Agreement Page & PayPal Sandbox Deposit** | **Dual Screen:** Left = Creator Desktop (`/commissions/[id]`). Right = Client Mobile mockup (`/a/[token]`). | *"Back to Luna's project: once approved, DMpact generates a tokenized, mobile-friendly review link. The client opens the link on her phone, reviews the clear scope, and clicks 'Confirm Agreement'. DMpact calls PayPal Invoicing v2 to issue Deposit Invoice #1. Luna taps 'Pay with PayPal' in sandbox, completes checkout, and watch the creator's dashboard—via real-time PayPal Webhooks, the status instantly flips to 'Deposit Paid'. Work can now safely begin."* | 1. Creator clicks **`Send to Client`** and copies link.<br>2. Client opens mobile view `/a/[token]`.<br>3. Client taps **`Confirm agreement`**.<br>4. Client taps **`Pay with PayPal`**.<br>5. PayPal Sandbox modal opens, client completes $75.00 payment.<br>6. Left screen: Webhook fires, status badge transitions from `agreed` ➔ `dp_paid` with green flash. | 📱 **Mobile Client View (`/a/[token]`)**<br>💳 **PayPal Invoicing v2 API**<br>⚡ **Webhook event:** `INVOICING.INVOICE.PAID`<br>🟢 Status: `agreed` ➔ `dp_paid` |
+| **5** | `1:48 - 2:12` (24s) | **Work Delivery, SHA-256 Hash & Balance Invoice** | Creator Desktop: Commission detail view (`/commissions/[id]`). | *"When the creative work is finished, the creator uploads the master audio. DMpact immediately hashes the file with SHA-256, logging an immutable cryptographic delivery fingerprint. The system automatically issues the final PayPal balance invoice for $75. And if a client is slow to pay? DMpact generates automated PayPal reminders and AI-drafted nudge messages with the direct pay link."* | 1. Drag & drop `starlight_echo_master_v1.wav` into delivery vault.<br>2. Green badge displays: `SHA-256: 7f83b165...` logged.<br>3. Automatic generation of Balance Invoice #2 ($75.00).<br>4. Quick preview of context-aware payment reminder nudge. | 🔒 **SHA-256 Immutable Fingerprint**<br>`7f83b1652469a9...`<br>🧾 Balance Invoice Sent ($75.00 USD)<br>📬 AI Overdue Nudge Assistant |
+| **6** | `2:12 - 2:32` (20s) | **Full Payment, AG Grid Queue & Dispute Evidence Pack** | Split view: Client pays final $75. Dashboard updates to `fully_paid`. Creator opens `/commissions` AG Grid. | *"Luna pays the remaining balance. The final files unlock for download, and our AG Grid commission pipeline updates in real-time with revenue summaries and deadline tracking. Best of all: with one click, creators can download a complete Dispute Evidence Pack PDF—binding the signed terms, chat logs, delivery hashes, and PayPal transaction IDs into airtight protection against fraudulent chargebacks."* | 1. Client pays final balance on mobile; final files unlock.<br>2. Creator navigates to `/commissions`.<br>3. AG Grid table demonstrates sorting, status filtering, and summary bar ($150 collected).<br>4. Creator clicks **`Download Evidence Pack`**.<br>5. PDF opens showing full audit trail: Agreement v1, timestamps, delivery SHA-256, and PayPal Invoice IDs. | 📊 **AG Grid Pipeline Overview**<br>📄 **Dispute Evidence Pack (PDF)**<br>• Signed Agreement v1<br>• Server Timestamps & Delivery Hash<br>• PayPal Payment Reference IDs |
+| **7** | `2:32 - 2:42` (10s) | **Closing & Hackathon Credits** | Splash screen with DMpact logo, team credits, PayPal + Google AI hackathon banner, and GitHub URL. | *"DMpact bridges the gap between creator passion and professional commerce—turning messy DMs into guaranteed PayPal payments. Built by Team DMpact for the PayPal and Google AI Hackathon."* | Fade out with upbeat music crescendo and GitHub repository link: `github.com/srios000/dmpact`. | 🏆 **PayPal & Google AI Hackathon**<br>github.com/srios000/dmpact<br>✨ *Empowering 50M+ Freelance Creators* |
 
 ---
 
-## 3. Shot-by-Shot Execution Script
+## 4. Line-by-Line Narration Script (Audio Track)
 
-### Beat 1: Hook (0:00 – 0:20)
-- **Visuals:**
-  - Fast-paced 3-second cuts: Screen recording of a chaotic Discord DM channel (`"Hey can u add 5 more revisions?"`, `"Will pay rest next week promise"`), followed by a creator looking stressed.
-  - Text overlay appears: *"70% of creative freelancers experience payment disputes or ghosted balances."*
-  - Sound effect: Subdued notification chime followed by a clean whoosh transition into DMpact UI.
-- **Voiceover:**
-  > *"Every day, millions of freelance artists, music producers, and VTuber riggers close deals inside chaotic chat DMs. But without formal agreements or upfront deposits, creators get burned by scope creep and ghosted balances. What if turning any chat into a legally binding agreement with guaranteed PayPal escrow took under 10 seconds?"*
+### 0:00 – 0:20 (Problem & Hook)
+> *"Every day, millions of artists, musicians, and animators take commissions inside messy chat DMs. But without upfront deposits or written contracts, 70% of creative freelancers get burned by ghosted balances, endless scope creep, and digital payment disputes. What if turning any chaotic DM into a locked agreement and guaranteed PayPal payment took just 10 seconds?"*
 
-### Beat 2: Gemini Extraction & Guardrails (0:20 – 0:55)
-- **Visuals:**
-  - Cursor navigates to DMpact homepage (`localhost:3000` or deployed Vercel URL).
-  - Creator clicks `+ New Agreement`.
-  - Pastes the full raw chat text from `fixtures/dms/001-mix-clear.txt`:
-    - *Client: Luna Echo (@luna_echo)*
-    - *Deliverable: Full vocal mix and master for "Starlight Echo"*
-    - *Price: $150.00 USD (50% upfront deposit)*
-    - *Deadline: November 25, 2026*
-  - Hits **"Analyze DM"**. A glowing Gemini pulse animation runs for 1.2s.
-  - The structured agreement editor populates smoothly with zero errors:
-    - Deliverables table: `d1` (Vocal mix), `d2` (Mastering).
-    - Payment Terms: `$150.00 USD total`, `$75.00 USD deposit (50%)`.
-    - Usage Rights: Commercial use (YouTube + Spotify), credit mandatory.
-    - Ambiguity status: `0 Blockers · Ready to Lock`.
-- **Voiceover:**
-  > *"Meet DMpact. Simply paste the raw conversation directly into our app. In a fraction of a second, Google Gemini parses the messy chat into a structured agreement—extracting the exact deliverables, revision limits, deadline, and commercial licensing terms. Crucially, DMpact enforces safe commerce rules, automatically flagging missing deposits and ambiguous deadlines before you ever send a quote."*
+### 0:20 – 0:50 (DM Extraction & AI Guardrails)
+> *"Meet DMpact: the AI commerce shield for gig creators. Watch: we copy a raw chat DM from VTuber Luna Echo requesting a vocal mix and master. We click 'New Commission', paste the text, and hit 'Analyze DM'. In just one second, Google Gemini extracts structured agreement terms: deliverables, deadline, revision limits, and commercial usage rights. Notice how DMpact automatically enforces safe commerce rules, calculating a 50% PayPal deposit before any work begins."*
 
-### Beat 3: AI Negotiation & Lowball Shield (0:55 – 1:25)
-- **Visuals:**
-  - Quick picture-in-picture transition showing a second scenario (`fixtures/dms/014-lowball-mix.txt`): A client offering $40 for a $150 mixing package.
-  - DMpact detects `LOWBALL_BUDGET`.
-  - The **AI Negotiation Assistant** drawer slides out with 3 generated responses:
-    1. *Firm:* Reiterate standard $150 rate with portfolio value justification.
-    2. *Scope Adjustment:* Offer lead vocal mix only without tuning for $40.
-    3. *Milestone:* Split into two smaller milestone deliverables.
-  - User clicks **"Copy Response"** with an animated "Copied to clipboard!" toast notification.
-- **Voiceover:**
-  > *"When clients lowball or push for uncompensated extras, DMpact's AI negotiation assistant generates three strategic, polite counteroffers in seconds. Choose between standing firm on value, trimming scope to meet their budget, or proposing milestone payments—eliminating the emotional stress of awkward pricing negotiations."*
+### 0:50 – 1:18 (Negotiation Counteroffers)
+> *"What if a client tries to lowball your rates? In this second case, a client offers $40 for a $150 package. DMpact detects the rate mismatch and generates three professional, tailored counteroffers: reduce scope, adjust price, or split into milestones. No awkward haggling—just copy the polite, assertively phrased response directly back to the DM to protect your creative value."*
 
-### Beat 4: Client Review & PayPal Sandbox Deposit (1:25 – 1:55)
-- **Visuals:**
-  - Split screen: Left side shows creator generating the secure link (`/c/agreement-token-luna`). Right side shows mobile view of the client opening the link.
-  - Clean client review UI: High-contrast summary cards, terms breakdown, no confusing legalese.
-  - Client taps the prominent blue button: **"Confirm Terms & Pay $75.00 Deposit"**.
-  - PayPal Sandbox checkout modal opens. Client selects PayPal Sandbox balance and clicks **"Pay Now"**.
-  - PayPal success checkmark appears.
-  - Left screen (creator dashboard) instantly transitions via live webhook from `PENDING_DEPOSIT` to `DP_PAID` with a celebratory green badge.
-- **Voiceover:**
-  > *"Once locked, DMpact creates a dedicated, mobile-friendly confirmation page for the client. With zero friction, the client reviews the project scope and clicks 'Confirm & Pay'. DMpact generates a PayPal Invoicing v2 deposit request on the fly. As soon as the sandbox payment succeeds, real-time PayPal Webhooks update the creator's pipeline instantly. No more starting work on empty promises."*
+### 1:18 – 1:48 (Client Signing & PayPal Sandbox DP)
+> *"Back to Luna's project: once approved, DMpact generates a tokenized, mobile-friendly review link. The client opens the link on her phone, reviews the clear scope, and clicks 'Confirm Agreement'. DMpact calls PayPal Invoicing v2 to issue Deposit Invoice #1. Luna taps 'Pay with PayPal' in sandbox, completes checkout, and watch the creator's dashboard—via real-time PayPal Webhooks, the status instantly flips to 'Deposit Paid'. Work can now safely begin."*
 
-### Beat 5: Production Delivery & Balance Invoice (1:55 – 2:20)
-- **Visuals:**
-  - Creator dashboard in `DP_PAID` status.
-  - Creator drags-and-drops `starlight_echo_master_v1.wav` into the Delivery Vault.
-  - Progress bar finishes: Green badge shows `SHA-256: 7f83b165...` logged.
-  - Creator clicks **"Issue Final Invoice ($75.00 USD)"**.
-  - Popover shows preview of the final PayPal invoice sent to `luna@example.com` with delivery attachment and download link.
-- **Voiceover:**
-  > *"When the creative work is finished, the creator uploads the deliverable. DMpact automatically hashes the file with SHA-256, creating an immutable proof-of-delivery fingerprint. With one click, DMpact issues the final PayPal balance invoice. If a payment is delayed, our automated nudge engine crafts courteous, professional reminder emails with the PayPal direct pay link."*
+### 1:48 – 2:12 (Work Delivery, Hashing & Balance Invoice)
+> *"When the creative work is finished, the creator uploads the master audio. DMpact immediately hashes the file with SHA-256, logging an immutable cryptographic delivery fingerprint. The system automatically issues the final PayPal balance invoice for $75. And if a client is slow to pay? DMpact generates automated PayPal reminders and AI-drafted nudge messages with the direct pay link."*
 
-### Beat 6: AG Grid Pipeline & Evidence Pack Export (2:20 – 2:38)
-- **Visuals:**
-  - Webhook fires `INVOICE_PAID` for the final $75.00.
-  - Status updates to `FULLY_PAID`.
-  - Creator navigates to `/dashboard/commissions`.
-  - AG Grid data table displays all active and completed commissions with live status filters, payment summaries, and client tags.
-  - Creator clicks the three-dots menu on Luna Echo's row and selects **"Download Dispute Shield PDF"**.
-  - A formatted 2-page PDF document opens on screen showing:
-    - Complete DM extraction audit trail
-    - Signed terms & timestamped client acceptance
-    - Cryptographic delivery hash
-    - PayPal Transaction IDs for both Deposit & Final Balance
-- **Voiceover:**
-  > *"All commissions live in our high-performance AG Grid pipeline, giving creators total visibility over incoming cash flow and deadlines. And if a client ever files an unjustified chargeback? DMpact generates a complete, tamper-evident Evidence Pack PDF in one click—including signed terms, chat logs, delivery hashes, and PayPal receipts—built specifically to satisfy payment processor disputes."*
+### 2:12 – 2:32 (AG Grid & Dispute Shield PDF)
+> *"Luna pays the remaining balance. The final files unlock for download, and our AG Grid commission pipeline updates in real-time with revenue summaries and deadline tracking. Best of all: with one click, creators can download a complete Dispute Evidence Pack PDF—binding the signed terms, chat logs, delivery hashes, and PayPal transaction IDs into airtight protection against fraudulent chargebacks."*
 
-### Beat 7: Summary & Hackathon Close (2:38 – 2:45)
-- **Visuals:**
-  - Clean animated closing slide:
-    - **DMpact** Logo + Tagline: *"From Messy DMs to Guaranteed Payments"*
-    - Tech Badges: PayPal Invoicing v2 · PayPal Webhooks · Google Gemini · Next.js · AG Grid
-    - GitHub Repo: `github.com/srios000/dmpact`
-    - Team DMpact credits (Rio, Jia, Wynn, Marsha)
-- **Voiceover:**
-  > *"DMpact bridges the gap between creator passion and professional commerce. Simple for clients, dispute-proof for creators. Thank you!"*
+### 2:32 – 2:42 (Conclusion & Vision)
+> *"DMpact bridges the gap between creator passion and professional commerce—turning messy DMs into guaranteed PayPal payments. Built by Team DMpact for the PayPal and Google AI Hackathon."*
 
 ---
 
-## 4. Rehearsal & Recording Checklist
+## 5. Team Rehearsal & Recording Runbook
 
-### Technical Setup
-- [ ] Screen resolution set to exactly **1920x1080** at 100% DPI scaling (no UI blurriness).
-- [ ] Browser zoom level set to 110% on Chrome for crisp text readability.
-- [ ] Chrome bookmarks bar hidden (`Ctrl+Shift+B`), clean browser profile with no personal extensions.
-- [ ] Test audio microphone: clean room acoustic, pop filter, normalized to -16 LUFS.
-- [ ] Seed data refreshed in PostgreSQL/Neon: Luna Echo commission ready to paste on clean database state.
-- [ ] PayPal Sandbox accounts logged in and cached (Buyer Sandbox: `sb-buyer@business.example.com`, Seller Sandbox: `sb-creator@business.example.com`).
+### Rehearsal Schedule
+* **Rehearsal 1 (Dry Run & Timing Verification):** Wednesday, Nov 5, 2026, 20:00 WIB
+  * Validate screen capture resolution (1080p, 60fps), audio levels, and stop-watch checkpoints.
+* **Rehearsal 2 (Full Live Run with PayPal Sandbox):** Sunday, Nov 9, 2026, 20:00 WIB
+  * Conduct a live run with real-time PayPal sandbox payments and webhook triggers.
 
-### Asset Checklist
-- [ ] Audio sample asset: `starlight_echo_master_v1.wav` (15-second royalty-free vocal track).
-- [ ] Audio background: Royalty-free upbeat lo-fi instrumental track.
-- [ ] Fictional avatars: Luna Echo avatar (custom anime VTuber portrait) and Creator avatar.
-- [ ] Evidence Pack PDF sample pre-generated for instant preview transition.
+### Technical Recording Environment
+1. **Screen Resolution:** 1920x1080 (16:9 widescreen) at 100% OS DPI scaling.
+2. **Browser Framing:** Google Chrome at 110% zoom with bookmarks bar hidden (`Ctrl+Shift+B`).
+3. **Mobile Client Framing:** Clean iPhone 15 frame overlay (9:16 aspect ratio) positioned on the right third of the screen during scenes 4 and 6.
+4. **Audio Normalization:** Voiceover recorded on a cardioid microphone, de-essed, with soft compressor settings, normalized to **-16 LUFS**. Background music ducked to **-24 dB** under speech.
+5. **Database Seed State:** PostgreSQL database seeded with:
+   - Creator account: `Alex River` logged in at `localhost:3000/commissions`.
+   - Rate card pre-configured: Vocal Mixing base rate $150.00 USD.
+   - Clean slate for `fixtures/dms/001-mix-clear.txt` paste.
 
-### Timing Rehearsal Milestones
-- [ ] **0:20 mark:** "What if turning a chaotic chat..." transition to app.
-- [ ] **0:55 mark:** "Gemini parses the messy chat..." transition to negotiation drawer.
-- [ ] **1:25 mark:** "Eliminating emotional stress..." transition to client mobile view.
-- [ ] **1:55 mark:** "Instant PayPal webhook..." transition to delivery upload.
-- [ ] **2:20 mark:** "Proof-of-delivery fingerprint..." transition to AG Grid table.
-- [ ] **2:45 mark:** Fade out on GitHub URL and hackathon credits. Total time ≤ 2:45.
-
+### Milestone Checkpoints During Recording
+* `0:20` mark: Transition from problem montage to DMpact dashboard.
+* `0:50` mark: Transition from Luna extraction to lowball counteroffer drawer.
+* `1:18` mark: Dual screen opens (Desktop creator + Mobile client).
+* `1:48` mark: PayPal sandbox payment succeeds, transition to file delivery upload.
+* `2:12` mark: Transition to AG Grid table and PDF Evidence Pack preview.
+* `2:42` mark: Final slide fade out.
