@@ -560,7 +560,9 @@ export async function seedDemoCommissions(
       const due =
         plan === "overdue"
           ? new Date(now.getTime() - 5 * DAY)
-          : new Date(at(step).getTime() + 7 * DAY);
+          : plan === "sent"
+            ? new Date(now.getTime() + 5 * DAY)
+            : new Date(at(step).getTime() + 7 * DAY);
       await db.invoice.create({
         data: {
           commissionId: commission.id,
