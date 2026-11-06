@@ -1,12 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { updateTag } from "next/cache";
 import { retryDepositInvoice as retryInRepository } from "@/lib/repositories/commission-repository";
+import * as deliveries from "@/lib/repositories/delivery-repository";
 import { RepositoryError } from "@/lib/repositories/errors";
-import { retryDepositInvoice } from "./actions";
+import {
+  createDeliveryUpload,
+  recordDelivery,
+  retryDepositInvoice,
+} from "./actions";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ updateTag: vi.fn() }));
 vi.mock("@/lib/repositories/agreement-repository", () => ({}));
+vi.mock("@/lib/repositories/delivery-repository", () => ({
+  createDeliveryUpload: vi.fn(),
+  recordDelivery: vi.fn(),
+}));
 vi.mock("@/lib/repositories/commission-repository", () => ({
   retryDepositInvoice: vi.fn(),
 }));
@@ -81,5 +90,95 @@ describe("retryDepositInvoice action", () => {
   it("does not hide unexpected errors", async () => {
     retry.mockRejectedValue(new Error("boom"));
     await expect(retryDepositInvoice({ commissionId })).rejects.toThrow("boom");
+  });
+});
+
+describe("delivery actions", () => {
+  const upload = {
+    commissionId,
+    filename: "final.png",
+    mimeType: "image/png",
+    sizeBytes: 2048,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns the signed upload without refreshing the page", async () => {
+    const ticket = {
+      uploadId: "0f8fad5b-d9cb-469f-a165-70867728950e",
+      url: "https://bucket.test/put",
+      method: "PUT" as const,
+      headers: { "Content-Type": "image/png" },
+      expiresAt: "2026-11-06T00:05:00.000Z",
+    };
+    vi.mocked(deliveries.createDeliveryUpload).mockResolvedValue(ticket);
+
+    await expect(createDeliveryUpload(upload)).resolves.toEqual({
+      ok: true,
+      data: ticket,
+    });
+    expect(deliveries.createDeliveryUpload).toHaveBeenCalledWith(upload);
+    expect(tags).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { sizeBytes: 25 * 1024 * 1024 + 1 },
+    { mimeType: "application/x-msdownload" },
+  ])("refuses %j before signing anything", async (change) => {
+    const response = await createDeliveryUpload({ ...upload, ...change });
+    expect(response).toMatchObject({
+      ok: false,
+      error: { code: "invalid_input" },
+    });
+    expect(deliveries.createDeliveryUpload).not.toHaveBeenCalled();
+  });
+
+  it("records the delivery and refreshes the commission", async () => {
+    const recorded = {
+      delivery: {
+        id: "d",
+        filename: "final.png",
+        sha256: "a".repeat(64),
+        sizeBytes: 2048,
+        mimeType: "image/png",
+        isFinal: true,
+        loggedAt: "2026-11-06T00:00:00.000Z",
+      },
+      state: "delivered" as const,
+      failedEffects: [],
+    };
+    vi.mocked(deliveries.recordDelivery).mockResolvedValue(recorded);
+    const input = {
+      commissionId,
+      uploadId: "0f8fad5b-d9cb-469f-a165-70867728950e",
+      filename: "final.png",
+      isFinal: true,
+    };
+
+    await expect(recordDelivery(input)).resolves.toEqual({
+      ok: true,
+      data: recorded,
+    });
+    expect(tags).toHaveBeenCalledWith(`commission-${commissionId}`);
+  });
+
+  it("returns repository refusals as action failures", async () => {
+    vi.mocked(deliveries.recordDelivery).mockRejectedValue(
+      new RepositoryError("invalid_upload", "The upload wasn't found."),
+    );
+    await expect(
+      recordDelivery({
+        commissionId,
+        uploadId: "0f8fad5b-d9cb-469f-a165-70867728950e",
+        filename: "final.png",
+        isFinal: false,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      error: { code: "invalid_upload", message: "The upload wasn't found." },
+    });
+    expect(tags).not.toHaveBeenCalled();
   });
 });
