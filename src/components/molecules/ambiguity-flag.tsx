@@ -40,6 +40,7 @@ export interface AmbiguityFlagProps extends VariantProps<
   message: string;
   quote?: string | null;
   question?: string | null;
+  onDismiss?: () => void;
   className?: string;
 }
 
@@ -49,6 +50,7 @@ function AmbiguityFlag({
   message,
   quote,
   question,
+  onDismiss,
   className,
 }: AmbiguityFlagProps) {
   const [copied, setCopied] = React.useState(false);
@@ -94,6 +96,12 @@ function AmbiguityFlag({
               {copied ? "Copied" : "Copy"}
             </Button>
           </div>
+        )}
+        {onDismiss && (
+          <Button type="button" variant="outline" size="xs" onClick={onDismiss}>
+            <CheckIcon />
+            Mark as answered
+          </Button>
         )}
       </div>
     </div>

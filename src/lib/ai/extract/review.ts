@@ -30,11 +30,16 @@ export function keepUnresolvedFlags(
   );
 }
 
+export function flagKey(flag: Ambiguity): string {
+  return `${flag.code} ${flag.field}`;
+}
+
 export type ReviewInput = {
   original: Agreement;
   edited: Agreement;
   dmText: string;
   pasteDate: string;
+  dismissed?: readonly string[];
 };
 
 export function reviewAgreement({
@@ -42,13 +47,16 @@ export function reviewAgreement({
   edited,
   dmText,
   pasteDate,
+  dismissed = [],
 }: ReviewInput): Agreement {
   const next = structuredClone(edited);
   if (next.deadline.date !== original.deadline.date) {
     next.deadline.raw_text = next.deadline.date;
     next.deadline.is_relative = false;
   }
-  next.ambiguities = keepUnresolvedFlags(original, edited);
+  next.ambiguities = keepUnresolvedFlags(original, edited).filter(
+    (flag) => !dismissed.includes(flagKey(flag)),
+  );
   return runPostChecks({ agreement: next, dmText, pasteDate });
 }
 
