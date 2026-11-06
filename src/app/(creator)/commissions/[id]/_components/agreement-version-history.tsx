@@ -1,12 +1,8 @@
-"use client";
-
-import * as React from "react";
-import { CheckIcon, CircleIcon, HistoryIcon, LockIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { getCommission } from "@/lib/repositories/commission-repository";
 
 type CommissionDetail = NonNullable<Awaited<ReturnType<typeof getCommission>>>;
-type VersionItem = CommissionDetail["versions"][number];
+export type VersionItem = CommissionDetail["versions"][number];
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
@@ -14,136 +10,93 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Jakarta",
 });
 
-function formatDate(iso: string): string {
-  return dateFormatter.format(new Date(iso));
-}
+const AUTHORS: Record<VersionItem["createdBy"], string> = {
+  creator: "you",
+  client: "the client",
+  paypal: "PayPal",
+  system: "DMpact",
+};
 
-function isConfirmedBy(version: VersionItem, party: "creator" | "client") {
+function confirmedBy(version: VersionItem, party: "creator" | "client") {
   return version.confirmations.some(
     (c) => c.party === party && c.contentHash === version.contentHash,
   );
 }
 
-export interface AgreementVersionHistoryProps extends React.HTMLAttributes<HTMLDivElement> {
+function confirmationText(version: VersionItem): string {
+  const creator = confirmedBy(version, "creator");
+  const client = confirmedBy(version, "client");
+  if (creator && client) return "Confirmed by you and the client";
+  if (creator) return "Confirmed by you";
+  if (client) return "Confirmed by the client";
+  return "Not confirmed";
+}
+
+export interface AgreementVersionHistoryProps {
   versions: VersionItem[];
-  selectedVersion: number;
   inForceVersion: number | null;
-  onSelectVersion: (version: number) => void;
+  loadedVersion: number | null;
+  onLoad?: (version: VersionItem) => void;
 }
 
 function AgreementVersionHistory({
-  className,
   versions,
-  selectedVersion,
   inForceVersion,
-  onSelectVersion,
-  ...props
+  loadedVersion,
+  onLoad,
 }: AgreementVersionHistoryProps) {
-  const ordered = React.useMemo(
-    () => [...versions].sort((a, b) => b.version - a.version),
-    [versions],
-  );
+  const ordered = [...versions].sort((a, b) => b.version - a.version);
+  const latest = ordered[0]?.version;
 
   return (
-    <div className={cn("flex flex-col", className)} {...props}>
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-2 text-slate-400">
-          <HistoryIcon className="size-4" />
-          <span className="text-[10px] font-black tracking-[0.2em] uppercase">
-            Version history
-          </span>
-        </div>
-        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black text-slate-300">
-          {versions.length}
-        </span>
-      </div>
-
-      <div className="mt-4 max-h-[420px] overflow-y-auto pr-3">
-        <ol className="flex flex-col gap-3">
-          {ordered.map((version) => {
-            const isSelected = version.version === selectedVersion;
-            const inForce = version.version === inForceVersion;
-            const creatorConfirmed = isConfirmedBy(version, "creator");
-            const clientConfirmed = isConfirmedBy(version, "client");
-
-            return (
-              <li key={version.id}>
-                <button
+    <section aria-labelledby="versions-heading" className="space-y-3">
+      <h2 id="versions-heading" className="font-medium text-foreground">
+        Versions
+      </h2>
+      <ol className="divide-y divide-border">
+        {ordered.map((version) => (
+          <li
+            key={version.id}
+            className="flex items-start justify-between gap-3 py-3 first:pt-0"
+          >
+            <div className="min-w-0 space-y-0.5 text-sm">
+              <p className="font-medium text-foreground">
+                Version {version.version}
+                {version.version === inForceVersion && (
+                  <span className="ml-2 text-status-agreed">In force</span>
+                )}
+              </p>
+              <p className="text-muted-foreground">
+                {dateFormatter.format(new Date(version.createdAt))}, by{" "}
+                {AUTHORS[version.createdBy]}
+              </p>
+              <p className="text-muted-foreground">
+                {confirmationText(version)}
+              </p>
+            </div>
+            {version.version === latest ? (
+              <span className="shrink-0 text-sm text-muted-foreground">
+                Latest
+              </span>
+            ) : version.version === loadedVersion ? (
+              <span className="shrink-0 text-sm text-primary">Loaded</span>
+            ) : (
+              onLoad && (
+                <Button
                   type="button"
-                  onClick={() => onSelectVersion(version.version)}
-                  className={cn(
-                    "w-full rounded-2xl border p-4 text-left transition-all",
-                    isSelected
-                      ? "border-[#FF3B8E]/40 bg-[#FF3B8E]/10 shadow-lg shadow-[#FF3B8E]/10"
-                      : "border-white/5 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]",
-                  )}
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => onLoad(version)}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "text-sm font-black",
-                          isSelected ? "text-[#FF3B8E]" : "text-white",
-                        )}
-                      >
-                        v{version.version}
-                      </span>
-                      {inForce ? (
-                        <span className="flex items-center gap-1 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-emerald-400 uppercase">
-                          <LockIcon className="size-2.5" />
-                          In force
-                        </span>
-                      ) : null}
-                    </div>
-                    <span className="text-[10px] font-bold tracking-wider text-slate-500 uppercase">
-                      {version.createdBy}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 line-clamp-1 text-sm font-bold text-white">
-                    {version.agreement.title}
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium text-slate-500">
-                    {formatDate(version.createdAt)}
-                  </p>
-
-                  <div className="mt-3 flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "flex items-center gap-1 text-[10px] font-bold",
-                        creatorConfirmed
-                          ? "text-emerald-400"
-                          : "text-slate-600",
-                      )}
-                    >
-                      {creatorConfirmed ? (
-                        <CheckIcon className="size-3" />
-                      ) : (
-                        <CircleIcon className="size-3" />
-                      )}
-                      Creator
-                    </span>
-                    <span
-                      className={cn(
-                        "flex items-center gap-1 text-[10px] font-bold",
-                        clientConfirmed ? "text-blue-400" : "text-slate-600",
-                      )}
-                    >
-                      {clientConfirmed ? (
-                        <CheckIcon className="size-3" />
-                      ) : (
-                        <CircleIcon className="size-3" />
-                      )}
-                      Client
-                    </span>
-                  </div>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-    </div>
+                  Load
+                </Button>
+              )
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

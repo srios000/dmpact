@@ -11,7 +11,6 @@ const DEADLINE_ONLY_STATES: CommissionState[] = [
 
 export type AgreementEditMode = "full" | "deadline" | "locked";
 
-/** Which slice of the agreement the creator may still edit in `state`. */
 export function agreementEditMode(state: CommissionState): AgreementEditMode {
   if (state === "draft" || state === "negotiating") return "full";
   return DEADLINE_ONLY_STATES.includes(state) ? "deadline" : "locked";
