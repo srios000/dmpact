@@ -11,6 +11,17 @@ export const SERVICE_TYPES = [
   "other",
 ] as const;
 
+export const SERVICE_LABELS: Record<(typeof SERVICE_TYPES)[number], string> = {
+  mixing: "Mixing",
+  mastering: "Mastering",
+  mix_and_master: "Mix and master",
+  illustration: "Illustration",
+  live2d_rigging: "Live2D rigging",
+  mv_editing: "MV editing",
+  thumbnail: "Thumbnail",
+  other: "Other",
+};
+
 export const AMBIGUITY_CODES = [
   "MISSING_PRICE",
   "AMBIGUOUS_CURRENCY",

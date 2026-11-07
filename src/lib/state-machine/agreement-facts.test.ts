@@ -13,6 +13,7 @@ const invalid = {
   agreementValid: false,
   blockerCount: 0,
   depositType: null,
+  hasClientEmail: false,
   balanceIsZero: false,
 };
 
@@ -22,8 +23,18 @@ describe("readAgreementFacts", () => {
       agreementValid: true,
       blockerCount: 0,
       depositType: "percent",
+      hasClientEmail: false,
       balanceIsZero: false,
     });
+  });
+
+  it("reads whether the client has an email", () => {
+    expect(
+      readAgreementFacts({
+        ...exampleAgreement,
+        parties: { client: { display_name: "Ren", email: "ren@example.com" } },
+      }).hasClientEmail,
+    ).toBe(true);
   });
 
   it("counts blocker ambiguities only", () => {

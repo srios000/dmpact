@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { db } from "@/lib/db";
@@ -34,6 +35,17 @@ vi.mock("@/lib/db", async () => {
   };
 });
 
+const baseAgreement = {
+  ...exampleAgreement,
+  parties: {
+    client: {
+      display_name: "Ren",
+      handle: "@ren_ch",
+      email: "ren@example.com",
+    },
+  },
+};
+
 const url = process.env.TEST_DATABASE_URL;
 
 const blocker: Agreement["ambiguities"][number] = {
@@ -69,7 +81,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     return creator;
   }
 
-  async function sent(agreement: Agreement = exampleAgreement) {
+  async function sent(agreement: Agreement = baseAgreement) {
     const created = await createCommission({ sourceDm: "dm", agreement });
     const { token } = await sendToClient({
       commissionId: created.id,
@@ -78,7 +90,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     return { ...created, token };
   }
 
-  async function approved(agreement: Agreement = exampleAgreement) {
+  async function approved(agreement: Agreement = baseAgreement) {
     const commission = await sent(agreement);
     await confirmAgreement({
       token: commission.token,
@@ -95,7 +107,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     const { id } = await createCommission({
       sourceDm: "dm",
       agreement: {
-        ...exampleAgreement,
+        ...baseAgreement,
         deposit: {
           type: "percent",
           percent: 50,
@@ -115,7 +127,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
   it("requires a session and hides other creators' commissions", async () => {
     const { id, contentHash } = await createCommission({
       sourceDm: "dm",
-      agreement: exampleAgreement,
+      agreement: baseAgreement,
     });
 
     await signIn();
@@ -123,7 +135,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     expect(await listCommissions()).toEqual([]);
     expect(await getCommissionStatus(id, null)).toBeNull();
     await expect(
-      saveAgreementVersion({ commissionId: id, agreement: exampleAgreement }),
+      saveAgreementVersion({ commissionId: id, agreement: baseAgreement }),
     ).rejects.toMatchObject({ code: "not_found" });
     await expect(
       sendToClient({ commissionId: id, versionHash: contentHash }),
@@ -142,7 +154,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
   it("keeps a commission with blockers in draft and leaves no trace", async () => {
     const { id, contentHash } = await createCommission({
       sourceDm: "dm",
-      agreement: { ...exampleAgreement, ambiguities: [blocker] },
+      agreement: { ...baseAgreement, ambiguities: [blocker] },
     });
 
     await expect(
@@ -158,11 +170,11 @@ describe.skipIf(!url)("commission flow (database)", () => {
   it("refuses to send a version the creator hasn't seen", async () => {
     const { id, contentHash } = await createCommission({
       sourceDm: "dm",
-      agreement: exampleAgreement,
+      agreement: baseAgreement,
     });
     await saveAgreementVersion({
       commissionId: id,
-      agreement: { ...exampleAgreement, title: "Newer" },
+      agreement: { ...baseAgreement, title: "Newer" },
     });
 
     await expect(
@@ -172,10 +184,18 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
   it("generates a token that only opens the client view", async () => {
     const { id, token } = await sent();
+    const other = await sent();
+    const unknown = randomBytes(16).toString("base64url");
 
     expect(Buffer.from(token, "base64url")).toHaveLength(16);
-    expect(await getClientAgreement("wrong-token-wrong")).toBeNull();
-    expect(await getCommissionStatus(id, "wrong-token-wrong")).toBeNull();
+    expect(other.token).not.toBe(token);
+    expect(await getClientAgreement(unknown)).toBeNull();
+    expect(await getCommissionStatus(id, unknown)).toBeNull();
+    expect(await getCommissionStatus(other.id, token)).toBeNull();
+
+    vi.mocked(getCurrentCreator).mockResolvedValue(null);
+    expect(await getCommissionStatus(id, null)).toBeNull();
+    expect(await getCommissionStatus(id, token)).not.toBeNull();
 
     const view = await getClientAgreement(token);
     expect(view?.state).toBe("negotiating");
@@ -191,7 +211,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     const { id, token, contentHash } = await sent();
     const newer = await saveAgreementVersion({
       commissionId: id,
-      agreement: { ...exampleAgreement, title: "Newer" },
+      agreement: { ...baseAgreement, title: "Newer" },
     });
 
     await expect(
@@ -216,6 +236,20 @@ describe.skipIf(!url)("commission flow (database)", () => {
     expect(commission?.inForceVersion).toBe(2);
   });
 
+  it("refuses to agree on a deposit without the client's email", async () => {
+    const { id, token, contentHash } = await sent(exampleAgreement);
+
+    await expect(
+      confirmAgreement({ token, versionHash: contentHash }),
+    ).rejects.toMatchObject({ code: "guard_failed" });
+
+    const commission = await getCommission(id);
+    expect(commission?.state).toBe("negotiating");
+    expect(
+      commission?.versions[0].confirmations.filter((c) => c.party === "client"),
+    ).toHaveLength(0);
+  });
+
   it("stores change requests and stays in negotiating", async () => {
     const { id, token } = await sent();
 
@@ -235,7 +269,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
       saveAgreementVersion({
         commissionId: id,
         agreement: {
-          ...exampleAgreement,
+          ...baseAgreement,
           price: { total: "1.00", currency: "USD" },
         },
       }),
@@ -248,7 +282,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
     const changed = await saveAgreementVersion({
       commissionId: id,
-      agreement: { ...exampleAgreement, deadline: laterDeadline },
+      agreement: { ...baseAgreement, deadline: laterDeadline },
     });
 
     const pending = await getCommission(id);
@@ -258,7 +292,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
     const view = await getClientAgreement(token);
     expect(view?.awaitingClient).toBe(true);
-    expect(view?.deadlineInForce?.date).toBe(exampleAgreement.deadline.date);
+    expect(view?.deadlineInForce?.date).toBe(baseAgreement.deadline.date);
     expect(view?.agreement.deadline.date).toBe(laterDeadline.date);
     expect((await getCommissionStatus(id, token))?.awaitingClient).toBe(true);
 
@@ -277,13 +311,13 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
   it("blocks edits and confirmations after delivery", async () => {
     const { id, token } = await approved({
-      ...exampleAgreement,
+      ...baseAgreement,
       deposit: { type: "none", percent: null, fixed_amount: null },
     });
     const changed = await saveAgreementVersion({
       commissionId: id,
       agreement: {
-        ...exampleAgreement,
+        ...baseAgreement,
         deposit: { type: "none", percent: null, fixed_amount: null },
         deadline: laterDeadline,
       },
@@ -303,7 +337,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     await expect(
       saveAgreementVersion({
         commissionId: id,
-        agreement: { ...exampleAgreement, deadline: laterDeadline },
+        agreement: { ...baseAgreement, deadline: laterDeadline },
       }),
     ).rejects.toMatchObject({ code: "edit_not_allowed" });
     await expect(
@@ -317,12 +351,12 @@ describe.skipIf(!url)("commission flow (database)", () => {
   it("links follow-up DMs to the version they produced", async () => {
     const { id } = await createCommission({
       sourceDm: "original",
-      agreement: exampleAgreement,
+      agreement: baseAgreement,
     });
 
     await saveAgreementVersion({
       commissionId: id,
-      agreement: { ...exampleAgreement, title: "From follow-up" },
+      agreement: { ...baseAgreement, title: "From follow-up" },
       followUpDm: "actually make it two songs",
     });
 
@@ -339,11 +373,11 @@ describe.skipIf(!url)("commission flow (database)", () => {
   it("keeps the original DM and follow-up DMs immutable", async () => {
     const { id } = await createCommission({
       sourceDm: "original",
-      agreement: exampleAgreement,
+      agreement: baseAgreement,
     });
     await saveAgreementVersion({
       commissionId: id,
-      agreement: { ...exampleAgreement, title: "From follow-up" },
+      agreement: { ...baseAgreement, title: "From follow-up" },
       followUpDm: "follow-up",
     });
 
@@ -385,7 +419,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
   it("marks a skipped deposit as not required", async () => {
     const { id, token } = await approved({
-      ...exampleAgreement,
+      ...baseAgreement,
       deposit: { type: "none", percent: null, fixed_amount: null },
     });
 

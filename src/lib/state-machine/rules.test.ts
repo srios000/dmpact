@@ -7,6 +7,7 @@ const ready: GuardContext = {
   blockerCount: 0,
   confirmedBy: { creator: true, client: true },
   depositType: "percent",
+  hasClientEmail: true,
   balanceIsZero: false,
   deliveryCount: 1,
 };
@@ -148,6 +149,34 @@ describe("guards", () => {
     }
   });
 
+  it("agreed needs the client's email when an invoice is required", () => {
+    for (const actor of ["client", "creator"] as const) {
+      expectError(
+        checkTransition("negotiating", "agreed", actor, {
+          ...ready,
+          hasClientEmail: false,
+        }),
+        "guard_failed",
+      );
+      expectError(
+        checkTransition("negotiating", "agreed", actor, {
+          ...ready,
+          depositType: "none",
+          hasClientEmail: false,
+        }),
+        "guard_failed",
+      );
+    }
+    expect(
+      checkTransition("negotiating", "agreed", "client", {
+        ...ready,
+        depositType: "none",
+        balanceIsZero: true,
+        hasClientEmail: false,
+      }).ok,
+    ).toBe(true);
+  });
+
   it("deposit paid only when a deposit is required", () => {
     for (const depositType of ["none", null] as const) {
       expectError(
@@ -181,6 +210,23 @@ describe("guards", () => {
       }),
       "guard_failed",
     );
+  });
+
+  it("delivered needs the client's email when there is a balance", () => {
+    expectError(
+      checkTransition("in_progress", "delivered", "creator", {
+        ...ready,
+        hasClientEmail: false,
+      }),
+      "guard_failed",
+    );
+    expect(
+      checkTransition("in_progress", "delivered", "creator", {
+        ...ready,
+        balanceIsZero: true,
+        hasClientEmail: false,
+      }).ok,
+    ).toBe(true);
   });
 
   it("system completes only when the balance is zero", () => {

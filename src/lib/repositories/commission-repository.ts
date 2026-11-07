@@ -1,11 +1,15 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { withComputedAmounts } from "@/lib/money/agreement";
 import { currencyExponent } from "@/lib/money/decimal";
 import { contentHash } from "@/lib/schema/content-hash";
 import type { Agreement } from "@/lib/schema/agreement";
-import { readAgreementFacts } from "@/lib/state-machine/agreement-facts";
+import {
+  balanceFailureMessage,
+  canRetryBalanceInvoice,
+  canRetryDepositInvoice,
+  depositFailureMessage,
+} from "@/lib/state-machine/deposit-retry";
 import { effectHandlers } from "@/lib/state-machine/effect-handlers";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import {
@@ -16,59 +20,25 @@ import {
 import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { RepositoryError } from "./errors";
 import {
+  issueBalanceInvoice,
+  issueDepositInvoice,
+  type IssueDepositInvoiceOptions,
+  type IssueInvoiceOptions,
+} from "./invoice-repository";
+import { latestNudgeFromEvents } from "./overdue-repository";
+import {
   agreementInForce,
+  isClientToken,
   isConfirmedBy,
   latestVersion,
   lockCommission,
+  newClientToken,
   notFound,
+  paymentsOf,
   readAgreement,
   requireCreator,
   toJson,
 } from "./shared";
-
-type InvoiceRow = {
-  kind: "deposit" | "balance";
-  status: "draft" | "sent" | "paid" | "cancelled";
-  payLink: string | null;
-  paidAt: Date | null;
-  createdAt: Date;
-};
-
-export type PaymentStatus = {
-  status: "not_required" | "not_created" | InvoiceRow["status"];
-  payLink: string | null;
-  paidAt: string | null;
-};
-
-function paymentStatus(
-  invoices: InvoiceRow[],
-  kind: InvoiceRow["kind"],
-  required: boolean,
-): PaymentStatus {
-  const invoice = invoices
-    .filter((i) => i.kind === kind)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-  if (!invoice) {
-    return {
-      status: required ? "not_created" : "not_required",
-      payLink: null,
-      paidAt: null,
-    };
-  }
-  return {
-    status: invoice.status,
-    payLink: invoice.payLink,
-    paidAt: invoice.paidAt?.toISOString() ?? null,
-  };
-}
-
-function paymentsOf(content: unknown, invoices: InvoiceRow[]) {
-  const facts = readAgreementFacts(content);
-  return {
-    deposit: paymentStatus(invoices, "deposit", facts.depositType !== "none"),
-    balance: paymentStatus(invoices, "balance", !facts.balanceIsZero),
-  };
-}
 
 function summarize(agreement: Agreement) {
   return {
@@ -78,6 +48,7 @@ function summarize(agreement: Agreement) {
       agreement.parties?.client?.display_name ??
       agreement.parties?.client?.handle ??
       null,
+    clientHandle: agreement.parties?.client?.handle ?? null,
     total: agreement.price.total,
     currency: agreement.price.currency,
     depositAmount: agreement.deposit.amount ?? null,
@@ -134,6 +105,7 @@ export async function listCommissions() {
     return {
       id: commission.id,
       state: commission.state,
+      clientToken: commission.clientToken,
       createdAt: commission.createdAt.toISOString(),
       updatedAt: commission.updatedAt.toISOString(),
       awaitingClient: latest.version !== inForce.version,
@@ -155,7 +127,15 @@ export async function getCommission(id: string) {
       followUpDms: { orderBy: { createdAt: "asc" } },
       changeRequests: { orderBy: { createdAt: "asc" } },
       invoices: { orderBy: { createdAt: "asc" } },
-      deliveries: { orderBy: { loggedAt: "asc" } },
+      deliveries: {
+        orderBy: { loggedAt: "asc" },
+        include: {
+          downloads: {
+            orderBy: { requestedAt: "asc" },
+            select: { requestedAt: true },
+          },
+        },
+      },
       events: { orderBy: { at: "asc" } },
     },
   });
@@ -164,6 +144,13 @@ export async function getCommission(id: string) {
   const versions = commission.agreementVersions;
   const inForce = agreementInForce(versions);
   const latest = versions[versions.length - 1];
+  const payments = paymentsOf((inForce ?? latest).content, commission.invoices);
+  const depositRetryable =
+    !!inForce &&
+    canRetryDepositInvoice(commission.state, payments.deposit.status);
+  const balanceRetryable =
+    !!inForce &&
+    canRetryBalanceInvoice(commission.state, payments.balance.status);
 
   return {
     id: commission.id,
@@ -174,6 +161,15 @@ export async function getCommission(id: string) {
     updatedAt: commission.updatedAt.toISOString(),
     inForceVersion: inForce?.version ?? null,
     awaitingClient: !!inForce && inForce.version !== latest.version,
+    depositRetry: depositRetryable
+      ? { error: depositFailureMessage(commission.events) }
+      : null,
+    balanceRetry: balanceRetryable
+      ? { error: balanceFailureMessage(commission.events) }
+      : null,
+    latestNudge: latestNudgeFromEvents(commission.events),
+    ...summarize(readAgreement((inForce ?? latest).content)),
+    ...payments,
     versions: versions.map((v) => ({
       id: v.id,
       version: v.version,
@@ -219,6 +215,7 @@ export async function getCommission(id: string) {
       mimeType: d.mimeType,
       isFinal: d.isFinal,
       loggedAt: d.loggedAt.toISOString(),
+      downloadedAt: d.downloads.map((x) => x.requestedAt.toISOString()),
     })),
     events: commission.events.map((e) => ({
       id: e.id,
@@ -265,8 +262,7 @@ export async function sendToClient(input: {
       });
     }
 
-    const token =
-      commission.clientToken ?? randomBytes(16).toString("base64url");
+    const token = commission.clientToken ?? newClientToken();
     await tx.commission.update({
       where: { id: commissionId },
       data: { clientToken: token },
@@ -301,10 +297,83 @@ export async function transitionCommission(input: {
   return transition(db, { ...input, actor: "creator" }, effectHandlers);
 }
 
+export async function retryDepositInvoice(
+  commissionId: string,
+  options?: IssueDepositInvoiceOptions,
+) {
+  return retryInvoice(commissionId, "deposit", options);
+}
+
+export async function retryBalanceInvoice(
+  commissionId: string,
+  options?: IssueInvoiceOptions,
+) {
+  return retryInvoice(commissionId, "balance", options);
+}
+
+async function retryInvoice(
+  commissionId: string,
+  kind: "deposit" | "balance",
+  options?: IssueInvoiceOptions,
+) {
+  const creator = await requireCreator();
+  const commission = await db.commission.findFirst({
+    where: { id: commissionId, creatorId: creator.id },
+    include: {
+      agreementVersions: { include: { confirmations: true } },
+      invoices: true,
+    },
+  });
+  if (!commission) throw notFound();
+
+  const inForce = agreementInForce(commission.agreementVersions);
+  const payments = inForce
+    ? paymentsOf(inForce.content, commission.invoices)
+    : null;
+  const allowed =
+    payments &&
+    (kind === "deposit"
+      ? canRetryDepositInvoice(commission.state, payments.deposit.status)
+      : canRetryBalanceInvoice(commission.state, payments.balance.status));
+  if (!allowed) {
+    throw new RepositoryError(
+      "retry_not_allowed",
+      `There is no ${kind} invoice to send again.`,
+    );
+  }
+
+  const issue = kind === "deposit" ? issueDepositInvoice : issueBalanceInvoice;
+  const effect =
+    kind === "deposit" ? "createDepositInvoice" : "createBalanceInvoice";
+
+  let result: Awaited<ReturnType<typeof issue>>;
+  try {
+    result = await issue(commissionId, options);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await db.commissionEvent.create({
+      data: {
+        commissionId,
+        type: "effect_failed",
+        actor: "creator",
+        reason: effect,
+        meta: { message },
+      },
+    });
+    throw new RepositoryError("invoice_failed", message);
+  }
+
+  if (result.status === "skipped") {
+    throw new RepositoryError("retry_not_allowed", result.reason);
+  }
+  return result;
+}
+
 export async function getCommissionStatus(
   id: string,
   clientToken: string | null,
 ) {
+  if (clientToken && !isClientToken(clientToken)) return null;
   const creator = clientToken ? null : await getCurrentCreator();
   const where = clientToken
     ? { id, clientToken }

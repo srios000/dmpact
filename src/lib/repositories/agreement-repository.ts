@@ -13,10 +13,12 @@ import { applyTransition, runEffects } from "@/lib/state-machine/transition";
 import { RepositoryError } from "./errors";
 import {
   agreementInForce,
+  isClientToken,
   isConfirmedBy,
   latestVersion,
   lockCommission,
   notFound,
+  paymentsOf,
   readAgreement,
   requireCreator,
   toJson,
@@ -99,6 +101,7 @@ export async function saveAgreementVersion(input: {
 }
 
 async function commissionForToken(tx: Tx, token: string) {
+  if (!isClientToken(token)) throw notFound();
   const found = await tx.commission.findUnique({
     where: { clientToken: token },
     select: { id: true },
@@ -113,11 +116,23 @@ async function commissionForToken(tx: Tx, token: string) {
   return commission;
 }
 
+export async function clientLinkExists(token: string): Promise<boolean> {
+  if (!isClientToken(token)) return false;
+  const found = await db.commission.findUnique({
+    where: { clientToken: token },
+    select: { id: true },
+  });
+  return !!found;
+}
+
 export async function getClientAgreement(token: string) {
+  if (!isClientToken(token)) return null;
   const commission = await db.commission.findUnique({
     where: { clientToken: token },
     include: {
       creator: { select: { displayName: true } },
+      deliveries: { orderBy: { loggedAt: "asc" } },
+      invoices: true,
       agreementVersions: {
         orderBy: { version: "desc" },
         include: { confirmations: true },
@@ -148,16 +163,39 @@ export async function getClientAgreement(token: string) {
   return {
     commissionId: commission.id,
     state: commission.state,
+    updatedAt: commission.updatedAt.toISOString(),
     creatorName: commission.creator.displayName,
     version: latest.version,
     versionHash: latest.contentHash,
     agreement,
     clientConfirmed,
     awaitingClient: !clientConfirmed && canClientConfirm(commission.state),
+    ...paymentsOf((inForce ?? latest).content, commission.invoices),
     deadlineInForce:
       inForce && inForce.version !== latest.version
         ? readAgreement(inForce.content).deadline
         : null,
+    // Upload evidence (FR-7.1, FR-8A.8): every file the creator logged, with
+    // its fingerprint. Shown before payment too; the files themselves are not.
+    deliveryLog: commission.deliveries.map((delivery) => ({
+      id: delivery.id,
+      filename: delivery.filename,
+      sizeBytes: delivery.sizeBytes,
+      mimeType: delivery.mimeType,
+      sha256: delivery.sha256,
+      isFinal: delivery.isFinal,
+      loggedAt: delivery.loggedAt.toISOString(),
+    })),
+    finalFiles:
+      commission.state === "fully_paid"
+        ? commission.deliveries
+            .filter((delivery) => delivery.isFinal)
+            .map((delivery) => ({
+              id: delivery.id,
+              filename: delivery.filename,
+              sizeBytes: delivery.sizeBytes,
+            }))
+        : [],
   };
 }
 

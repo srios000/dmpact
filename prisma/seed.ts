@@ -1,6 +1,14 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import {
+  DEFAULT_MISMATCH_THRESHOLD_PCT,
+  DEFAULT_RATE_CARD,
+} from "../src/lib/schema/rate-card";
+import {
+  describeSeeded,
+  seedDemoCommissions,
+} from "../src/lib/demo/demo-commissions";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
@@ -29,6 +37,7 @@ async function main() {
   const email = required("DEMO_CREATOR_EMAIL").toLowerCase();
   const password = required("DEMO_CREATOR_PASSWORD");
   const paypalEmail = required("DEMO_CREATOR_PAYPAL_EMAIL");
+  const clientPaypalEmail = required("DEMO_CLIENT_PAYPAL_EMAIL");
 
   await signUpDemoUser(email, password);
 
@@ -41,7 +50,7 @@ async function main() {
     `;
     if (!user) throw new Error("The demo user isn't in neon_auth.user.");
 
-    await db.creator.upsert({
+    const creator = await db.creator.upsert({
       where: { authUserId: user.id },
       update: { paypalEmail },
       create: {
@@ -51,7 +60,29 @@ async function main() {
         paypalEmail,
       },
     });
-    console.log("Seeded the demo creator.");
+    await db.rateCard.upsert({
+      where: { creatorId: creator.id },
+      update: {},
+      create: {
+        creatorId: creator.id,
+        rates: DEFAULT_RATE_CARD,
+        mismatchThresholdPct: DEFAULT_MISMATCH_THRESHOLD_PCT,
+      },
+    });
+    console.log("Seeded the demo creator and rate card.");
+
+    const existing = await db.commission.count({
+      where: { creatorId: creator.id },
+    });
+    if (existing > 0) {
+      console.log(
+        `The demo creator already has ${existing} commissions. Run pnpm db:reset-demo to replace them.`,
+      );
+      return;
+    }
+    const seeded = await seedDemoCommissions(db, creator.id, clientPaypalEmail);
+    console.log(`Seeded ${seeded.length} demo commissions:`);
+    console.log(describeSeeded(seeded, required("APP_BASE_URL")));
   } finally {
     await db.$disconnect();
   }

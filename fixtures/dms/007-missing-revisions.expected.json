@@ -51,7 +51,8 @@
         "email": "kai@example.com"
       }
     },
-    "notes": null
+    "notes": null,
+    "extraction": { "source_language": "en" }
   },
   "expected_ambiguity_codes": ["MISSING_REVISIONS"],
   "expect_mismatch": false

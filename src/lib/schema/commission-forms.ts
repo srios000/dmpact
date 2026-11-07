@@ -9,7 +9,10 @@ export const commissionIdSchema = z.uuid();
 export const versionHashSchema = z
   .string()
   .regex(/^[a-f0-9]{64}$/, "Version hash is a SHA-256 hex string");
-export const clientTokenSchema = z.string().min(16).max(64);
+export const CLIENT_TOKEN_BYTES = 16;
+export const clientTokenSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{22}$/, "Client token is 128 bits in base64url");
 
 export const newAgreementSchema = z.preprocess((value) => {
   if (value === null || typeof value !== "object") return value;
@@ -24,6 +27,11 @@ export const newAgreementSchema = z.preprocess((value) => {
         },
       };
 }, agreementSchema);
+
+export const extractAgreementSchema = z.strictObject({
+  dmText: z.string().trim().min(1).max(MAX_DM_CHARS),
+  commissionId: commissionIdSchema.optional(),
+});
 
 export const createCommissionSchema = z.strictObject({
   sourceDm: z.string().max(MAX_DM_CHARS),
@@ -47,6 +55,34 @@ export const transitionCommissionSchema = z.strictObject({
   reason: z.string().trim().min(1).max(500).optional(),
 });
 
+export const suggestCounteroffersSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const retryDepositInvoiceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const retryBalanceInvoiceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const runReminderSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const listDisputesSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const sendDisputeEvidenceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+  disputeId: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9-]{3,64}$/, "Not a PayPal dispute ID."),
+});
+
 export const confirmAgreementSchema = z.strictObject({
   token: clientTokenSchema,
   versionHash: versionHashSchema,
@@ -57,6 +93,7 @@ export const requestChangesSchema = z.strictObject({
   message: z.string().trim().min(1).max(MAX_CHANGE_REQUEST_CHARS),
 });
 
+export type ExtractAgreementInput = z.input<typeof extractAgreementSchema>;
 export type CreateCommissionInput = z.input<typeof createCommissionSchema>;
 export type SaveAgreementVersionInput = z.input<
   typeof saveAgreementVersionSchema
@@ -64,4 +101,18 @@ export type SaveAgreementVersionInput = z.input<
 export type SendToClientInput = z.input<typeof sendToClientSchema>;
 export type TransitionCommissionInput = z.input<
   typeof transitionCommissionSchema
+>;
+export type SuggestCounteroffersInput = z.input<
+  typeof suggestCounteroffersSchema
+>;
+export type RetryDepositInvoiceInput = z.input<
+  typeof retryDepositInvoiceSchema
+>;
+export type RetryBalanceInvoiceInput = z.input<
+  typeof retryBalanceInvoiceSchema
+>;
+export type RunReminderInput = z.input<typeof runReminderSchema>;
+export type ListDisputesInput = z.input<typeof listDisputesSchema>;
+export type SendDisputeEvidenceInput = z.input<
+  typeof sendDisputeEvidenceSchema
 >;
