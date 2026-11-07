@@ -23,7 +23,7 @@ export type DisputeView = {
   canProvideEvidence: boolean;
 };
 
-type CommissionDisputesProps = React.ComponentProps<"section"> & {
+export interface CommissionDisputesProps extends React.HTMLAttributes<HTMLElement> {
   commissionId: string;
   listDisputes: (input: {
     commissionId: string;
@@ -32,7 +32,7 @@ type CommissionDisputesProps = React.ComponentProps<"section"> & {
     commissionId: string;
     disputeId: string;
   }) => Promise<ActionResult<DisputeView>>;
-};
+}
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -63,12 +63,11 @@ function CommissionDisputes({
   const router = useRouter();
   const [disputes, setDisputes] = React.useState<DisputeView[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [sent, setSent] = React.useState<string | null>(null);
+  const [sentIds, setSentIds] = React.useState<string[]>([]);
   const [pending, startTransition] = React.useTransition();
 
   function check() {
     setError(null);
-    setSent(null);
     startTransition(async () => {
       const result = await listDisputes({ commissionId });
       if (!result.ok) {
@@ -87,7 +86,9 @@ function CommissionDisputes({
         setError(result.error.message);
         return;
       }
-      setSent(disputeId);
+      setSentIds((current) =>
+        current.includes(disputeId) ? current : [...current, disputeId],
+      );
       setDisputes((current) =>
         (current ?? []).map((d) => (d.id === disputeId ? result.data : d)),
       );
@@ -176,7 +177,7 @@ function CommissionDisputes({
                   </>
                 ) : null}
               </dl>
-              {sent === dispute.id ? (
+              {sentIds.includes(dispute.id) ? (
                 <p className="text-sm text-muted-foreground">
                   Evidence pack sent to PayPal.
                 </p>

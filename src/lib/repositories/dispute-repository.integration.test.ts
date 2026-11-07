@@ -36,7 +36,7 @@ describe.skipIf(!url)("PayPal disputes (database)", () => {
   beforeEach(async () => {
     paypal.reset();
     await db.$executeRawUnsafe(
-      "TRUNCATE creators, commissions, agreement_versions, confirmations, invoices, deliveries, commission_events, change_requests, rate_cards RESTART IDENTITY CASCADE",
+      "TRUNCATE creators, commissions, agreement_versions, confirmations, invoices, deliveries, delivery_downloads, commission_events, change_requests, rate_cards, follow_up_dms, webhook_events RESTART IDENTITY CASCADE",
     );
   });
 

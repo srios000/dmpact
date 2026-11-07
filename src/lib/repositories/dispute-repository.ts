@@ -60,10 +60,27 @@ async function ownedCommission(commissionId: string) {
         orderBy: { createdAt: "asc" },
         select: { kind: true, paypalInvoiceId: true },
       },
+      events: {
+        where: { type: "dispute_evidence_sent" },
+        select: { meta: true },
+      },
     },
   });
   if (!commission) throw notFound();
   return commission;
+}
+
+function sentDisputeIds(events: Array<{ meta: unknown }>): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (event.meta && typeof event.meta === "object") {
+      const disputeId = (event.meta as { disputeId?: unknown }).disputeId;
+      if (typeof disputeId === "string" && disputeId.length > 0) {
+        ids.add(disputeId);
+      }
+    }
+  }
+  return ids;
 }
 
 /** Disputes opened on this commission's paid invoices. */
@@ -80,6 +97,7 @@ async function findDisputes(
   options: DisputeOptions,
 ): Promise<CommissionDispute[]> {
   const paypal = options.paypal ?? getPayPalClient();
+  const alreadySent = sentDisputeIds(commission.events);
   const found = new Map<string, CommissionDispute>();
   for (const invoice of commission.invoices) {
     const remote = await paypal.getInvoice(invoice.paypalInvoiceId!);
@@ -104,7 +122,8 @@ async function findDisputes(
           stage: dispute.stage,
           amount: dispute.amount,
           sellerResponseDueDate: dispute.sellerResponseDueDate,
-          canProvideEvidence: canProvideEvidence(dispute),
+          canProvideEvidence:
+            canProvideEvidence(dispute) && !alreadySent.has(dispute.id),
         });
       }
     }
