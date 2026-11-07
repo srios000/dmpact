@@ -36,7 +36,7 @@ function Stat({
   tone?: "default" | "alert" | "quiet";
 }) {
   return (
-    <div className="min-w-0 space-y-1 px-5 py-4 first:pl-0 sm:first:pl-5">
+    <div className="min-w-0 space-y-1 px-4 py-4 sm:px-5">
       <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className={valueVariants({ tone })}>{value}</dd>
       {detail && <dd className="text-sm text-muted-foreground">{detail}</dd>}
