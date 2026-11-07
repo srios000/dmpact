@@ -1,4 +1,9 @@
 import { buildCreateInvoiceBody } from "./client";
+import {
+  canProvideEvidence,
+  invoiceTransactionIds,
+  type Dispute,
+} from "./disputes";
 import { PayPalError } from "./errors";
 import type { Invoice, PayPalClient } from "./types";
 
@@ -11,6 +16,10 @@ export interface MockPayPalClient extends PayPalClient {
   calls: Array<[method: string, ...args: unknown[]]>;
   /** What verifyWebhookSignature answers. Defaults to true. */
   webhookSignatureValid: boolean;
+  /** Simulate the client opening a dispute on a paid invoice. */
+  openDispute(invoiceId: string, status?: string): Dispute;
+  /** Evidence uploads, for assertions. */
+  evidence: Array<{ disputeId: string; filename: string; notes: string }>;
   reset(): void;
 }
 
@@ -27,6 +36,8 @@ export function createMockPayPalClient(
   const store = new Map<string, Invoice>();
   const calls: MockPayPalClient["calls"] = [];
   let seq = 0;
+  const disputes = new Map<string, Dispute>();
+  let disputeSeq = 0;
 
   function mustGet(id: string): Invoice {
     const inv = store.get(id);
@@ -151,7 +162,76 @@ export function createMockPayPalClient(
       if (inv.status !== "SENT" && inv.status !== "UNPAID") {
         throw new Error(`Mock: cannot pay a ${inv.status} invoice`);
       }
-      return update(id, { status: "PAID", paidAt: new Date().toISOString() });
+      const paidAt = new Date().toISOString();
+      const next = update(id, { status: "PAID", paidAt });
+      next.raw = {
+        ...next.raw,
+        payments: {
+          transactions: [{ payment_id: `MOCKTX-${id}`, payment_date: paidAt }],
+        },
+      };
+      store.set(id, next);
+      return next;
+    },
+
+    evidence: [],
+
+    openDispute(invoiceId, status = "WAITING_FOR_SELLER_RESPONSE") {
+      const inv = mustGet(invoiceId);
+      const transactionId = invoiceTransactionIds(inv)[0];
+      if (!transactionId) throw new Error("Mock: pay the invoice first");
+      disputeSeq += 1;
+      const dispute: Dispute = {
+        id: `PP-D-MOCK-${disputeSeq}`,
+        status,
+        reason: "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+        stage: "INQUIRY",
+        amount: inv.amount,
+        sellerResponseDueDate: null,
+        createdAt: new Date().toISOString(),
+        transactionIds: [transactionId],
+        invoiceNumbers: inv.invoiceNumber ? [inv.invoiceNumber] : [],
+      };
+      disputes.set(dispute.id, dispute);
+      return dispute;
+    },
+
+    async listDisputesForTransaction(transactionId) {
+      calls.push(["listDisputesForTransaction", transactionId]);
+      return [...disputes.values()]
+        .filter((d) => d.transactionIds.includes(transactionId))
+        .map((d) => ({ ...d, transactionIds: [], invoiceNumbers: [] }));
+    },
+
+    async getDispute(id) {
+      calls.push(["getDispute", id]);
+      const dispute = disputes.get(id);
+      if (!dispute) {
+        throw new PayPalError({
+          status: 404,
+          message: `Dispute ${id} not found`,
+          paypalName: "RESOURCE_NOT_FOUND",
+        });
+      }
+      return dispute;
+    },
+
+    async provideDisputeEvidence(id, input) {
+      calls.push(["provideDisputeEvidence", id]);
+      const dispute = await client.getDispute(id);
+      if (!canProvideEvidence(dispute)) {
+        throw new PayPalError({
+          status: 422,
+          message: `Dispute ${id} is ${dispute.status}`,
+          paypalName: "UNPROCESSABLE_ENTITY",
+        });
+      }
+      client.evidence.push({
+        disputeId: id,
+        filename: input.filename,
+        notes: input.notes,
+      });
+      disputes.set(id, { ...dispute, status: "UNDER_REVIEW" });
     },
 
     all() {
@@ -163,6 +243,9 @@ export function createMockPayPalClient(
       calls.length = 0;
       seq = 0;
       client.webhookSignatureValid = true;
+      disputes.clear();
+      disputeSeq = 0;
+      client.evidence.length = 0;
     },
   };
 

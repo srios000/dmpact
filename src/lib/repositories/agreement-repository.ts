@@ -175,6 +175,17 @@ export async function getClientAgreement(token: string) {
       inForce && inForce.version !== latest.version
         ? readAgreement(inForce.content).deadline
         : null,
+    // Upload evidence (FR-7.1, FR-8A.8): every file the creator logged, with
+    // its fingerprint. Shown before payment too; the files themselves are not.
+    deliveryLog: commission.deliveries.map((delivery) => ({
+      id: delivery.id,
+      filename: delivery.filename,
+      sizeBytes: delivery.sizeBytes,
+      mimeType: delivery.mimeType,
+      sha256: delivery.sha256,
+      isFinal: delivery.isFinal,
+      loggedAt: delivery.loggedAt.toISOString(),
+    })),
     finalFiles:
       commission.state === "fully_paid"
         ? commission.deliveries

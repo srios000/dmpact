@@ -563,6 +563,11 @@ export async function seedDemoCommissions(
           : plan === "sent"
             ? new Date(now.getTime() + 5 * DAY)
             : new Date(at(step).getTime() + 7 * DAY);
+      const demoId = createHash("sha256")
+        .update(`demo-inv:${commission.id}:${kind}`)
+        .digest("hex")
+        .slice(0, 12)
+        .toUpperCase();
       await db.invoice.create({
         data: {
           commissionId: commission.id,
@@ -571,6 +576,7 @@ export async function seedDemoCommissions(
           amount,
           currency: "USD",
           dueDate: new Date(`${isoDate(due)}T00:00:00Z`),
+          payLink: `https://www.sandbox.paypal.com/invoice/p/#INV2-DEMO-${demoId}`,
           paidAt: plan === "paid" ? at(step + 1) : null,
           createdAt: at(step),
         },
@@ -600,7 +606,8 @@ export async function seedDemoCommissions(
         mimeType: "application/zip",
         sizeBytes: 12_582_912,
       };
-      await db.delivery.create({
+      const loggedAt = at(states.indexOf("delivered"));
+      const delivery = await db.delivery.create({
         data: {
           commissionId: commission.id,
           filename: file.filename,
@@ -608,9 +615,39 @@ export async function seedDemoCommissions(
           sizeBytes: file.sizeBytes,
           mimeType: file.mimeType,
           isFinal: true,
-          loggedAt: at(states.indexOf("delivered")),
+          loggedAt,
         },
       });
+      await db.commissionEvent.create({
+        data: {
+          commissionId: commission.id,
+          type: "delivery_logged",
+          actor: "creator",
+          reason: `Final file: ${delivery.filename}`,
+          at: loggedAt,
+          meta: {
+            deliveryId: delivery.id,
+            filename: delivery.filename,
+            sha256: delivery.sha256,
+            sizeBytes: delivery.sizeBytes,
+            mimeType: delivery.mimeType,
+            isFinal: delivery.isFinal,
+          },
+        },
+      });
+      if (states.includes("fully_paid")) {
+        const requestedAt = new Date(
+          at(states.indexOf("fully_paid")).getTime() + 15 * 60_000,
+        );
+        await db.deliveryDownload.create({
+          data: {
+            deliveryId: delivery.id,
+            commissionId: commission.id,
+            requestedAt,
+            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)",
+          },
+        });
+      }
     }
   }
   return seeded;
@@ -623,6 +660,7 @@ export async function clearDemoCommissions(
   const tables = [
     "follow_up_dms",
     "commission_events",
+    "delivery_downloads",
     "deliveries",
     "confirmations",
     "agreement_versions",

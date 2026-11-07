@@ -137,6 +137,7 @@ erDiagram
   agreement_versions ||--o{ confirmations : confirmed_by
   commissions ||--o{ invoices : has
   commissions ||--o{ deliveries : has
+  deliveries ||--o{ delivery_downloads : downloaded_as
   commissions ||--o{ commission_events : logs
   commissions ||--o{ change_requests : receives
   commissions ||--o{ follow_up_dms : receives
@@ -148,7 +149,8 @@ erDiagram
   agreement_versions { uuid id  uuid commission_id  int version  jsonb content  string content_hash  string created_by  timestamptz created_at }
   confirmations { uuid id  uuid commission_id  uuid agreement_version_id  string party "creator|client"  string content_hash  timestamptz confirmed_at }
   invoices { uuid id  uuid commission_id  string kind "deposit|balance"  string paypal_invoice_id  string status  decimal amount  string currency  date due_date  string pay_link  timestamptz paid_at  timestamptz last_reminded_at  timestamptz created_at  timestamptz updated_at }
-  deliveries { uuid id  uuid commission_id  string filename  string sha256  int size_bytes  string mime_type  string storage_key  bool is_final  timestamptz logged_at }
+  deliveries { uuid id  uuid commission_id  string filename  string sha256  int size_bytes  string mime_type  string storage_key "unique"  bool is_final  timestamptz logged_at }
+  delivery_downloads { uuid id  uuid delivery_id  uuid commission_id  text user_agent  timestamptz requested_at }
   commission_events { uuid id  uuid commission_id  string type  string from_state  string to_state  string actor  string reason  jsonb meta  timestamptz at }
   change_requests { uuid id  uuid commission_id  int version  text message  timestamptz created_at }
   follow_up_dms { uuid id  uuid commission_id  uuid agreement_version_id  text message  timestamptz created_at }
@@ -156,9 +158,15 @@ erDiagram
   webhook_events { string id  string type  jsonb payload  timestamptz received_at  timestamptz processed_at }
 ```
 
-`agreement_versions`, `confirmations`, `deliveries`, `commission_events`, and `follow_up_dms` are append-only, enforced by database triggers. A trigger also keeps `commissions.source_dm` from changing.
+`agreement_versions`, `confirmations`, `deliveries`, `delivery_downloads`, `commission_events`, and `follow_up_dms` are append-only, enforced by database triggers. A trigger also keeps `commissions.source_dm` from changing.
 
 The agreement in force is the latest version both parties confirmed. A deadline change after client approval adds a new version, and the previous one stays in force until the client re-confirms. Re-confirming doesn't change the commission state.
+
+Delivery files live in the private `deliveries` bucket in Neon Object Storage. The browser uploads straight to the bucket, so no file passes through a function request body (4.5 MB on Vercel):
+
+1. `createDeliveryUpload` checks the creator owns the commission and that it is `in_progress`, `delivered` or `fully_paid`, then returns a presigned PUT for `commissions/<id>/uploads/<upload id>`. The URL is valid for 5 minutes and signs `Content-Type` and `Content-Length`, so the bucket refuses any other type or size. Files can be up to 25 MB, with a type allow-list in `src/lib/schema/delivery.ts`.
+2. `recordDelivery` copies the upload to a new `commissions/<id>/deliveries/<file id>` key that no presigned URL can write. It hashes the copy (SHA-256), rechecks size and type, and saves the `deliveries` row. On the first delivery the same transaction moves `in_progress` to `delivered`. A revision is a new upload and a new row, and `storage_key` is unique, so a delivered file is never replaced.
+3. `downloadDelivery` (client link) refuses unless the commission is `fully_paid` and the file is marked final. It logs a `delivery_downloads` row, which is receipt evidence, and returns a presigned GET valid for 5 minutes. A row records that a download link was issued, not that the download finished. `deliveries` rows are upload evidence (FR-8A.8).
 
 ## 5. Key sequences
 
@@ -230,4 +238,5 @@ Local dev receives PayPal webhooks through a tunnel (ngrok / cloudflared) or the
 | AI evals | Extraction on `fixtures/dms` (field accuracy, ambiguity recall). Negotiation on mismatch cases | `evals/` scripts, run manually + nightly |
 | Integration | State machine against a test database (`*.integration.test.ts`, needs `TEST_DATABASE_URL`) | Vitest |
 | Integration | PayPal client against sandbox (create/send/get/cancel) | Vitest, tagged `@sandbox`, not run in CI |
+| Integration | Delivery storage against the Neon bucket of the `.env.local` branch (`STORAGE_TEST=1`) | Vitest, not run in CI |
 | E2E | Paste → fully paid happy path, plus 3 edge paths | Playwright, or a manual checklist if time is short (Marsha) |

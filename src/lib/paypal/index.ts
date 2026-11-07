@@ -11,6 +11,11 @@ export {
   type InvoiceKind,
 } from "./invoice-number";
 export { toPayPalValue } from "./currency";
+export {
+  canProvideEvidence,
+  invoiceTransactionIds,
+  type Dispute,
+} from "./disputes";
 export { createPayPalClient } from "./client";
 export { createMockPayPalClient, type MockPayPalClient } from "./mock";
 

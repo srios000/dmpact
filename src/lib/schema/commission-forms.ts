@@ -63,6 +63,26 @@ export const retryDepositInvoiceSchema = z.strictObject({
   commissionId: commissionIdSchema,
 });
 
+export const retryBalanceInvoiceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const runReminderSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const listDisputesSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
+export const sendDisputeEvidenceSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+  disputeId: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9-]{3,64}$/, "Not a PayPal dispute ID."),
+});
+
 export const confirmAgreementSchema = z.strictObject({
   token: clientTokenSchema,
   versionHash: versionHashSchema,
@@ -87,4 +107,12 @@ export type SuggestCounteroffersInput = z.input<
 >;
 export type RetryDepositInvoiceInput = z.input<
   typeof retryDepositInvoiceSchema
+>;
+export type RetryBalanceInvoiceInput = z.input<
+  typeof retryBalanceInvoiceSchema
+>;
+export type RunReminderInput = z.input<typeof runReminderSchema>;
+export type ListDisputesInput = z.input<typeof listDisputesSchema>;
+export type SendDisputeEvidenceInput = z.input<
+  typeof sendDisputeEvidenceSchema
 >;
