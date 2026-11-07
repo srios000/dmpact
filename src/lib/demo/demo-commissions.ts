@@ -635,6 +635,19 @@ export async function seedDemoCommissions(
           },
         },
       });
+      if (states.includes("fully_paid")) {
+        const requestedAt = new Date(
+          at(states.indexOf("fully_paid")).getTime() + 15 * 60_000,
+        );
+        await db.deliveryDownload.create({
+          data: {
+            deliveryId: delivery.id,
+            commissionId: commission.id,
+            requestedAt,
+            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)",
+          },
+        });
+      }
     }
   }
   return seeded;
@@ -647,6 +660,7 @@ export async function clearDemoCommissions(
   const tables = [
     "follow_up_dms",
     "commission_events",
+    "delivery_downloads",
     "deliveries",
     "confirmations",
     "agreement_versions",

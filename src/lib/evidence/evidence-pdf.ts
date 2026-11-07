@@ -9,6 +9,7 @@ import {
 import { SERVICE_LABELS, type Agreement } from "@/lib/schema/agreement";
 import { STATE_LABELS } from "@/lib/state-machine/labels";
 import type { CommissionState } from "@/lib/state-machine/rules";
+import { formatSize } from "@/lib/utils";
 
 /** Everything the evidence pack shows (FR-7.3, FR-8A.8). Plain data, no DB. */
 export type EvidencePack = {
@@ -110,12 +111,6 @@ function formatDay(isoDate: string | null): string {
   return isoDate
     ? day.format(new Date(`${isoDate.slice(0, 10)}T00:00:00Z`))
     : "-";
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 const EVENT_TITLES: Record<string, string> = {
@@ -338,7 +333,7 @@ class Writer {
         font: this.fonts.regular,
         color: MUTED,
       });
-      this.page.drawText(this.clean(value), {
+      this.page.drawText(this.clean(value, this.fonts.bold), {
         x: MARGIN + 150,
         y: y - 10,
         size: 9.5,
