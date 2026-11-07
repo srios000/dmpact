@@ -606,7 +606,8 @@ export async function seedDemoCommissions(
         mimeType: "application/zip",
         sizeBytes: 12_582_912,
       };
-      await db.delivery.create({
+      const loggedAt = at(states.indexOf("delivered"));
+      const delivery = await db.delivery.create({
         data: {
           commissionId: commission.id,
           filename: file.filename,
@@ -614,7 +615,24 @@ export async function seedDemoCommissions(
           sizeBytes: file.sizeBytes,
           mimeType: file.mimeType,
           isFinal: true,
-          loggedAt: at(states.indexOf("delivered")),
+          loggedAt,
+        },
+      });
+      await db.commissionEvent.create({
+        data: {
+          commissionId: commission.id,
+          type: "delivery_logged",
+          actor: "creator",
+          reason: `Final file: ${delivery.filename}`,
+          at: loggedAt,
+          meta: {
+            deliveryId: delivery.id,
+            filename: delivery.filename,
+            sha256: delivery.sha256,
+            sizeBytes: delivery.sizeBytes,
+            mimeType: delivery.mimeType,
+            isFinal: delivery.isFinal,
+          },
         },
       });
     }

@@ -179,6 +179,25 @@ export async function recordDelivery(input: {
           isFinal: input.isFinal,
         },
       });
+      // One event per upload (revisions included) so the timeline and the
+      // evidence pack show when each file was logged and its fingerprint.
+      await tx.commissionEvent.create({
+        data: {
+          commissionId,
+          type: "delivery_logged",
+          actor: "creator",
+          reason: `${delivery.isFinal ? "Final file" : "Preview"}: ${delivery.filename}`,
+          at: delivery.loggedAt,
+          meta: {
+            deliveryId: delivery.id,
+            filename: delivery.filename,
+            sha256: delivery.sha256,
+            sizeBytes: delivery.sizeBytes,
+            mimeType: delivery.mimeType,
+            isFinal: delivery.isFinal,
+          },
+        },
+      });
 
       const steps =
         state === "in_progress"
