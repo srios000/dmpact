@@ -6,13 +6,16 @@ import {
 } from "@/lib/repositories/commission-repository";
 import * as deliveries from "@/lib/repositories/delivery-repository";
 import { RepositoryError } from "@/lib/repositories/errors";
+import * as disputeRepo from "@/lib/repositories/dispute-repository";
 import { runCommissionReminder } from "@/lib/repositories/overdue-repository";
 import {
   createDeliveryUpload,
   recordDelivery,
   retryBalanceInvoice,
   retryDepositInvoice,
+  listDisputes,
   runReminder,
+  sendDisputeEvidence,
 } from "./actions";
 
 vi.mock("server-only", () => ({}));
@@ -29,6 +32,10 @@ vi.mock("@/lib/repositories/commission-repository", () => ({
 // Imported by suggestCounteroffers, which these tests don't exercise.
 vi.mock("@/lib/env", () => ({ env: {} }));
 vi.mock("@/lib/repositories/rate-card-repository", () => ({}));
+vi.mock("@/lib/repositories/dispute-repository", () => ({
+  listCommissionDisputes: vi.fn(),
+  sendDisputeEvidence: vi.fn(),
+}));
 vi.mock("@/lib/repositories/overdue-repository", () => ({
   runCommissionReminder: vi.fn(),
 }));
@@ -258,5 +265,73 @@ describe("runReminder action", () => {
     const result = await runReminder({ commissionId: "nope" });
     expect(result.ok).toBe(false);
     expect(runCommissionReminder).not.toHaveBeenCalled();
+  });
+});
+
+describe("dispute actions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const dispute = {
+    id: "PP-D-27803",
+    invoiceKind: "balance" as const,
+    transactionId: "TX1",
+    status: "WAITING_FOR_SELLER_RESPONSE",
+    reason: "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+    stage: "INQUIRY",
+    amount: { currency: "USD", value: "75.00" },
+    sellerResponseDueDate: null,
+    canProvideEvidence: true,
+  };
+
+  it("lists the commission's disputes", async () => {
+    vi.mocked(disputeRepo.listCommissionDisputes).mockResolvedValue([dispute]);
+    await expect(listDisputes({ commissionId })).resolves.toEqual({
+      ok: true,
+      data: [dispute],
+    });
+  });
+
+  it("sends evidence and refreshes the commission", async () => {
+    vi.mocked(disputeRepo.sendDisputeEvidence).mockResolvedValue({
+      ...dispute,
+      canProvideEvidence: false,
+    });
+    const result = await sendDisputeEvidence({
+      commissionId,
+      disputeId: "PP-D-27803",
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(disputeRepo.sendDisputeEvidence).toHaveBeenCalledWith(
+      commissionId,
+      "PP-D-27803",
+    );
+    expect(tags).toHaveBeenCalledWith(`commission-${commissionId}`);
+  });
+
+  it("returns PayPal failures as a message", async () => {
+    vi.mocked(disputeRepo.sendDisputeEvidence).mockRejectedValue(
+      new RepositoryError("dispute_failed", "PayPal couldn't complete it."),
+    );
+    await expect(
+      sendDisputeEvidence({ commissionId, disputeId: "PP-D-27803" }),
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "dispute_failed",
+        message: "PayPal couldn't complete it.",
+      },
+    });
+  });
+
+  it("rejects a malformed dispute id", async () => {
+    const result = await sendDisputeEvidence({
+      commissionId,
+      disputeId: "not a dispute!",
+    });
+    expect(result.ok).toBe(false);
+    expect(disputeRepo.sendDisputeEvidence).not.toHaveBeenCalled();
   });
 });

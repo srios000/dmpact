@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Dispute, DisputeEvidenceInput } from "./disputes";
 import type { InvoiceKind } from "./invoice-number";
 
 const moneySchema = z.looseObject({
@@ -26,7 +27,12 @@ export const paypalInvoiceSchema = z.looseObject({
     .looseObject({
       paid_amount: moneySchema.optional(),
       transactions: z
-        .array(z.looseObject({ payment_date: z.string().optional() }))
+        .array(
+          z.looseObject({
+            payment_id: z.string().optional(),
+            payment_date: z.string().optional(),
+          }),
+        )
         .optional(),
     })
     .optional(),
@@ -92,6 +98,15 @@ export type PayPalClient = {
    * request body exactly as received; re-serializing it can break the check.
    */
   verifyWebhookSignature(input: VerifyWebhookInput): Promise<boolean>;
+  /** Disputes opened on one PayPal transaction (summary, no transactions). */
+  listDisputesForTransaction(transactionId: string): Promise<Dispute[]>;
+  /** Full dispute details, including the disputed transactions. */
+  getDispute(id: string): Promise<Dispute>;
+  /** Uploads evidence (the evidence pack PDF) to a dispute. */
+  provideDisputeEvidence(
+    id: string,
+    input: DisputeEvidenceInput,
+  ): Promise<void>;
 };
 
 /** The PAYPAL-* headers PayPal signs each webhook delivery with. */

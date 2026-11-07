@@ -123,6 +123,7 @@ const EVENT_TITLES: Record<string, string> = {
   invoice_cancelled: "Invoice cancelled",
   invoice_reminded: "Payment reminder sent",
   delivery_logged: "Delivery logged",
+  dispute_evidence_sent: "Evidence sent to PayPal dispute",
   effect_failed: "PayPal action failed",
 };
 

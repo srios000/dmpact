@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 import * as agreements from "@/lib/repositories/agreement-repository";
 import * as commissions from "@/lib/repositories/commission-repository";
 import * as deliveries from "@/lib/repositories/delivery-repository";
+import * as disputes from "@/lib/repositories/dispute-repository";
 import * as overdue from "@/lib/repositories/overdue-repository";
 import { getRateCard } from "@/lib/repositories/rate-card-repository";
 import { notFound } from "@/lib/repositories/shared";
@@ -23,14 +24,18 @@ import { RepositoryError } from "@/lib/repositories/errors";
 import {
   retryBalanceInvoiceSchema,
   retryDepositInvoiceSchema,
+  listDisputesSchema,
   runReminderSchema,
+  sendDisputeEvidenceSchema,
   saveAgreementVersionSchema,
   sendToClientSchema,
   suggestCounteroffersSchema,
   transitionCommissionSchema,
   type RetryBalanceInvoiceInput,
   type RetryDepositInvoiceInput,
+  type ListDisputesInput,
   type RunReminderInput,
+  type SendDisputeEvidenceInput,
   type SaveAgreementVersionInput,
   type SendToClientInput,
   type SuggestCounteroffersInput,
@@ -220,6 +225,42 @@ export async function recordDelivery(
     const data = await deliveries.recordDelivery(parsed.data);
     refresh(parsed.data.commissionId);
     return { ok: true, data };
+  } catch (error) {
+    return toActionFailure(error);
+  }
+}
+
+/** PayPal disputes on this commission's paid invoices (stretch #21). */
+export async function listDisputes(
+  input: ListDisputesInput,
+): Promise<ActionResult<disputes.CommissionDispute[]>> {
+  const parsed = listDisputesSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    return {
+      ok: true,
+      data: await disputes.listCommissionDisputes(parsed.data.commissionId),
+    };
+  } catch (error) {
+    return toActionFailure(error);
+  }
+}
+
+/** Uploads the evidence pack PDF to a PayPal dispute on this commission. */
+export async function sendDisputeEvidence(
+  input: SendDisputeEvidenceInput,
+): Promise<ActionResult<disputes.CommissionDispute>> {
+  const parsed = sendDisputeEvidenceSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error);
+
+  try {
+    const dispute = await disputes.sendDisputeEvidence(
+      parsed.data.commissionId,
+      parsed.data.disputeId,
+    );
+    refresh(parsed.data.commissionId);
+    return { ok: true, data: dispute };
   } catch (error) {
     return toActionFailure(error);
   }

@@ -1,4 +1,9 @@
 import { toPayPalValue } from "./currency";
+import {
+  buildEvidenceForm,
+  disputeListSchema,
+  normalizeDispute,
+} from "./disputes";
 import { PayPalError, toPayPalError } from "./errors";
 import { invoiceNumber } from "./invoice-number";
 import { createTokenProvider, type TokenProvider } from "./token";
@@ -136,14 +141,17 @@ export function createPayPalClient(opts: PayPalClientOptions): PayPalClient {
         method,
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          // fetch sets the multipart boundary itself for FormData.
+          ...(body instanceof FormData
+            ? {}
+            : { "Content-Type": "application/json" }),
           Accept: "application/json",
           ...extraHeaders,
         },
         body:
           body === undefined
             ? undefined
-            : typeof body === "string"
+            : typeof body === "string" || body instanceof FormData
               ? body
               : JSON.stringify(body),
         cache: "no-store",
@@ -233,6 +241,34 @@ export function createPayPalClient(opts: PayPalClientOptions): PayPalClient {
         .find((item) => item.invoiceNumber === number);
       // search results are summaries; fetch the full invoice for payLink etc.
       return match ? client.getInvoice(match.id) : null;
+    },
+
+    async listDisputesForTransaction(transactionId) {
+      const res = await request(
+        "GET",
+        `/v1/customer/disputes?disputed_transaction_id=${encodeURIComponent(transactionId)}`,
+        "list disputes",
+      );
+      const data = disputeListSchema.parse(await res.json());
+      return (data.items ?? []).map((item) => normalizeDispute(item));
+    },
+
+    async getDispute(id) {
+      const res = await request(
+        "GET",
+        `/v1/customer/disputes/${encodeURIComponent(id)}`,
+        "get dispute",
+      );
+      return normalizeDispute(await res.json());
+    },
+
+    async provideDisputeEvidence(id, input) {
+      await request(
+        "POST",
+        `/v1/customer/disputes/${encodeURIComponent(id)}/provide-evidence`,
+        "provide dispute evidence",
+        buildEvidenceForm(input),
+      );
     },
 
     async verifyWebhookSignature(input) {
