@@ -1,11 +1,11 @@
 /**
  * Pure scoring for the negotiation eval. Amount checks guard FR-3.7: a message
  * may only mention amounts that the option itself carries. Language checks
- * guard F18: the message is in the client's language (#32).
+ * guard #32: the message is in English, whatever language the client wrote in.
  */
 import {
   MAX_MESSAGE_WORDS,
-  replyLanguage,
+  REPLY_LANGUAGE,
 } from "../src/lib/ai/negotiate/prompt";
 import { fromMinor, toMinor } from "../src/lib/money/decimal";
 import type { Agreement } from "../src/lib/schema/agreement";
@@ -24,7 +24,7 @@ export type OptionScore = {
   amountsOk: boolean;
   /** Language the message looks like, or null if the eval can't tell. */
   language: string | null;
-  /** False when the message isn't in the client's language. */
+  /** False when the message isn't in the expected language. */
   languageOk: boolean;
   /** Space-separated words; null for Japanese. */
   words: number | null;
@@ -49,7 +49,7 @@ export type NegotiationSummary = {
   modelSuccessRate: number;
   /** Options whose message names only the option's own amounts (FR-3.7). */
   amountAccuracy: number;
-  /** Options whose message is in the client's language (F18). */
+  /** Options whose message is in English, for every client (#32). */
   languageAccuracy: number;
   /** Options over MAX_MESSAGE_WORDS (info, not a gate). */
   overLength: number;
@@ -116,7 +116,7 @@ function asAmount(value: string | null | undefined): string | null {
 export function scoreOption(
   option: Counteroffer,
   budget: string,
-  expectedLanguage = "en",
+  expectedLanguage = REPLY_LANGUAGE,
 ): OptionScore {
   const { proposed_agreement: proposed, strategy } = option;
   const currency = proposed.price.currency ?? "USD";
@@ -171,10 +171,7 @@ export function scoreNegotiationCase(input: {
   const mismatchOk = detected === input.expectMismatch;
   const negotiationValid = negotiationSchema.safeParse(negotiation).success;
   const budget = input.agreement.price.total ?? "0";
-  const language = replyLanguage(input.agreement).code;
-  const options = negotiation.options.map((o) =>
-    scoreOption(o, budget, language),
-  );
+  const options = negotiation.options.map((o) => scoreOption(o, budget));
 
   const pass =
     mismatchOk &&

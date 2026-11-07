@@ -273,7 +273,7 @@ describe("generateCounteroffers", () => {
   });
 });
 
-describe("generateCounteroffers in the client's language", () => {
+describe("generateCounteroffers for a client writing Indonesian", () => {
   const indonesian = agreement({
     price: { total: "40.00", currency: "USD" },
     extraction: {
@@ -284,7 +284,7 @@ describe("generateCounteroffers in the client's language", () => {
     },
   });
 
-  it("asks the model to reply in Indonesian", async () => {
+  it("asks the model for English", async () => {
     const client = modelReturning(drafts);
     await generateCounteroffers({
       agreement: indonesian,
@@ -293,37 +293,19 @@ describe("generateCounteroffers in the client's language", () => {
       client,
     });
     const [prompt] = vi.mocked(client.generateJson).mock.calls[0];
-    expect(prompt.user).toContain(
-      "<reply_language>Indonesian (id)</reply_language>",
-    );
+    expect(prompt.system).toContain("Always write in English");
   });
 
-  it("falls back to Indonesian templates", async () => {
+  it("falls back to English templates", async () => {
     const result = await generateCounteroffers({
       agreement: indonesian,
       settings,
       today,
       client: null,
     });
-    const [adjust, split] = result.negotiation.options;
-    expect(adjust.message_draft).toBe(
-      "Halo Kak Ren! Makasih udah kirim detailnya. Sesuai rate aku, untuk scope lengkapnya jadi 145.00 USD. Kalau cocok, aku bisa langsung mulai.",
+    expect(result.negotiation.options[0].message_draft).toBe(
+      "Hi Ren! Thanks for the details. Based on my rates, the full scope comes to 145.00 USD. If that works for you, I can get started.",
     );
-    expect(split.message_draft).toContain(
-      "bayar 39.15 USD dulu, sisanya 105.85 USD",
-    );
-    // Summaries are for the creator.
-    expect(adjust.summary).toBe("Keep the full scope for 145.00 USD");
-  });
-
-  it("keeps English templates for other languages", async () => {
-    const result = await generateCounteroffers({
-      agreement: { ...indonesian, extraction: undefined },
-      settings,
-      today,
-      client: null,
-    });
-    expect(result.negotiation.options[0].message_draft).toMatch(/^Hi Ren!/);
   });
 });
 

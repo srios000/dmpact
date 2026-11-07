@@ -23,7 +23,6 @@ import {
   counterofferDraftsSchema,
   type CounterofferDrafts,
   type CounterofferNumbers,
-  replyLanguage,
 } from "./prompt";
 
 export const MIN_SPLIT_DEPOSIT_PCT = 10;
@@ -102,46 +101,22 @@ function reducedScope(
   });
 }
 
-/** Fallback messages in Indonesian or English; other languages get English. */
 function templateDrafts(
   agreement: Agreement,
   n: CounterofferNumbers,
 ): CounterofferDrafts {
   const name = agreement.parties?.client?.display_name;
-  const price = `${n.rate_card_price} ${n.currency}`;
-  const deposit = `${n.split_deposit} ${n.currency}`;
-  const balance = `${n.split_balance} ${n.currency}`;
-  // Summaries are for the creator, so they stay in English.
-  const summaries = {
-    adjust_price: `Keep the full scope for ${price}`,
-    split_milestones: `${price} in 2 payments: ${deposit} now`,
-  };
-
-  if (replyLanguage(agreement).code === "id") {
-    const hi = name ? `Halo Kak ${name}!` : "Halo Kak!";
-    return {
-      reduce_scope: null,
-      adjust_price: {
-        summary: summaries.adjust_price,
-        message_draft: `${hi} Makasih udah kirim detailnya. Sesuai rate aku, untuk scope lengkapnya jadi ${price}. Kalau cocok, aku bisa langsung mulai.`,
-      },
-      split_milestones: {
-        summary: summaries.split_milestones,
-        message_draft: `${hi} Untuk scope lengkapnya sesuai rate aku jadi ${price}. Biar lebih ringan, Kakak bisa bayar ${deposit} dulu, sisanya ${balance} pas hasilnya dikirim.`,
-      },
-    };
-  }
-
   const hi = name ? `Hi ${name}!` : "Hi!";
+  const price = `${n.rate_card_price} ${n.currency}`;
   return {
     reduce_scope: null,
     adjust_price: {
-      summary: summaries.adjust_price,
+      summary: `Keep the full scope for ${price}`,
       message_draft: `${hi} Thanks for the details. Based on my rates, the full scope comes to ${price}. If that works for you, I can get started.`,
     },
     split_milestones: {
-      summary: summaries.split_milestones,
-      message_draft: `${hi} The full scope comes to ${price} on my rates. To make it easier, you can pay ${deposit} now and the remaining ${balance} on delivery.`,
+      summary: `${price} in 2 payments: ${n.split_deposit} ${n.currency} now`,
+      message_draft: `${hi} The full scope comes to ${price} on my rates. To make it easier, you can pay ${n.split_deposit} ${n.currency} now and the remaining ${n.split_balance} ${n.currency} on delivery.`,
     },
   };
 }

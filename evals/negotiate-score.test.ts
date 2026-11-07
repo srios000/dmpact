@@ -144,6 +144,17 @@ describe("scoreOption language and length", () => {
     ).toBe(true);
   });
 
+  it("expects English by default, even for an Indonesian client", () => {
+    const indonesian = option(
+      "adjust_price",
+      "Halo Kak! Untuk scope lengkapnya jadi 150.00 USD.",
+    );
+    expect(scoreOption(indonesian, "40.00")).toMatchObject({
+      language: "id",
+      languageOk: false,
+    });
+  });
+
   it("doesn't score languages it can't recognize", () => {
     expect(
       scoreOption(option("adjust_price", "150.00 USD"), "40.00", "ko")

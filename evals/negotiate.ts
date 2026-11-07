@@ -21,7 +21,7 @@ import { detectMismatch } from "../src/lib/ai/negotiate/mismatch";
 import {
   COUNTEROFFER_PROMPT_VERSION,
   MAX_MESSAGE_WORDS,
-  replyLanguage,
+  REPLY_LANGUAGE,
 } from "../src/lib/ai/negotiate/prompt";
 import type { Agreement } from "../src/lib/schema/agreement";
 import {
@@ -64,8 +64,9 @@ function loadCases(nearMiss: boolean): EvalCase[] {
     ) as { paste_date: string; expected: Agreement; expect_mismatch: boolean };
     const name = file.replace(".expected.json", "");
     // Fixtures list their flags in expected_ambiguity_codes instead, and their
-    // extraction block only holds source_language, which picks the reply
-    // language (#32). Fill in the rest so the agreement passes the schema.
+    // extraction block only holds source_language. Keep it, so Indonesian and
+    // Japanese DMs check that the reply is still English (#32), and fill in
+    // the rest so the agreement passes the schema.
     const sourceLanguage = fixture.expected.extraction?.source_language;
     const agreement: Agreement = {
       ...fixture.expected,
@@ -176,7 +177,7 @@ async function main() {
       }
       if (!o.languageOk) {
         console.log(
-          `      ${o.strategy}: written in ${o.language ?? "unclear language"}, expected ${replyLanguage(c.agreement).code}`,
+          `      ${o.strategy}: written in ${o.language ?? "unclear language"}, expected ${REPLY_LANGUAGE}`,
         );
       }
       if (o.words !== null && o.words > MAX_MESSAGE_WORDS) {
