@@ -9,7 +9,8 @@ export type RepositoryErrorCode =
   | "storage_unavailable"
   | "upload_not_allowed"
   | "invalid_upload"
-  | "download_not_allowed";
+  | "download_not_allowed"
+  | "dispute_failed";
 
 export class RepositoryError extends Error {
   readonly code: RepositoryErrorCode;

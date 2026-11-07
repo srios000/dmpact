@@ -6,6 +6,7 @@ import { CommissionActions } from "@/components/organisms/commission-actions";
 import { CommissionClientDownloads } from "@/components/organisms/commission-client-downloads";
 import { CommissionDeliveries } from "@/components/organisms/commission-deliveries";
 import { CommissionDeliveryUpload } from "@/components/organisms/commission-delivery-upload";
+import { CommissionDisputes } from "@/components/organisms/commission-disputes";
 import { CommissionInvoices } from "@/components/organisms/commission-invoices";
 import { CommissionLiveRefresh } from "@/components/organisms/commission-live-refresh";
 import { CommissionMessages } from "@/components/organisms/commission-messages";
@@ -25,8 +26,10 @@ import type { CommissionState } from "@/lib/state-machine/rules";
 import { AgreementEditor } from "./_components/agreement-editor";
 import {
   createDeliveryUpload,
+  listDisputes,
   recordDelivery,
   runReminder,
+  sendDisputeEvidence,
   transitionCommission,
 } from "./actions";
 
@@ -119,6 +122,13 @@ export default async function CommissionDetailPage({
         <div className="min-w-0 space-y-6">
           <CommissionTimeline events={commission.events} />
           <CommissionInvoices invoices={commission.invoices} today={today} />
+          {commission.invoices.some((invoice) => invoice.status === "paid") ? (
+            <CommissionDisputes
+              commissionId={commission.id}
+              listDisputes={listDisputes}
+              sendEvidence={sendDisputeEvidence}
+            />
+          ) : null}
           <CommissionDeliveries deliveries={commission.deliveries} />
           {UPLOAD_STATES.includes(commission.state) ? (
             <CommissionDeliveryUpload

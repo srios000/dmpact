@@ -43,6 +43,17 @@ Log in to either account at <https://www.sandbox.paypal.com/signin>.
 
 The [webhook simulator](https://developer.paypal.com/api/rest/webhooks/simulator/) sends mock events, but those can't be verified through `verify-webhook-signature`. Use a real sandbox payment to test signature verification.
 
+## Disputes (evidence pack)
+
+The commission page has a **PayPal disputes** card once an invoice is paid. To try it in the sandbox:
+
+1. Pay an invoice with the sandbox Personal account.
+2. Still signed in as Personal at sandbox.paypal.com, open the Resolution Center, pick that payment and report a problem (for example "I didn't receive it").
+3. On the commission page, click **Check PayPal**. The dispute is matched through the payment's transaction ID. A new dispute can take a few minutes to show up.
+4. While PayPal waits for the seller (`WAITING_FOR_SELLER_RESPONSE`), **Send evidence pack** uploads the evidence pack PDF with `provide-evidence`. Other statuses can't take evidence.
+
+The app's PayPal account needs the Disputes feature (Apps & Credentials, app settings) if the API answers 403.
+
 ## Recreate the setup
 
 Only needed if the shared app or accounts are lost. Log in at <https://developer.paypal.com/dashboard> and confirm the page shows "You're in sandbox mode".

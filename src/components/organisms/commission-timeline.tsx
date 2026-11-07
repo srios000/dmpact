@@ -63,6 +63,11 @@ const EVENT_STYLE: Record<string, EventStyle> = {
     tone: "primary",
     title: "Delivery logged",
   },
+  dispute_evidence_sent: {
+    icon: UploadIcon,
+    tone: "primary",
+    title: "Evidence sent to PayPal dispute",
+  },
   invoice_sent: {
     icon: ReceiptTextIcon,
     tone: "warning",
