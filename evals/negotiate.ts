@@ -8,8 +8,9 @@
  *   pnpm eval:negotiate -- --no-near-miss   fixtures only, fewer model calls
  *   pnpm eval:negotiate -- --out=evals/results/negotiate.json
  *
- * Exit code 1 if mismatch accuracy or amount accuracy is below 100%, or the
+ * Exit code 1 if mismatch, amount or language accuracy is below 100%, or the
  * model wrote fewer than 90% of the mismatch cases (the rest used templates).
+ * Messages over MAX_MESSAGE_WORDS are counted but don't fail the run.
  */
 import "dotenv/config";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -17,7 +18,11 @@ import { dirname, join } from "node:path";
 import { createGeminiClient } from "../src/lib/ai/gemini";
 import { generateCounteroffers } from "../src/lib/ai/negotiate/counteroffers";
 import { detectMismatch } from "../src/lib/ai/negotiate/mismatch";
-import { COUNTEROFFER_PROMPT_VERSION } from "../src/lib/ai/negotiate/prompt";
+import {
+  COUNTEROFFER_PROMPT_VERSION,
+  MAX_MESSAGE_WORDS,
+  REPLY_LANGUAGE,
+} from "../src/lib/ai/negotiate/prompt";
 import type { Agreement } from "../src/lib/schema/agreement";
 import {
   DEFAULT_MISMATCH_THRESHOLD_PCT,
@@ -59,11 +64,21 @@ function loadCases(nearMiss: boolean): EvalCase[] {
     ) as { paste_date: string; expected: Agreement; expect_mismatch: boolean };
     const name = file.replace(".expected.json", "");
     // Fixtures list their flags in expected_ambiguity_codes instead, and their
-    // extraction block only holds source_language for the eval.
-    const agreement = {
+    // extraction block only holds source_language. Keep it, so Indonesian and
+    // Japanese DMs check that the reply is still English (#32), and fill in
+    // the rest so the agreement passes the schema.
+    const sourceLanguage = fixture.expected.extraction?.source_language;
+    const agreement: Agreement = {
       ...fixture.expected,
       ambiguities: [],
-      extraction: undefined,
+      extraction: sourceLanguage
+        ? {
+            model: "fixture",
+            prompt_version: "fixture",
+            confidence: 1,
+            source_language: sourceLanguage,
+          }
+        : undefined,
     };
     cases.push({
       name,
@@ -160,16 +175,24 @@ async function main() {
       if (o.missingAmount) {
         console.log(`      ${o.strategy}: doesn't mention ${o.missingAmount}`);
       }
+      if (!o.languageOk) {
+        console.log(
+          `      ${o.strategy}: written in ${o.language ?? "unclear language"}, expected ${REPLY_LANGUAGE}`,
+        );
+      }
+      if (o.words !== null && o.words > MAX_MESSAGE_WORDS) {
+        console.log(`      ${o.strategy}: ${o.words} words (info)`);
+      }
     }
   }
 
   const summary = summarizeNegotiation(scores);
   const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
   console.log(
-    `\nPassed ${summary.passed}/${summary.cases} | mismatch accuracy ${pct(summary.mismatchAccuracy)} | amount accuracy ${pct(summary.amountAccuracy)} over ${summary.optionCount} options | model success ${pct(summary.modelSuccessRate)}`,
+    `\nPassed ${summary.passed}/${summary.cases} | mismatch accuracy ${pct(summary.mismatchAccuracy)} | amount accuracy ${pct(summary.amountAccuracy)} | language accuracy ${pct(summary.languageAccuracy)} over ${summary.optionCount} options | model success ${pct(summary.modelSuccessRate)}`,
   );
   console.log(
-    `Options: reduce_scope ${summary.strategies.reduce_scope}, adjust_price ${summary.strategies.adjust_price}, split_milestones ${summary.strategies.split_milestones}`,
+    `Options: reduce_scope ${summary.strategies.reduce_scope}, adjust_price ${summary.strategies.adjust_price}, split_milestones ${summary.strategies.split_milestones} | over ${MAX_MESSAGE_WORDS} words: ${summary.overLength} (info)`,
   );
   console.log(
     `Latency over ${latencies.length} model cases | p50 ${seconds(percentile(latencies, 50))} | p95 ${seconds(percentile(latencies, 95))} (info)`,
