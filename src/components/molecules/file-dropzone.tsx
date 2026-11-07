@@ -10,24 +10,21 @@ const zoneVariants = cva(
   "flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 text-center transition-colors focus-within:ring-2 focus-within:ring-ring",
   {
     variants: {
-      dragging: {
-        true: "border-primary bg-primary/5",
-        false: "border-border bg-muted/30 hover:border-input hover:bg-muted/50",
-      },
-      disabled: {
-        true: "pointer-events-none opacity-50",
-        false: "",
+      state: {
+        idle: "border-border bg-muted/30 hover:border-input hover:bg-muted/50",
+        dragging: "border-primary bg-primary/5",
+        disabled: "pointer-events-none border-border bg-muted/30 opacity-50",
       },
     },
     defaultVariants: {
-      dragging: false,
-      disabled: false,
+      state: "idle",
     },
   },
 );
 
 export interface FileDropzoneProps {
   file: File | null;
+  mimeType?: string;
   onSelect: (file: File) => void;
   onClear: () => void;
   accept?: string;
@@ -37,6 +34,7 @@ export interface FileDropzoneProps {
 
 function FileDropzone({
   file,
+  mimeType,
   onSelect,
   onClear,
   accept,
@@ -45,6 +43,7 @@ function FileDropzone({
 }: FileDropzoneProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = React.useState(false);
+  const zoneState = disabled ? "disabled" : dragging ? "dragging" : "idle";
 
   function handleFiles(files: FileList | null) {
     const next = files?.[0];
@@ -75,7 +74,8 @@ function FileDropzone({
               {file.name}
             </p>
             <p className="text-xs text-muted-foreground">
-              {formatSize(file.size)} · {file.type || "unknown type"}
+              {formatSize(file.size)} ·{" "}
+              {mimeType || file.type || "unknown type"}
             </p>
           </div>
           <Button
@@ -83,6 +83,7 @@ function FileDropzone({
             variant="ghost"
             size="icon-sm"
             aria-label={`Remove ${file.name}`}
+            disabled={disabled}
             onClick={onClear}
           >
             <XIcon />
@@ -92,7 +93,7 @@ function FileDropzone({
         <div
           role="button"
           tabIndex={disabled ? -1 : 0}
-          className={zoneVariants({ dragging, disabled })}
+          className={zoneVariants({ state: zoneState })}
           onClick={() => !disabled && inputRef.current?.click()}
           onKeyDown={(event) => {
             if (!disabled && (event.key === "Enter" || event.key === " ")) {

@@ -8,12 +8,42 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   DELIVERY_MIME_TYPES,
+  isDeliveryMimeType,
   MAX_DELIVERY_BYTES,
   type CreateDeliveryUploadInput,
+  type DeliveryMimeType,
   type RecordDeliveryInput,
 } from "@/lib/schema/delivery";
 import type { ActionResult } from "@/lib/repositories/action-result";
+import type { Effect } from "@/lib/state-machine/rules";
 import { cn } from "@/lib/utils";
+
+const EXTENSION_MIME_TYPES: Record<string, DeliveryMimeType> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  psd: "image/vnd.adobe.photoshop",
+  pdf: "application/pdf",
+  zip: "application/zip",
+  wav: "audio/wav",
+  mp3: "audio/mpeg",
+  flac: "audio/flac",
+  m4a: "audio/mp4",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+};
+
+function resolveMimeType(file: File): string {
+  if (isDeliveryMimeType(file.type)) return file.type;
+  if (!file.type || file.type === "application/octet-stream") {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (ext in EXTENSION_MIME_TYPES) return EXTENSION_MIME_TYPES[ext];
+  }
+  return file.type;
+}
 
 type CreateUploadResult = {
   uploadId: string;
@@ -39,7 +69,9 @@ type CreateUploadAction = (
 
 type RecordDeliveryAction = (
   input: RecordDeliveryInput,
-) => Promise<ActionResult<{ delivery: RecordedDelivery }>>;
+) => Promise<
+  ActionResult<{ delivery: RecordedDelivery; failedEffects?: Effect[] }>
+>;
 
 type Phase = "idle" | "uploading" | "recording" | "done";
 
@@ -95,15 +127,28 @@ function CommissionDeliveryUpload({
   const [phase, setPhase] = React.useState<Phase>("idle");
   const [progress, setProgress] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
+  const [warning, setWarning] = React.useState<string | null>(null);
   const [delivery, setDelivery] = React.useState<RecordedDelivery | null>(null);
 
   const pending = phase === "uploading" || phase === "recording";
 
   function handleSelect(next: File) {
     setError(null);
+    setWarning(null);
     setDelivery(null);
+    if (next.size === 0) {
+      setError("The file is empty.");
+      return;
+    }
     if (next.size > MAX_DELIVERY_BYTES) {
       setError("Files can be at most 25 MB.");
+      return;
+    }
+    const mimeType = resolveMimeType(next);
+    if (!isDeliveryMimeType(mimeType)) {
+      setError(
+        "This file type isn't allowed. Zip it and upload the .zip instead.",
+      );
       return;
     }
     setFile(next);
@@ -112,6 +157,7 @@ function CommissionDeliveryUpload({
   async function handleSubmit() {
     if (!file) return;
     setError(null);
+    setWarning(null);
     setDelivery(null);
     setPhase("uploading");
     setProgress(0);
@@ -119,7 +165,7 @@ function CommissionDeliveryUpload({
     const created = await createDeliveryUpload({
       commissionId,
       filename: file.name,
-      mimeType: file.type,
+      mimeType: resolveMimeType(file),
       sizeBytes: file.size,
     });
     if (!created.ok) {
@@ -156,6 +202,11 @@ function CommissionDeliveryUpload({
     }
 
     setDelivery(recorded.data.delivery);
+    if (recorded.data.failedEffects?.includes("createBalanceInvoice")) {
+      setWarning(
+        "The delivery was recorded, but the PayPal balance invoice couldn't be sent yet. You can retry sending it in the Invoices section.",
+      );
+    }
     setPhase("done");
     setFile(null);
     router.refresh();
@@ -182,12 +233,14 @@ function CommissionDeliveryUpload({
 
       <FileDropzone
         file={file}
+        mimeType={file ? resolveMimeType(file) : undefined}
         onSelect={handleSelect}
         onClear={() => {
           setFile(null);
+          setWarning(null);
           setDelivery(null);
         }}
-        accept={DELIVERY_MIME_TYPES.join(",")}
+        accept={[...DELIVERY_MIME_TYPES, ".psd", ".zip"].join(",")}
         disabled={pending}
       />
 
@@ -241,7 +294,8 @@ function CommissionDeliveryUpload({
         <div className="space-y-1 rounded-lg border border-status-fully-paid/30 bg-status-fully-paid/10 p-4 text-sm">
           <p className="flex items-center gap-2 font-medium text-foreground">
             <CheckIcon className="size-4 text-status-fully-paid" />
-            Uploaded {delivery.filename}
+            Uploaded {delivery.filename} (
+            {delivery.isFinal ? "Final" : "Preview"})
           </p>
           <p className="font-mono text-xs break-all text-muted-foreground">
             SHA-256 {delivery.sha256}
@@ -249,6 +303,11 @@ function CommissionDeliveryUpload({
           <p className="text-xs text-muted-foreground">
             Logged at {stampFormatter.format(new Date(delivery.loggedAt))}
           </p>
+          {warning ? (
+            <p role="status" className="pt-1 text-xs text-destructive">
+              {warning}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

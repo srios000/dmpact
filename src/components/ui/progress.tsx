@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 const progressVariants = cva(
   "relative h-2 w-full overflow-hidden rounded-full bg-muted",
