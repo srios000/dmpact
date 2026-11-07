@@ -563,6 +563,11 @@ export async function seedDemoCommissions(
           : plan === "sent"
             ? new Date(now.getTime() + 5 * DAY)
             : new Date(at(step).getTime() + 7 * DAY);
+      const demoId = createHash("sha256")
+        .update(`demo-inv:${commission.id}:${kind}`)
+        .digest("hex")
+        .slice(0, 12)
+        .toUpperCase();
       await db.invoice.create({
         data: {
           commissionId: commission.id,
@@ -571,6 +576,7 @@ export async function seedDemoCommissions(
           amount,
           currency: "USD",
           dueDate: new Date(`${isoDate(due)}T00:00:00Z`),
+          payLink: `https://www.sandbox.paypal.com/invoice/p/#INV2-DEMO-${demoId}`,
           paidAt: plan === "paid" ? at(step + 1) : null,
           createdAt: at(step),
         },

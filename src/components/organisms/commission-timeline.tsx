@@ -1,5 +1,6 @@
 import * as React from "react";
 import {
+  BellIcon,
   CircleCheckIcon,
   CircleXIcon,
   FilePlusIcon,
@@ -70,6 +71,11 @@ const EVENT_STYLE: Record<string, EventStyle> = {
     icon: CircleXIcon,
     tone: "danger",
     title: "Invoice cancelled",
+  },
+  invoice_reminded: {
+    icon: BellIcon,
+    tone: "warning",
+    title: "Payment reminder sent",
   },
   effect_failed: {
     icon: TriangleAlertIcon,

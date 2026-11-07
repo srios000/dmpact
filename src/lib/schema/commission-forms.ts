@@ -67,6 +67,10 @@ export const retryBalanceInvoiceSchema = z.strictObject({
   commissionId: commissionIdSchema,
 });
 
+export const runReminderSchema = z.strictObject({
+  commissionId: commissionIdSchema,
+});
+
 export const confirmAgreementSchema = z.strictObject({
   token: clientTokenSchema,
   versionHash: versionHashSchema,
@@ -95,3 +99,4 @@ export type RetryDepositInvoiceInput = z.input<
 export type RetryBalanceInvoiceInput = z.input<
   typeof retryBalanceInvoiceSchema
 >;
+export type RunReminderInput = z.input<typeof runReminderSchema>;

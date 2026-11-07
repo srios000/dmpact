@@ -21,7 +21,7 @@ import {
 } from "@/lib/state-machine/agreement-edits";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import { AgreementEditor } from "./_components/agreement-editor";
-import { transitionCommission } from "./actions";
+import { runReminder, transitionCommission } from "./actions";
 
 export const instant = false;
 export const maxDuration = 60;
@@ -127,6 +127,8 @@ export default async function CommissionDetailPage({
             deposit={commission.deposit}
             balance={commission.balance}
             transition={transitionCommission}
+            runReminder={runReminder}
+            initialNudge={commission.latestNudge}
           />
           <CommissionClientDownloads
             state={commission.state}

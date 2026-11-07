@@ -25,6 +25,7 @@ import {
   type IssueDepositInvoiceOptions,
   type IssueInvoiceOptions,
 } from "./invoice-repository";
+import { latestNudgeFromEvents } from "./overdue-repository";
 import {
   agreementInForce,
   isClientToken,
@@ -166,6 +167,7 @@ export async function getCommission(id: string) {
     balanceRetry: balanceRetryable
       ? { error: balanceFailureMessage(commission.events) }
       : null,
+    latestNudge: latestNudgeFromEvents(commission.events),
     ...summarize(readAgreement((inForce ?? latest).content)),
     ...payments,
     versions: versions.map((v) => ({
