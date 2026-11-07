@@ -9,7 +9,6 @@ import {
   CopyIcon,
   DownloadIcon,
   PlayIcon,
-  UploadIcon,
   XIcon,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -208,15 +207,6 @@ function CommissionActions({
                 : "The deposit must be paid before work starts."
             }
             onClick={() => run("in_progress")}
-          />
-        ) : null}
-
-        {state === "in_progress" ? (
-          <ActionRow
-            label="Upload delivery"
-            icon={UploadIcon}
-            disabled
-            hint="File upload ships with issue #42."
           />
         ) : null}
 

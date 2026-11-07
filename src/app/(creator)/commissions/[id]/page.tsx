@@ -5,6 +5,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { CommissionActions } from "@/components/organisms/commission-actions";
 import { CommissionClientDownloads } from "@/components/organisms/commission-client-downloads";
 import { CommissionDeliveries } from "@/components/organisms/commission-deliveries";
+import { CommissionDeliveryUpload } from "@/components/organisms/commission-delivery-upload";
 import { CommissionInvoices } from "@/components/organisms/commission-invoices";
 import { CommissionLiveRefresh } from "@/components/organisms/commission-live-refresh";
 import { CommissionMessages } from "@/components/organisms/commission-messages";
@@ -15,13 +16,19 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { todayInZone } from "@/lib/ai/extract";
 import { daysLeft, deadlineTone } from "@/lib/queue/queue";
 import { getCommission } from "@/lib/repositories/commission-repository";
+import { UPLOAD_STATES } from "@/lib/repositories/delivery-repository";
 import {
   agreementEditMode,
   type AgreementEditMode,
 } from "@/lib/state-machine/agreement-edits";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import { AgreementEditor } from "./_components/agreement-editor";
-import { runReminder, transitionCommission } from "./actions";
+import {
+  createDeliveryUpload,
+  recordDelivery,
+  runReminder,
+  transitionCommission,
+} from "./actions";
 
 export const instant = false;
 export const maxDuration = 60;
@@ -113,6 +120,13 @@ export default async function CommissionDetailPage({
           <CommissionTimeline events={commission.events} />
           <CommissionInvoices invoices={commission.invoices} today={today} />
           <CommissionDeliveries deliveries={commission.deliveries} />
+          {UPLOAD_STATES.includes(commission.state) ? (
+            <CommissionDeliveryUpload
+              commissionId={commission.id}
+              createDeliveryUpload={createDeliveryUpload}
+              recordDelivery={recordDelivery}
+            />
+          ) : null}
           <CommissionMessages
             sourceDm={commission.sourceDm}
             followUpDms={commission.followUpDms}
