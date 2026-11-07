@@ -273,6 +273,60 @@ describe("generateCounteroffers", () => {
   });
 });
 
+describe("generateCounteroffers in the client's language", () => {
+  const indonesian = agreement({
+    price: { total: "40.00", currency: "USD" },
+    extraction: {
+      model: "test",
+      prompt_version: "test",
+      confidence: 1,
+      source_language: "id",
+    },
+  });
+
+  it("asks the model to reply in Indonesian", async () => {
+    const client = modelReturning(drafts);
+    await generateCounteroffers({
+      agreement: indonesian,
+      settings,
+      today,
+      client,
+    });
+    const [prompt] = vi.mocked(client.generateJson).mock.calls[0];
+    expect(prompt.user).toContain(
+      "<reply_language>Indonesian (id)</reply_language>",
+    );
+  });
+
+  it("falls back to Indonesian templates", async () => {
+    const result = await generateCounteroffers({
+      agreement: indonesian,
+      settings,
+      today,
+      client: null,
+    });
+    const [adjust, split] = result.negotiation.options;
+    expect(adjust.message_draft).toBe(
+      "Halo Kak Ren! Makasih udah kirim detailnya. Sesuai rate aku, untuk scope lengkapnya jadi 145.00 USD. Kalau cocok, aku bisa langsung mulai.",
+    );
+    expect(split.message_draft).toContain(
+      "bayar 39.15 USD dulu, sisanya 105.85 USD",
+    );
+    // Summaries are for the creator.
+    expect(adjust.summary).toBe("Keep the full scope for 145.00 USD");
+  });
+
+  it("keeps English templates for other languages", async () => {
+    const result = await generateCounteroffers({
+      agreement: { ...indonesian, extraction: undefined },
+      settings,
+      today,
+      client: null,
+    });
+    expect(result.negotiation.options[0].message_draft).toMatch(/^Hi Ren!/);
+  });
+});
+
 describe("splitDepositPct", () => {
   it("is the share of the price the budget covers", () => {
     expect(splitDepositPct("30.00", "100.00", "USD")).toBe(30);
