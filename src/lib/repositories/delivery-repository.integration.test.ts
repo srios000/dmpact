@@ -96,7 +96,7 @@ describe.skipIf(!url)("delivery repository (database)", () => {
     vi.clearAllMocks();
     bucket.clear();
     await db.$executeRawUnsafe(
-      "TRUNCATE creators, commissions, agreement_versions, confirmations, invoices, deliveries, delivery_downloads, commission_events, change_requests, rate_cards RESTART IDENTITY CASCADE",
+      "TRUNCATE creators, commissions, agreement_versions, confirmations, invoices, deliveries, delivery_downloads, commission_events, change_requests, follow_up_dms, rate_cards, webhook_events RESTART IDENTITY CASCADE",
     );
   });
 

@@ -12,6 +12,7 @@ import type { getClientAgreement } from "@/lib/repositories/agreement-repository
 import type { PaymentStatus } from "@/lib/repositories/shared";
 import { SERVICE_LABELS } from "@/lib/schema/agreement";
 import type { CommissionState } from "@/lib/state-machine/rules";
+import { formatSize } from "@/lib/utils";
 import { confirmAgreement, requestChanges } from "../actions";
 
 type ClientView = NonNullable<Awaited<ReturnType<typeof getClientAgreement>>>;
@@ -49,11 +50,6 @@ const stampFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
   timeZoneName: "short",
 });
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 function yesNo(value: boolean | null | undefined, yes: string, no: string) {
   if (value === true) return yes;
@@ -481,7 +477,7 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
                   </span>
                   <span className="shrink-0 text-muted-foreground">
                     {file.isFinal ? "Final" : "Preview"} ·{" "}
-                    {formatBytes(file.sizeBytes)}
+                    {formatSize(file.sizeBytes)} · {file.mimeType}
                   </span>
                 </div>
                 <p className="text-muted-foreground">
@@ -515,7 +511,7 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
                 >
                   <span className="min-w-0 truncate">{file.filename}</span>
                   <span className="shrink-0 text-muted-foreground">
-                    {formatBytes(file.sizeBytes)}
+                    {formatSize(file.sizeBytes)}
                   </span>
                 </li>
               ))}
