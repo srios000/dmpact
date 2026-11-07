@@ -19,6 +19,7 @@ export default function Error({
         retryLabel="Try again"
         action={
           <Button
+            size="lg"
             variant="outline"
             nativeButton={false}
             render={<Link href="/commissions" />}

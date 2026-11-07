@@ -25,7 +25,6 @@ import {
   PlayIcon,
   RotateCwIcon,
   SearchIcon,
-  UploadIcon,
   XIcon,
 } from "lucide-react";
 import { QueueSummaryBar } from "@/components/molecules/queue-summary";
@@ -308,9 +307,6 @@ function RowActions({
           <PlayIcon />
         </ActionButton>
       )}
-      <ActionButton label="Delivery upload isn't available yet" disabled>
-        <UploadIcon />
-      </ActionButton>
     </div>
   );
 }
@@ -501,7 +497,7 @@ function buildColumns(
     {
       headerName: "",
       colId: "actions",
-      width: 128,
+      width: 96,
       pinned: "right",
       sortable: false,
       filter: false,
