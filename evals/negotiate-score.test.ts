@@ -5,6 +5,7 @@ import type { Counteroffer } from "@/lib/schema/negotiation";
 import {
   evaluateNegotiationGates,
   findMoneyAmounts,
+  guessLanguage,
   lowerBudget,
   percentile,
   scoreNegotiationCase,
@@ -42,6 +43,12 @@ describe("findMoneyAmounts", () => {
     expect(
       findMoneyAmounts("2 revisions, 50% deposit, due Nov 20, 3 stems", "USD"),
     ).toEqual([]);
+  });
+
+  it("reads Indonesian dolar", () => {
+    expect(findMoneyAmounts("jadi 145 dolar ya Kak", "USD")).toEqual([
+      "145.00",
+    ]);
   });
 
   it("counts an amount written twice once", () => {
@@ -96,6 +103,69 @@ describe("scoreOption", () => {
         "40.00",
       ).amountsOk,
     ).toBe(true);
+  });
+});
+
+describe("guessLanguage", () => {
+  it("tells English, Indonesian and Japanese apart", () => {
+    expect(
+      guessLanguage("Hi Ren! The full scope comes to 150.00 USD on my rates."),
+    ).toBe("en");
+    expect(
+      guessLanguage(
+        "Halo Kak Ren! Sesuai rate aku, untuk scope lengkapnya jadi 150.00 USD.",
+      ),
+    ).toBe("id");
+    expect(guessLanguage("Renさん、こんにちは！150.00 USDです。")).toBe("ja");
+  });
+
+  it("gives up when it can't tell", () => {
+    expect(guessLanguage("150.00 USD")).toBeNull();
+  });
+});
+
+describe("scoreOption language and length", () => {
+  it("checks the message is in the client's language", () => {
+    const english = option("adjust_price", "Hi! The full scope is 150.00 USD.");
+    expect(scoreOption(english, "40.00", "en")).toMatchObject({
+      language: "en",
+      languageOk: true,
+    });
+    expect(scoreOption(english, "40.00", "id").languageOk).toBe(false);
+    expect(
+      scoreOption(
+        option(
+          "adjust_price",
+          "Halo Kak! Untuk scope lengkapnya jadi 150.00 USD.",
+        ),
+        "40.00",
+        "id",
+      ).languageOk,
+    ).toBe(true);
+  });
+
+  it("expects English by default, even for an Indonesian client", () => {
+    const indonesian = option(
+      "adjust_price",
+      "Halo Kak! Untuk scope lengkapnya jadi 150.00 USD.",
+    );
+    expect(scoreOption(indonesian, "40.00")).toMatchObject({
+      language: "id",
+      languageOk: false,
+    });
+  });
+
+  it("doesn't score languages it can't recognize", () => {
+    expect(
+      scoreOption(option("adjust_price", "150.00 USD"), "40.00", "ko")
+        .languageOk,
+    ).toBe(true);
+  });
+
+  it("counts words", () => {
+    expect(
+      scoreOption(option("adjust_price", "It is 150.00 USD."), "40.00").words,
+    ).toBe(4);
   });
 });
 
@@ -174,6 +244,9 @@ describe("summarizeNegotiation and gates", () => {
         unknownAmounts: [],
         missingAmount: null,
         amountsOk: true,
+        language: "en",
+        languageOk: true,
+        words: 20,
       },
     ],
     pass: true,
@@ -187,6 +260,8 @@ describe("summarizeNegotiation and gates", () => {
       mismatchAccuracy: 1,
       modelSuccessRate: 1,
       amountAccuracy: 1,
+      languageAccuracy: 1,
+      overLength: 0,
       strategies: { reduce_scope: 0, adjust_price: 2, split_milestones: 0 },
     });
     expect(evaluateNegotiationGates(summary).pass).toBe(true);
@@ -203,6 +278,24 @@ describe("summarizeNegotiation and gates", () => {
     const gates = evaluateNegotiationGates(summarizeNegotiation([ok, bad]));
     expect(gates.pass).toBe(false);
     expect(gates.failures).toEqual(["amountAccuracy 50% < 100%"]);
+  });
+
+  it("misses the targets on a reply in the wrong language", () => {
+    const wrong = {
+      ...ok,
+      pass: false,
+      options: [{ ...ok.options[0], language: "en", languageOk: false }],
+    };
+    expect(
+      evaluateNegotiationGates(summarizeNegotiation([ok, wrong])).failures,
+    ).toEqual(["languageAccuracy 50% < 100%"]);
+  });
+
+  it("counts long messages without failing the gates", () => {
+    const long = { ...ok, options: [{ ...ok.options[0], words: 81 }] };
+    const summary = summarizeNegotiation([long]);
+    expect(summary.overLength).toBe(1);
+    expect(evaluateNegotiationGates(summary).pass).toBe(true);
   });
 });
 
