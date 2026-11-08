@@ -12,11 +12,17 @@ const numbers: CounterofferNumbers = {
   rate_card_price: "145.00",
   split_deposit: "39.15",
   split_balance: "105.85",
+  reduce_scope: null,
 };
 
 describe("COUNTEROFFER_SYSTEM_PROMPT", () => {
   it("asks for English whatever the client writes in", () => {
     expect(COUNTEROFFER_SYSTEM_PROMPT).toContain("Always write in English");
+  });
+
+  it("takes the smaller scope from the app's numbers", () => {
+    expect(COUNTEROFFER_SYSTEM_PROMPT).toContain("max_revisions");
+    expect(COUNTEROFFER_SYSTEM_PROMPT).toMatch(/mastering only/i);
   });
 });
 

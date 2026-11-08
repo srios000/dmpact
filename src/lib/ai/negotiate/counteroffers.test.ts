@@ -225,6 +225,89 @@ describe("generateCounteroffers", () => {
     expect(reduce.proposed_agreement.price.total).toBe("100.00");
   });
 
+  it("tells the model the closest smaller scope that fits the budget", async () => {
+    // Mix & master with 3 revisions is 165.00. Mixing fits 100.00 with up to
+    // 3 revisions (115.00, 13% under the 20% threshold).
+    const client = modelReturning(drafts);
+    await generateCounteroffers({
+      agreement: { ...mixAndMaster("100.00"), revisions: { included: 3 } },
+      settings,
+      today,
+      client,
+    });
+    const { user } = vi.mocked(client.generateJson).mock.calls[0][0];
+    const numbers = JSON.parse(
+      user.slice(user.indexOf("<numbers>") + 9, user.indexOf("</numbers>")),
+    );
+    expect(numbers.reduce_scope).toEqual({
+      service_type: "mixing",
+      max_revisions: 3,
+    });
+  });
+
+  it("drops mastering only when mixing fits the budget", async () => {
+    const result = await generateCounteroffers({
+      agreement: { ...mixAndMaster("100.00"), revisions: { included: 3 } },
+      settings,
+      today,
+      client: modelReturning(
+        withReduce({
+          keep_deliverable_ids: ["d2"],
+          service_type: "mastering",
+          revisions_included: 1,
+        }),
+      ),
+    });
+    expect(result.negotiation.options.map((o) => o.strategy)).not.toContain(
+      "reduce_scope",
+    );
+  });
+
+  it("drops a smaller scope with more revisions than the budget covers", async () => {
+    const result = await generateCounteroffers({
+      agreement: { ...mixAndMaster("85.00"), revisions: { included: 3 } },
+      settings,
+      today,
+      client: modelReturning(
+        withReduce({ service_type: "mixing", revisions_included: 3 }),
+      ),
+    });
+    expect(result.negotiation.options.map((o) => o.strategy)).not.toContain(
+      "reduce_scope",
+    );
+  });
+
+  it("uses the most revisions that fit when the model leaves them out", async () => {
+    const result = await generateCounteroffers({
+      agreement: { ...mixAndMaster("85.00"), revisions: { included: 3 } },
+      settings,
+      today,
+      client: modelReturning(
+        withReduce({ service_type: "mixing", revisions_included: null }),
+      ),
+    });
+    const reduce = result.negotiation.options[0];
+    expect(reduce.strategy).toBe("reduce_scope");
+    expect(reduce.proposed_agreement.revisions.included).toBe(2);
+  });
+
+  it("tells the model when no smaller scope fits", async () => {
+    const client = modelReturning(
+      withReduce({ service_type: "mixing", revisions_included: 0 }),
+    );
+    const result = await generateCounteroffers({
+      agreement: mixAndMaster("40.00"),
+      settings,
+      today,
+      client,
+    });
+    const { user } = vi.mocked(client.generateJson).mock.calls[0][0];
+    expect(user).toContain('"reduce_scope": null');
+    expect(result.negotiation.options.map((o) => o.strategy)).not.toContain(
+      "reduce_scope",
+    );
+  });
+
   it("rejects a price from the model and falls back to templates", async () => {
     const withPrice = {
       ...drafts,
