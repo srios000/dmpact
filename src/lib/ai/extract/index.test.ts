@@ -236,11 +236,30 @@ describe("extractAgreement for a follow-up", () => {
     pasteDate: "2026-10-30",
   };
 
-  it("sends the saved agreement to the model", async () => {
+  it("sends the saved agreement and the follow-up rules to the model", async () => {
+    const systems: string[] = [];
     const client = mockClient([valid()]);
+    const generate = client.generateJson.bind(client);
+    client.generateJson = async (request) => {
+      systems.push(request.system);
+      return generate(request);
+    };
     await extractAgreement(followUp, client);
     expect(client.calls[0]).toContain("<current_agreement>");
     expect(client.calls[0]).toContain("mina@example.com");
+    expect(systems[0]).toContain("FOLLOW-UPS");
+  });
+
+  it("keeps the follow-up rules out of a first extraction", async () => {
+    const systems: string[] = [];
+    const client = mockClient([valid()]);
+    const generate = client.generateJson.bind(client);
+    client.generateJson = async (request) => {
+      systems.push(request.system);
+      return generate(request);
+    };
+    await extractAgreement(input, client);
+    expect(systems[0]).not.toContain("FOLLOW-UPS");
   });
 
   it("keeps saved client details the model left empty", async () => {

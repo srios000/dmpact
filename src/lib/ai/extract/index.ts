@@ -256,7 +256,12 @@ export async function extractAgreement(
   let fallback = false;
   try {
     const result = await generateStructured(
-      { system: buildExtractSystemPrompt(), user: userMessage },
+      {
+        system: buildExtractSystemPrompt(undefined, {
+          followUp: input.currentAgreement != null,
+        }),
+        user: userMessage,
+      },
       agreementSchema,
       {
         client,

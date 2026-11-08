@@ -65,10 +65,16 @@ describe("buildExtractSystemPrompt", () => {
   });
 
   it("tells the model to build a follow-up on the saved agreement", () => {
-    const prompt = buildExtractSystemPrompt({});
+    const prompt = buildExtractSystemPrompt({}, { followUp: true });
     expect(prompt).toContain("<current_agreement>");
     expect(prompt).toContain("<earlier_follow_ups>");
     expect(prompt).toMatch(/keep every value/i);
+  });
+
+  it("leaves the follow-up rules out of a first extraction", () => {
+    const prompt = buildExtractSystemPrompt({});
+    expect(prompt).not.toContain("FOLLOW-UPS");
+    expect(prompt).not.toContain("<current_agreement>");
   });
 });
 
