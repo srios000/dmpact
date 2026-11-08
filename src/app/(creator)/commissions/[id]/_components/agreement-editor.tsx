@@ -26,10 +26,12 @@ import {
   sendToClient,
   suggestCounteroffers,
 } from "../actions";
+import { extractAgreement } from "../../new/actions";
 import {
   AgreementVersionHistory,
   type VersionItem,
 } from "./agreement-version-history";
+import { FollowUpDm } from "./follow-up-dm";
 
 type CommissionDetail = NonNullable<Awaited<ReturnType<typeof getCommission>>>;
 
@@ -61,6 +63,7 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
   const [applyingId, setApplyingId] = React.useState<string | null>(null);
   const [checking, startChecking] = React.useTransition();
   const [applying, startApplying] = React.useTransition();
+  const [followUpOpen, setFollowUpOpen] = React.useState(false);
 
   const facts = readAgreementFacts(latest.agreement);
   const unsaved = dirty || loaded !== null;
@@ -174,6 +177,21 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
     });
   }
 
+  function handleFollowUpOpen(open: boolean) {
+    if (open) {
+      setError(null);
+      setNotice(null);
+    }
+    setFollowUpOpen(open);
+  }
+
+  function handleFollowUpSaved(version: number) {
+    setCounteroffer(null);
+    setCountererror(null);
+    setNotice(`Follow-up saved as version ${version}.`);
+    router.refresh();
+  }
+
   async function handleCopy() {
     if (!clientLink) return;
     await navigator.clipboard.writeText(
@@ -237,6 +255,21 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-6">
           {mode === "full" && (
+            <FollowUpDm
+              commissionId={commission.id}
+              latestVersion={latest.version}
+              latestAgreement={latest.agreement}
+              today={today}
+              open={followUpOpen}
+              disabled={unsaved || saving || applying}
+              extract={extractAgreement}
+              save={saveAgreementVersion}
+              onOpenChange={handleFollowUpOpen}
+              onSaved={handleFollowUpSaved}
+            />
+          )}
+
+          {mode === "full" && !followUpOpen && (
             <section className="space-y-4 rounded-xl border bg-card p-5 md:p-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="space-y-1">
@@ -289,7 +322,10 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
             </section>
           )}
 
-          <section className="space-y-6 rounded-xl border bg-card p-5 md:p-8">
+          <section
+            hidden={followUpOpen}
+            className="space-y-6 rounded-xl border bg-card p-5 md:p-8"
+          >
             {loaded && (
               <p className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
                 Showing version {loaded.version}. Save it to make it version{" "}
@@ -386,7 +422,7 @@ function AgreementEditor({ commission, mode, today }: AgreementEditorProps) {
               versions={commission.versions}
               inForceVersion={commission.inForceVersion}
               loadedVersion={loaded?.version ?? null}
-              onLoad={mode === "full" ? setLoaded : undefined}
+              onLoad={mode === "full" && !followUpOpen ? setLoaded : undefined}
             />
           </div>
         </aside>
