@@ -39,7 +39,7 @@ describe("extractAgreement", () => {
     expect(fallback).toBe(false);
     expect(agreement.deposit.amount).toBe("75.00");
     expect(agreement.extraction?.model).toBe("gemini-test");
-    expect(agreement.extraction?.prompt_version).toBe("extract-v3");
+    expect(agreement.extraction?.prompt_version).toBe("extract-v4");
   });
 
   it("accepts JSON wrapped in code fences", async () => {
@@ -214,6 +214,115 @@ describe("extractAgreement", () => {
     const client = mockClient([JSON.stringify(withMoney)]);
     const { agreement } = await extractAgreement(input, client);
     expect(agreement.deposit.amount).toBe("75.00");
+  });
+});
+
+describe("extractAgreement for a follow-up", () => {
+  const current = () =>
+    baseAgreement({
+      price: { total: "165.00", currency: "USD" },
+      parties: {
+        client: {
+          display_name: "Mina",
+          handle: "@hoshimiya_mina",
+          email: "mina@example.com",
+        },
+      },
+    });
+  const followUp = {
+    dmText: "commercial use on YouTube, credit in the description",
+    originalDm: "mix and master for 100 USD",
+    currentAgreement: current(),
+    pasteDate: "2026-10-30",
+  };
+
+  it("sends the saved agreement and the follow-up rules to the model", async () => {
+    const systems: string[] = [];
+    const client = mockClient([valid()]);
+    const generate = client.generateJson.bind(client);
+    client.generateJson = async (request) => {
+      systems.push(request.system);
+      return generate(request);
+    };
+    await extractAgreement(followUp, client);
+    expect(client.calls[0]).toContain("<current_agreement>");
+    expect(client.calls[0]).toContain("mina@example.com");
+    expect(systems[0]).toContain("FOLLOW-UPS");
+  });
+
+  it("keeps the follow-up rules out of a first extraction", async () => {
+    const systems: string[] = [];
+    const client = mockClient([valid()]);
+    const generate = client.generateJson.bind(client);
+    client.generateJson = async (request) => {
+      systems.push(request.system);
+      return generate(request);
+    };
+    await extractAgreement(input, client);
+    expect(systems[0]).not.toContain("FOLLOW-UPS");
+  });
+
+  it("keeps saved client details the model left empty", async () => {
+    const answer = baseAgreement({
+      parties: { client: { display_name: null, handle: null, email: null } },
+      ambiguities: [
+        {
+          code: "MISSING_CLIENT_EMAIL",
+          severity: "warning",
+          field: "/parties/client/email",
+          message: "No email.",
+          source_quote: null,
+          suggested_question: null,
+        },
+      ],
+    });
+    const client = mockClient([JSON.stringify(answer)]);
+    const { agreement } = await extractAgreement(followUp, client);
+    expect(agreement.parties?.client).toEqual({
+      display_name: "Mina",
+      handle: "@hoshimiya_mina",
+      email: "mina@example.com",
+    });
+    expect(agreement.ambiguities.map((a) => a.code)).not.toContain(
+      "MISSING_CLIENT_EMAIL",
+    );
+  });
+
+  it("uses a new email from the follow-up", async () => {
+    const answer = baseAgreement({
+      parties: {
+        client: {
+          display_name: "Mina",
+          handle: null,
+          email: "new@example.com",
+        },
+      },
+    });
+    const client = mockClient([JSON.stringify(answer)]);
+    const { agreement } = await extractAgreement(followUp, client);
+    expect(agreement.parties?.client?.email).toBe("new@example.com");
+    expect(agreement.parties?.client?.handle).toBe("@hoshimiya_mina");
+  });
+
+  it("falls back to the saved agreement, not a blank draft", async () => {
+    const client = mockClient(["not json", "still not json"]);
+    const { agreement, fallback } = await extractAgreement(followUp, client);
+    expect(fallback).toBe(true);
+    expect(agreement.price.total).toBe("165.00");
+    expect(agreement.deliverables).toEqual(current().deliverables);
+    expect(agreement.parties?.client?.email).toBe("mina@example.com");
+    expect(agreement.ambiguities.map((a) => a.code)).toEqual(["OTHER"]);
+  });
+
+  it("checks the length of earlier follow-ups too", async () => {
+    const client = mockClient([valid()]);
+    await expect(
+      extractAgreement(
+        { ...followUp, earlierFollowUps: ["x".repeat(10_001)] },
+        client,
+      ),
+    ).rejects.toMatchObject({ code: "INPUT_INVALID" });
+    expect(client.calls).toHaveLength(0);
   });
 });
 
