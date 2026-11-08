@@ -273,6 +273,42 @@ describe("generateCounteroffers", () => {
   });
 });
 
+describe("generateCounteroffers for a client writing Indonesian", () => {
+  const indonesian = agreement({
+    price: { total: "40.00", currency: "USD" },
+    extraction: {
+      model: "test",
+      prompt_version: "test",
+      confidence: 1,
+      source_language: "id",
+    },
+  });
+
+  it("asks the model for English", async () => {
+    const client = modelReturning(drafts);
+    await generateCounteroffers({
+      agreement: indonesian,
+      settings,
+      today,
+      client,
+    });
+    const [prompt] = vi.mocked(client.generateJson).mock.calls[0];
+    expect(prompt.system).toContain("Always write in English");
+  });
+
+  it("falls back to English templates", async () => {
+    const result = await generateCounteroffers({
+      agreement: indonesian,
+      settings,
+      today,
+      client: null,
+    });
+    expect(result.negotiation.options[0].message_draft).toBe(
+      "Hi Ren! Thanks for the details. Based on my rates, the full scope comes to 145.00 USD. If that works for you, I can get started.",
+    );
+  });
+});
+
 describe("splitDepositPct", () => {
   it("is the share of the price the budget covers", () => {
     expect(splitDepositPct("30.00", "100.00", "USD")).toBe(30);
