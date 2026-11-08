@@ -15,6 +15,7 @@ import {
 } from "@/lib/schema/agreement";
 import { runPostChecks } from "./post-checks";
 import {
+  agreementTerms,
   buildExtractSystemPrompt,
   buildExtractUserMessage,
   EXTRACT_PROMPT_VERSION,
@@ -119,27 +120,31 @@ const NOT_SPECIFIED = "Not specified";
 function buildFallbackDraft(
   candidate: Record<string, unknown>,
   model: string,
+  base: Agreement | null,
 ): Agreement {
-  const draft: Record<string, unknown> = {
-    schema_version: "1.0",
-    service_type: "other",
-    service_other: NOT_SPECIFIED,
-    title: "Untitled commission",
-    deliverables: [{ id: "d1", description: NOT_SPECIFIED, quantity: 1 }],
-    price: { total: null, currency: null },
-    deposit: { type: "none", percent: null, fixed_amount: null },
-    deadline: { date: null, raw_text: null, is_relative: false },
-    revisions: { included: null, extra_fee: null },
-    ambiguities: [],
-    extraction: {
-      model,
-      prompt_version: EXTRACT_PROMPT_VERSION,
-      confidence: 0,
-      source_language: "unknown",
-    },
+  const metadata = {
+    model,
+    prompt_version: EXTRACT_PROMPT_VERSION,
+    confidence: 0,
+    source_language: base?.extraction?.source_language ?? "unknown",
   };
+  const draft: Record<string, unknown> = base
+    ? { ...agreementTerms(base), ambiguities: [], extraction: metadata }
+    : {
+        schema_version: "1.0",
+        service_type: "other",
+        service_other: NOT_SPECIFIED,
+        title: "Untitled commission",
+        deliverables: [{ id: "d1", description: NOT_SPECIFIED, quantity: 1 }],
+        price: { total: null, currency: null },
+        deposit: { type: "none", percent: null, fixed_amount: null },
+        deadline: { date: null, raw_text: null, is_relative: false },
+        revisions: { included: null, extra_fee: null },
+        ambiguities: [],
+        extraction: metadata,
+      };
 
-  const kept = new Set<string>();
+  const kept = new Set<string>(base ? Object.keys(draft) : []);
   for (const [key, schema] of Object.entries(agreementSchema.shape)) {
     const result = schema.safeParse(candidate[key]);
     if (result.success && result.data !== undefined) {
@@ -189,6 +194,31 @@ function buildFallbackDraft(
 }
 
 /**
+ * A follow-up never erases who the client is: names, handles and emails are
+ * often added by hand and appear in no DM.
+ */
+function keepClientDetails(
+  agreement: Agreement,
+  current: Agreement,
+): Agreement {
+  const saved = current.parties?.client;
+  if (!saved) return agreement;
+  const next = agreement.parties?.client;
+  const client = {
+    display_name: next?.display_name ?? saved.display_name ?? null,
+    handle: next?.handle ?? saved.handle ?? null,
+    email: next?.email ?? saved.email ?? null,
+  };
+  return {
+    ...agreement,
+    parties: { ...agreement.parties, client },
+    ambiguities: client.email
+      ? agreement.ambiguities.filter((a) => a.code !== "MISSING_CLIENT_EMAIL")
+      : agreement.ambiguities,
+  };
+}
+
+/**
  * DM text -> validated agreement.
  * Flow: prompt -> model -> zod validate -> one repair retry -> fallback draft
  * if still invalid -> post-checks (flags + server-computed money) -> final
@@ -198,7 +228,11 @@ export async function extractAgreement(
   input: ExtractInput,
   client: ModelClient,
 ): Promise<ExtractResult> {
-  for (const text of [input.dmText, input.originalDm ?? ""]) {
+  for (const text of [
+    input.dmText,
+    input.originalDm ?? "",
+    ...(input.earlierFollowUps ?? []),
+  ]) {
     if (text.length > MAX_DM_CHARS) {
       throw new ExtractionError(
         "INPUT_INVALID",
@@ -238,9 +272,17 @@ export async function extractAgreement(
       throw new ExtractionError("MODEL_CALL_FAILED", error.message);
     }
     if (!(error instanceof StructuredOutputError)) throw error;
-    agreement = buildFallbackDraft(error.candidate ?? {}, error.model);
+    agreement = buildFallbackDraft(
+      error.candidate ?? {},
+      error.model,
+      input.currentAgreement ?? null,
+    );
     attempts = 2;
     fallback = true;
+  }
+
+  if (input.currentAgreement) {
+    agreement = keepClientDetails(agreement, input.currentAgreement);
   }
 
   const checked = runPostChecks({
