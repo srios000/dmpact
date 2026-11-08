@@ -546,8 +546,8 @@ describe.skipIf(!url)("delivery repository (database)", () => {
       ).rejects.toThrow(/append-only/);
     });
 
-    it("only serves final files from the token's own commission", async () => {
-      const { id } = await finalFile("fully_paid");
+    it("serves preview files before full payment and blocks files from other commissions", async () => {
+      const { id } = await finalFile("delivered");
       const preview = await db.delivery.create({
         data: {
           commissionId: id,
@@ -562,11 +562,24 @@ describe.skipIf(!url)("delivery repository (database)", () => {
       const other = await seed("fully_paid", "O".repeat(22));
       const { delivery: otherFile } = await deliver(other, Buffer.from("x"));
 
-      for (const deliveryId of [preview.id, otherFile.id]) {
-        await expect(
-          requestDeliveryDownload({ token, deliveryId, userAgent: null }),
-        ).rejects.toMatchObject({ code: "not_found" });
-      }
+      const previewDownload = await requestDeliveryDownload({
+        token,
+        deliveryId: preview.id,
+        userAgent: "Preview UA",
+      });
+      expect(previewDownload).toMatchObject({
+        commissionId: id,
+        filename: "preview.png",
+      });
+      expect(await db.deliveryDownload.count()).toBe(1);
+
+      await expect(
+        requestDeliveryDownload({
+          token,
+          deliveryId: otherFile.id,
+          userAgent: null,
+        }),
+      ).rejects.toMatchObject({ code: "not_found" });
       await expect(
         requestDeliveryDownload({
           token: "Z".repeat(22),
@@ -574,7 +587,7 @@ describe.skipIf(!url)("delivery repository (database)", () => {
           userAgent: null,
         }),
       ).rejects.toMatchObject({ code: "not_found" });
-      expect(await db.deliveryDownload.count()).toBe(0);
+      expect(await db.deliveryDownload.count()).toBe(1);
     });
   });
 });
