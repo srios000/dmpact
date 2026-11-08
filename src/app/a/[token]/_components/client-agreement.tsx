@@ -13,7 +13,7 @@ import type { PaymentStatus } from "@/lib/repositories/shared";
 import { SERVICE_LABELS } from "@/lib/schema/agreement";
 import type { CommissionState } from "@/lib/state-machine/rules";
 import { formatSize } from "@/lib/utils";
-import { confirmAgreement, requestChanges } from "../actions";
+import { confirmAgreement, downloadDelivery, requestChanges } from "../actions";
 
 type ClientView = NonNullable<Awaited<ReturnType<typeof getClientAgreement>>>;
 
@@ -85,33 +85,77 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
   const [email, setEmail] = React.useState("");
   const [busy, startBusy] = React.useTransition();
   const [checking, setChecking] = React.useState(false);
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
   const { agreement } = view;
+  const isCreator = view.isCreator;
   const currency = agreement.price.currency;
   const clientEmail = agreement.parties?.client?.email ?? null;
   const awaitingClient = view.awaitingClient && status.state === view.state;
   const needsEmail = !clientEmail && awaitingClient;
   const invoiceOut =
     status.deposit.status === "sent" || status.balance.status === "sent";
+  const finalFiles =
+    view.finalFiles.length > 0
+      ? view.finalFiles
+      : view.deliveryLog.filter((file) => file.isFinal);
 
-  usePolling<LiveStatus | null>({
-    enabled: !FINISHED.includes(status.state),
-    intervalMs: 10_000,
-    poll: async () => {
+  const fetchStatus = React.useCallback(
+    async (syncPayment: boolean): Promise<LiveStatus | null> => {
+      if (syncPayment) {
+        await fetch(`/api/commissions/${view.commissionId}/refresh-payment`, {
+          method: "POST",
+          headers: { "x-client-token": token },
+        }).catch(() => null);
+      }
       const response = await fetch(
         `/api/commissions/${view.commissionId}/status`,
         { headers: { "x-client-token": token }, cache: "no-store" },
       );
       return response.ok ? ((await response.json()) as LiveStatus) : null;
     },
-    onData: (next) => {
+    [view.commissionId, token],
+  );
+
+  const applyStatus = React.useCallback(
+    (next: LiveStatus | null) => {
       if (!next) return;
-      if (next.state !== status.state || next.updatedAt !== status.updatedAt) {
-        router.refresh();
-      }
-      setStatus(next);
+      setStatus((prev) => {
+        if (
+          next.state !== prev.state ||
+          next.updatedAt !== prev.updatedAt ||
+          next.deposit.status !== prev.deposit.status ||
+          next.balance.status !== prev.balance.status
+        ) {
+          router.refresh();
+        }
+        return next;
+      });
     },
+    [router],
+  );
+
+  usePolling<LiveStatus | null>({
+    enabled: !FINISHED.includes(status.state),
+    intervalMs: 10_000,
+    poll: () => fetchStatus(invoiceOut),
+    onData: applyStatus,
   });
+
+  React.useEffect(() => {
+    if (!invoiceOut) return;
+    function onVisible() {
+      if (document.visibilityState === "visible") {
+        void fetchStatus(true).then(applyStatus);
+      }
+    }
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [invoiceOut, fetchStatus, applyStatus]);
 
   async function checkPayment() {
     setChecking(true);
@@ -125,9 +169,25 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
         setError("Couldn't reach PayPal. Try again in a moment.");
         return;
       }
+      applyStatus(await fetchStatus(false));
       router.refresh();
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function handleDownload(deliveryId: string) {
+    setDownloadingId(deliveryId);
+    setError(null);
+    try {
+      const result = await downloadDelivery(token, deliveryId);
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      window.location.assign(result.data.url);
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -294,14 +354,19 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
         className="space-y-4 rounded-xl border bg-card p-5 md:p-6"
       >
         <h2 id="next-heading" className="text-lg font-medium text-foreground">
-          {awaitingClient
+          {awaitingClient && !isCreator
             ? view.deadlineInForce
               ? "Confirm the new deadline"
               : "Check and confirm"
             : "What happens next"}
         </h2>
 
-        {awaitingClient ? (
+        {awaitingClient && isCreator ? (
+          <p className="text-muted-foreground">
+            You&apos;re viewing your own client link. Only the client can
+            confirm this agreement or ask for changes here.
+          </p>
+        ) : awaitingClient ? (
           <div className="space-y-4">
             <p className="text-muted-foreground">
               {view.deadlineInForce
@@ -486,6 +551,20 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
                 <p className="font-mono text-xs break-all text-muted-foreground">
                   SHA-256 {file.sha256}
                 </p>
+                {!file.isFinal && status.state !== "cancelled" && (
+                  <div className="pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={downloadingId !== null}
+                      onClick={() => handleDownload(file.id)}
+                    >
+                      {downloadingId === file.id
+                        ? "Preparing..."
+                        : "Download preview"}
+                    </Button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -500,19 +579,31 @@ function ClientAgreement({ token, view }: ClientAgreementProps) {
           <h2 id="files-heading" className="text-lg font-medium">
             Final files
           </h2>
-          {view.finalFiles.length === 0 ? (
+          {finalFiles.length === 0 ? (
             <p className="text-sm text-muted-foreground">No final files yet.</p>
           ) : (
             <ul className="divide-y divide-border text-sm">
-              {view.finalFiles.map((file) => (
+              {finalFiles.map((file) => (
                 <li
                   key={file.id}
-                  className="flex justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                  className="flex flex-wrap items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
                 >
-                  <span className="min-w-0 truncate">{file.filename}</span>
-                  <span className="shrink-0 text-muted-foreground">
-                    {formatSize(file.sizeBytes)}
-                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {file.filename}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {formatSize(file.sizeBytes)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={downloadingId !== null}
+                    onClick={() => handleDownload(file.id)}
+                  >
+                    {downloadingId === file.id ? "Preparing..." : "Download"}
+                  </Button>
                 </li>
               ))}
             </ul>

@@ -1,4 +1,5 @@
 import "server-only";
+import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { db } from "@/lib/db";
 import { withComputedAmounts } from "@/lib/money/agreement";
 import { contentHash } from "@/lib/schema/content-hash";
@@ -100,13 +101,23 @@ export async function saveAgreementVersion(input: {
   });
 }
 
-async function commissionForToken(tx: Tx, token: string) {
+async function commissionForToken(
+  tx: Tx,
+  token: string,
+  creatorId?: string | null,
+) {
   if (!isClientToken(token)) throw notFound();
   const found = await tx.commission.findUnique({
     where: { clientToken: token },
-    select: { id: true },
+    select: { id: true, creatorId: true },
   });
   if (!found) throw notFound();
+  if (creatorId && found.creatorId === creatorId) {
+    throw new RepositoryError(
+      "edit_not_allowed",
+      "You can't confirm or request changes on your own commission.",
+    );
+  }
 
   await lockCommission(tx, found.id);
   const commission = await tx.commission.findUniqueOrThrow({
@@ -159,12 +170,15 @@ export async function getClientAgreement(token: string) {
     parties: content.parties,
   };
   const clientConfirmed = isConfirmedBy(latest, "client");
+  const creator = await getCurrentCreator();
+  const isCreator = creator?.id === commission.creatorId;
 
   return {
     commissionId: commission.id,
     state: commission.state,
     updatedAt: commission.updatedAt.toISOString(),
     creatorName: commission.creator.displayName,
+    isCreator,
     version: latest.version,
     versionHash: latest.contentHash,
     agreement,
@@ -203,8 +217,11 @@ export async function confirmAgreement(input: {
   token: string;
   versionHash: string;
 }) {
+  if (!isClientToken(input.token)) throw notFound();
+  const creator = await getCurrentCreator();
+
   const { commissionId, state, steps } = await db.$transaction(async (tx) => {
-    const commission = await commissionForToken(tx, input.token);
+    const commission = await commissionForToken(tx, input.token, creator?.id);
     const latest = await latestVersion(tx, commission.id);
     if (latest.contentHash !== input.versionHash) {
       throw new RepositoryError(
@@ -273,8 +290,11 @@ export async function requestChanges(input: {
   token: string;
   message: string;
 }) {
+  if (!isClientToken(input.token)) throw notFound();
+  const creator = await getCurrentCreator();
+
   return db.$transaction(async (tx) => {
-    const commission = await commissionForToken(tx, input.token);
+    const commission = await commissionForToken(tx, input.token, creator?.id);
     const latest = await latestVersion(tx, commission.id);
 
     if (
