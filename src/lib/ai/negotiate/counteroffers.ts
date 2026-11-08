@@ -28,7 +28,7 @@ import {
 export const MIN_SPLIT_DEPOSIT_PCT = 10;
 export const MAX_SPLIT_DEPOSIT_PCT = 50;
 
-/** Cheaper services a reduced scope may switch to. */
+/** Cheaper services a reduced scope may switch to, closest to the request first. */
 const SCOPE_DOWNGRADES: Partial<Record<ServiceType, ServiceType[]>> = {
   mix_and_master: ["mixing", "mastering"],
 };
@@ -72,16 +72,47 @@ export function splitDepositPct(
   return Math.min(MAX_SPLIT_DEPOSIT_PCT, Math.max(MIN_SPLIT_DEPOSIT_PCT, pct));
 }
 
+/**
+ * The closest smaller scope the budget covers on the rate card: the current
+ * service first, then its downgrades in order, each with as many of the current
+ * revisions as still fit. Null when nothing fits.
+ */
+export function smallerScope(
+  agreement: Agreement,
+  settings: RateCardSettings,
+  today: string,
+): CounterofferNumbers["reduce_scope"] {
+  const services = [
+    agreement.service_type,
+    ...(SCOPE_DOWNGRADES[agreement.service_type] ?? []),
+  ];
+  const current = agreement.revisions.included;
+  const counts =
+    current === null
+      ? [null]
+      : Array.from({ length: current + 1 }, (_, i) => current - i);
+  for (const service_type of services) {
+    for (const included of counts) {
+      const candidate = {
+        ...agreement,
+        service_type,
+        revisions: { ...agreement.revisions, included },
+      };
+      if (detectMismatch(candidate, settings, today).outcome === "fair") {
+        return { service_type, max_revisions: included };
+      }
+    }
+  }
+  return null;
+}
+
 /** Apply the model's smaller scope at the client's budget, or null if invalid. */
 function reducedScope(
   agreement: Agreement,
   draft: NonNullable<CounterofferDrafts["reduce_scope"]>,
+  target: CounterofferNumbers["reduce_scope"],
 ): Agreement | null {
-  const sameService = draft.service_type === agreement.service_type;
-  const downgrade = SCOPE_DOWNGRADES[agreement.service_type]?.includes(
-    draft.service_type,
-  );
-  if (!sameService && !downgrade) return null;
+  if (!target || draft.service_type !== target.service_type) return null;
 
   const ids = new Set(agreement.deliverables.map((d) => d.id));
   if (!draft.keep_deliverable_ids.every((id) => ids.has(id))) return null;
@@ -91,7 +122,9 @@ function reducedScope(
   const asked = draft.revisions_included;
   // The model's message names its count, so a higher one drops the option.
   if (asked !== null && current !== null && asked > current) return null;
-  const included = asked ?? current;
+  const max = target.max_revisions;
+  if (asked !== null && max !== null && asked > max) return null;
+  const included = asked ?? max;
 
   return withComputedAmounts({
     ...agreement,
@@ -162,6 +195,7 @@ export async function generateCounteroffers({
     rate_card_price: ratePrice,
     split_deposit: split.deposit.amount!,
     split_balance: split.balance_amount!,
+    reduce_scope: smallerScope(agreement, settings, today),
   };
 
   let drafts: CounterofferDrafts;
@@ -194,7 +228,7 @@ export async function generateCounteroffers({
 
   // A smaller scope is offered only if the rate card says the budget covers it.
   let reduced = drafts.reduce_scope
-    ? reducedScope(agreement, drafts.reduce_scope)
+    ? reducedScope(agreement, drafts.reduce_scope, numbers.reduce_scope)
     : null;
   if (reduced && detectMismatch(reduced, settings, today).outcome !== "fair") {
     reduced = null;
