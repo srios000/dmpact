@@ -1,7 +1,11 @@
 import { z } from "zod";
-import { SERVICE_TYPES, type Agreement } from "@/lib/schema/agreement";
+import {
+  SERVICE_TYPES,
+  type Agreement,
+  type ServiceType,
+} from "@/lib/schema/agreement";
 
-export const COUNTEROFFER_PROMPT_VERSION = "counteroffer-v3";
+export const COUNTEROFFER_PROMPT_VERSION = "counteroffer-v4";
 
 /** Messages stay short enough to read on a phone (#32). */
 export const MAX_MESSAGE_WORDS = 80;
@@ -46,11 +50,13 @@ INPUT
 
 OUTPUT
 One JSON object with three keys, no markdown:
-- reduce_scope: keep the client's budget and do less. Choose which deliverables to
-  keep (keep_deliverable_ids, at least one, ids from the agreement), the service
-  type (the current one, or for mix_and_master only: mixing or mastering), and
-  revisions_included (at most the current count). Set it to null if no smaller
-  scope makes sense.
+- reduce_scope: keep the client's budget and do less. <numbers>.reduce_scope is
+  the smaller scope the budget covers on the rate card: use its service_type, and
+  set revisions_included to at most its max_revisions. Choose which deliverables
+  to keep (keep_deliverable_ids, at least one, ids from the agreement) to match
+  that service. Set reduce_scope to null if <numbers>.reduce_scope is null, or if
+  the result would be no use to the client: mastering only needs a finished mix,
+  so don't offer it when the client sends tracks that still need mixing.
 - adjust_price: keep the scope at the rate card price from <numbers>.
 - split_milestones: keep the scope at the rate card price, with the lower deposit
   from <numbers> now and the balance on delivery.
@@ -80,6 +86,11 @@ export type CounterofferNumbers = {
   rate_card_price: string;
   split_deposit: string;
   split_balance: string;
+  /** The closest smaller scope the budget covers, or null if none does. */
+  reduce_scope: {
+    service_type: ServiceType;
+    max_revisions: number | null;
+  } | null;
 };
 
 function escapeWrapperTags(text: string): string {

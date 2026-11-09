@@ -38,6 +38,8 @@ export async function extractAgreement(
         dmText: parsed.data.dmText,
         pasteDate: todayInZone(),
         originalDm: original?.sourceDm,
+        earlierFollowUps: original?.followUpDms.map((f) => f.message),
+        currentAgreement: original?.versions.at(-1)?.agreement,
       },
       createGeminiClient(),
     );

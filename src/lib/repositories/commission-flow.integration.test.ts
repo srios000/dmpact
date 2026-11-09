@@ -81,6 +81,16 @@ describe.skipIf(!url)("commission flow (database)", () => {
     return creator;
   }
 
+  async function asClient<T>(run: () => Promise<T>): Promise<T> {
+    const resolved = await getCurrentCreator();
+    vi.mocked(getCurrentCreator).mockResolvedValue(null);
+    try {
+      return await run();
+    } finally {
+      vi.mocked(getCurrentCreator).mockResolvedValue(resolved);
+    }
+  }
+
   async function sent(agreement: Agreement = baseAgreement) {
     const created = await createCommission({ sourceDm: "dm", agreement });
     const { token } = await sendToClient({
@@ -92,10 +102,12 @@ describe.skipIf(!url)("commission flow (database)", () => {
 
   async function approved(agreement: Agreement = baseAgreement) {
     const commission = await sent(agreement);
-    await confirmAgreement({
-      token: commission.token,
-      versionHash: commission.contentHash,
-    });
+    await asClient(() =>
+      confirmAgreement({
+        token: commission.token,
+        versionHash: commission.contentHash,
+      }),
+    );
     return commission;
   }
 
@@ -207,6 +219,24 @@ describe.skipIf(!url)("commission flow (database)", () => {
     expect(view).not.toHaveProperty("sourceDm");
   });
 
+  it("blocks the owning creator from confirming or requesting changes on the client link", async () => {
+    const { id, token, contentHash } = await sent();
+
+    const creatorView = await getClientAgreement(token);
+    expect(creatorView?.isCreator).toBe(true);
+
+    await expect(
+      confirmAgreement({ token, versionHash: contentHash }),
+    ).rejects.toMatchObject({ code: "edit_not_allowed" });
+    await expect(
+      requestChanges({ token, message: "Creator pretending to be client" }),
+    ).rejects.toMatchObject({ code: "edit_not_allowed" });
+
+    const commission = await getCommission(id);
+    expect(commission?.state).toBe("negotiating");
+    expect(commission?.changeRequests).toEqual([]);
+  });
+
   it("binds the client's confirmation to the version hash", async () => {
     const { id, token, contentHash } = await sent();
     const newer = await saveAgreementVersion({
@@ -215,20 +245,24 @@ describe.skipIf(!url)("commission flow (database)", () => {
     });
 
     await expect(
-      confirmAgreement({ token, versionHash: contentHash }),
+      asClient(() => confirmAgreement({ token, versionHash: contentHash })),
     ).rejects.toMatchObject({ code: "stale_version" });
     expect((await getCommission(id))?.state).toBe("negotiating");
 
-    const result = await confirmAgreement({
-      token,
-      versionHash: newer.contentHash,
-    });
+    const result = await asClient(() =>
+      confirmAgreement({
+        token,
+        versionHash: newer.contentHash,
+      }),
+    );
     expect(result.state).toBe("agreed");
 
-    const again = await confirmAgreement({
-      token,
-      versionHash: newer.contentHash,
-    });
+    const again = await asClient(() =>
+      confirmAgreement({
+        token,
+        versionHash: newer.contentHash,
+      }),
+    );
     expect(again.state).toBe("agreed");
 
     const commission = await getCommission(id);
@@ -240,7 +274,7 @@ describe.skipIf(!url)("commission flow (database)", () => {
     const { id, token, contentHash } = await sent(exampleAgreement);
 
     await expect(
-      confirmAgreement({ token, versionHash: contentHash }),
+      asClient(() => confirmAgreement({ token, versionHash: contentHash })),
     ).rejects.toMatchObject({ code: "guard_failed" });
 
     const commission = await getCommission(id);
@@ -253,7 +287,9 @@ describe.skipIf(!url)("commission flow (database)", () => {
   it("stores change requests and stays in negotiating", async () => {
     const { id, token } = await sent();
 
-    await requestChanges({ token, message: "Please add stems." });
+    await asClient(() =>
+      requestChanges({ token, message: "Please add stems." }),
+    );
 
     const commission = await getCommission(id);
     expect(commission?.state).toBe("negotiating");
@@ -296,10 +332,12 @@ describe.skipIf(!url)("commission flow (database)", () => {
     expect(view?.agreement.deadline.date).toBe(laterDeadline.date);
     expect((await getCommissionStatus(id, token))?.awaitingClient).toBe(true);
 
-    const result = await confirmAgreement({
-      token,
-      versionHash: changed.contentHash,
-    });
+    const result = await asClient(() =>
+      confirmAgreement({
+        token,
+        versionHash: changed.contentHash,
+      }),
+    );
     expect(result.state).toBe("agreed");
 
     const done = await getCommission(id);
@@ -341,10 +379,12 @@ describe.skipIf(!url)("commission flow (database)", () => {
       }),
     ).rejects.toMatchObject({ code: "edit_not_allowed" });
     await expect(
-      confirmAgreement({ token, versionHash: changed.contentHash }),
+      asClient(() =>
+        confirmAgreement({ token, versionHash: changed.contentHash }),
+      ),
     ).rejects.toMatchObject({ code: "edit_not_allowed" });
     await expect(
-      requestChanges({ token, message: "Too late" }),
+      asClient(() => requestChanges({ token, message: "Too late" })),
     ).rejects.toMatchObject({ code: "edit_not_allowed" });
   });
 

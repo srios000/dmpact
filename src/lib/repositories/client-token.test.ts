@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getCurrentCreator } from "@/lib/auth/get-current-creator";
 import { db } from "@/lib/db";
 import { clientTokenSchema } from "@/lib/schema/commission-forms";
-import { confirmAgreement, getClientAgreement } from "./agreement-repository";
+import {
+  confirmAgreement,
+  getClientAgreement,
+  requestChanges,
+} from "./agreement-repository";
 import { getCommissionStatus } from "./commission-repository";
 import { newClientToken } from "./shared";
 
@@ -9,14 +14,15 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth/get-current-creator", () => ({
   getCurrentCreator: vi.fn(),
 }));
-vi.mock("@/lib/db", () => ({
-  db: {
-    commission: { findUnique: vi.fn(), findFirst: vi.fn() },
-    $transaction: vi.fn((fn: (tx: unknown) => unknown) =>
-      fn({ commission: { findUnique: vi.fn() } }),
-    ),
-  },
-}));
+vi.mock("@/lib/db", () => {
+  const commission = { findUnique: vi.fn(), findFirst: vi.fn() };
+  return {
+    db: {
+      commission,
+      $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn({ commission })),
+    },
+  };
+});
 
 const malformed = ["short", "a".repeat(64), "a".repeat(21) + "="];
 
@@ -45,4 +51,27 @@ describe("client tokens", () => {
       expect(db.commission.findFirst).not.toHaveBeenCalled();
     },
   );
+
+  it("blocks the owning creator from confirming or requesting changes", async () => {
+    const token = newClientToken();
+    const creatorId = crypto.randomUUID();
+    vi.mocked(getCurrentCreator).mockResolvedValue({
+      id: creatorId,
+      email: "creator@test.dev",
+      displayName: "Creator",
+      paypalEmail: null,
+    });
+    vi.mocked(db.commission.findUnique).mockResolvedValue({
+      id: crypto.randomUUID(),
+      creatorId,
+    } as never);
+
+    await expect(
+      confirmAgreement({ token, versionHash: "a".repeat(64) }),
+    ).rejects.toMatchObject({ code: "edit_not_allowed" });
+
+    await expect(
+      requestChanges({ token, message: "Change something" }),
+    ).rejects.toMatchObject({ code: "edit_not_allowed" });
+  });
 });

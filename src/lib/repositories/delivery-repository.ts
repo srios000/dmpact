@@ -260,22 +260,25 @@ export async function requestDeliveryDownload(input: {
     select: { id: true, state: true },
   });
   if (!commission) throw missing;
-  if (commission.state !== "fully_paid") {
-    throw new RepositoryError(
-      "download_not_allowed",
-      "The final file unlocks once the balance is paid.",
-    );
-  }
 
   const delivery = await db.delivery.findFirst({
     where: {
       id: input.deliveryId,
       commissionId: commission.id,
-      isFinal: true,
       storageKey: { not: null },
     },
   });
   if (!delivery?.storageKey) throw missing;
+
+  if (
+    commission.state === "cancelled" ||
+    (delivery.isFinal && commission.state !== "fully_paid")
+  ) {
+    throw new RepositoryError(
+      "download_not_allowed",
+      "The final file unlocks once the balance is paid.",
+    );
+  }
 
   const url = await storage().presignDownload({
     key: delivery.storageKey,

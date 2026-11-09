@@ -80,15 +80,24 @@ describe("extractAgreement action", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("uses the commission's original DM for a follow-up", async () => {
-    commission.mockResolvedValue({ sourceDm: "original deal" } as never);
+  it("builds a follow-up on the original DM, earlier follow-ups and the latest version", async () => {
+    const older = { ...exampleAgreement, title: "Version 1" };
+    const latest = { ...exampleAgreement, title: "Version 2" };
+    commission.mockResolvedValue({
+      sourceDm: "original deal",
+      versions: [{ agreement: older }, { agreement: latest }],
+      followUpDms: [{ message: "first reply" }, { message: "second reply" }],
+    } as never);
     await extractAgreement({ dmText: "make it 200", commissionId });
     expect(commission).toHaveBeenCalledWith(commissionId);
     expect(run).toHaveBeenCalledWith(
-      expect.objectContaining({
+      {
         dmText: "make it 200",
+        pasteDate: "2026-11-02",
         originalDm: "original deal",
-      }),
+        earlierFollowUps: ["first reply", "second reply"],
+        currentAgreement: latest,
+      },
       client,
     );
   });
