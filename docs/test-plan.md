@@ -30,9 +30,9 @@ The purpose of this test plan is to validate that DMpact executes flawlessly acr
 * **Webhook Receiver:** Active webhook listener with verified webhook ID (`PAYPAL_WEBHOOK_ID`).
 
 ### 2.2 Seeded Persona
-* **Creator User:** `demo@dmpact.dev` (Password: seeded in dev environment)
-* **Creator Display Name:** Alex Mixer / Studio Horizon
-* **Client Persona:** Luna Echo (`@luna_echo`, PayPal: `luna@example.com`)
+* **Creator User:** `$DEMO_CREATOR_EMAIL` (Password: `$DEMO_CREATOR_PASSWORD` from `.env`, seeded via `pnpm db:seed`)
+* **Creator Display Name:** Demo Creator (`$DEMO_CREATOR_PAYPAL_EMAIL`)
+* **Client Persona:** Luna Echo (`@luna_echo`, fixture email: `luna@example.com` — replace with `$DEMO_CLIENT_PAYPAL_EMAIL` for live Sandbox payment steps)
 
 ---
 
@@ -43,15 +43,15 @@ The purpose of this test plan is to validate that DMpact executes flawlessly acr
 | Step | Action | Expected State / UI Result | Underlying Verification |
 |---|---|---|---|
 | **1. Login** | Creator logs into `/login` with demo credentials. | Redirected to `/commissions` (queue view). App shell shows navigation. | Neon Auth session cookie established. |
-| **2. Paste DM** | Navigate to `/commissions/new`. Paste text from `fixtures/dms/001-mix-clear.txt`. Click **Extract Agreement**. | Progress loader appears. Within 10s, form is populated with extracted fields. | Gemini returns structured JSON; Zod validation passes; Post-checks compute deposit: $75.00, balance: $75.00. |
-| **3. Review** | Creator reviews agreement fields. No blockers are present. Click **Generate Agreement Link**. | Status transitions to `negotiating`. Tokenized private link generated (`/a/[token]`). | Commission record created in DB (`commissions.state = 'negotiating'`). |
+| **2. Paste DM** | Navigate to `/commissions/new`. Paste text from `fixtures/dms/001-mix-clear.txt`. Click **Read DM**. | Progress loader appears. Within 10s, form is populated with extracted fields. | Gemini returns structured JSON; Zod validation passes; Post-checks compute deposit: $75.00, balance: $75.00. |
+| **3. Review** | Creator reviews agreement fields (sets client email to `$DEMO_CLIENT_PAYPAL_EMAIL` for Sandbox), clicks **Create commission** (`draft`), then clicks **Send to client**. | Status transitions from `draft` to `negotiating`. Tokenized private link generated (`/a/[token]`). | Commission record created in DB and transitioned (`commissions.state = 'negotiating'`). |
 | **4. Client Review** | In an incognito window, open `/a/[token]`. | Agreement review page loads without login. Displays deliverables, price ($150.00 USD), 50% deposit, deadline, revisions, usage rights. | Client token matches record; client cannot view creator admin panels. |
-| **5. Client Confirm** | Client clicks **Confirm Agreement**. | Confirmation modal records timestamp; status moves to `agreed`. PayPal deposit invoice is generated. | Both creator and client confirm the identical `content_hash`. PayPal Invoicing API creates & sends Invoice #1. |
-| **6. Deposit Payment** | Client clicks **Pay Deposit with PayPal**. Logs into Sandbox Personal account and completes $75.00 payment. | Client page updates to show "Deposit Paid". Creator dashboard reflects `dp_paid`. | PayPal triggers `INVOICING.INVOICE.PAID` webhook; signature verified; DB transitions to `dp_paid`. |
-| **7. Start Work** | Creator clicks **Mark In Progress** on commission detail. | State transitions to `in_progress`. Event logged in timeline. | `commission_events` records transition with actor `creator`. |
+| **5. Client Confirm** | Client clicks **Confirm agreement**. | Confirmation modal records timestamp; status moves to `agreed`. PayPal deposit invoice is generated. | Both creator and client confirm the identical `content_hash`. PayPal Invoicing API creates & sends Invoice #1. |
+| **6. Deposit Payment** | Client clicks **Pay with PayPal**. Logs into Sandbox Personal account and completes $75.00 payment. | Client page updates to show "Deposit Paid". Creator dashboard reflects `dp_paid`. | PayPal triggers `INVOICING.INVOICE.PAID` webhook; signature verified; DB transitions to `dp_paid`. |
+| **7. Start Work** | Creator clicks **Start work** on commission detail. | State transitions to `in_progress`. Event logged in timeline. | `commission_events` records transition with actor `creator`. |
 | **8. Preview Upload** | Creator uploads initial mix deliverable (preview WAV/MP3) via delivery form. | File hash (SHA-256) and server UTC timestamp logged. State moves to `delivered`. | S3 storage key saved in `deliveries`; balance invoice ($75.00) created & sent automatically. |
-| **9. Balance Payment** | Client opens invoice link or client page and pays remaining $75.00 balance via PayPal Sandbox. | Status updates to `fully_paid`. Final delivery files unlocked. | Webhook processes second `INVOICE.PAID`; state machine guards unlock final files. |
-| **10. Evidence Export**| Creator clicks **Export Evidence Pack**. | Generates and downloads structured PDF containing full agreement hash, confirmation logs, PayPal invoice IDs, and delivery SHA-256 logs. | `GET /api/commissions/[id]/evidence` generates verified PDF audit trail. |
+| **9. Balance Payment** | Client opens invoice link or client page and pays remaining $75.00 balance via PayPal Sandbox. | Status updates to `fully_paid`. Final delivery files unlocked. | Webhook processes second `INVOICING.INVOICE.PAID`; state machine guards unlock final files. |
+| **10. Evidence Export**| Creator clicks **Download evidence pack**. | Generates and downloads structured PDF containing full agreement hash, confirmation logs, PayPal invoice IDs, and delivery SHA-256 logs. | `GET /api/commissions/[id]/evidence` generates verified PDF audit trail. |
 
 ---
 
@@ -119,7 +119,8 @@ The purpose of this test plan is to validate that DMpact executes flawlessly acr
 * **Expected Result:**
   * System bumps agreement version (e.g., `version 1` → `version 2`).
   * New version generates a distinct `content_hash`.
-  * Client page invalidates previous confirmation and prompts the client to review and re-confirm the revised version.
+  * Version 1 remains the `inForceVersion` until the client confirms.
+  * Client page shows **"Confirm the new deadline"** (`"changed the deadline. The old one stays until you confirm."`) and prompts the client to confirm the new version.
 
 ### TC-EDGE-09: Fixed Deposit Calculation (`deposit.type: fixed`)
 * **Precondition:** Total price is $200.00 USD, fixed deposit set to $40.00 USD.
@@ -133,9 +134,9 @@ The purpose of this test plan is to validate that DMpact executes flawlessly acr
 * **Precondition:** Work is completed; creator uploads delivery package. Commission is in `delivered` state; balance invoice is unpaid.
 * **Steps:** Client visits `/a/[token]` and attempts to download final production files.
 * **Expected Result:**
-  * Final download links are disabled / hidden.
-  * Client sees a clear notice: *"Final unwatermarked deliverables will unlock automatically once balance invoice is settled via PayPal."*
-  * Files unlock immediately after balance webhook confirmation.
+  * The **Delivery record** section shows the filename, size, timestamp, and `SHA-256` fingerprint, while the **Final files** section is hidden (`status.state === "fully_paid"`).
+  * Client sees the status notice: *"{Creator} delivered the work. Pay the rest below to get the final files."*
+  * The **Final files** section unlocks automatically once the balance invoice is paid.
 
 ---
 
