@@ -10,7 +10,7 @@ fixtures/dms/
 └── 001-mix-clear.expected.json
 ```
 
-`*.expected.json` contains the expected Agreement fields (see [docs/agreement-schema.md](../../docs/agreement-schema.md)) plus:
+`*.expected.json` contains the expected Agreement fields plus:
 
 ```json
 {

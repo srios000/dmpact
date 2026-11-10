@@ -24,11 +24,7 @@
 
 <p align="center">
   <a href="https://dmpact.vercel.app"><b>🚀 Try Live Demo</b></a> •
-  <a href="#-quick-tour-3-minute-judge-flow"><b>⚡ 3-Min Judge Guide</b></a> •
-  <a href="docs/submission.md"><b>📑 Devpost Packet</b></a> •
-  <a href="docs/demo-script.md"><b>📹 Demo Script</b></a> •
-  <a href="docs/research.md"><b>🔬 Market Research</b></a> •
-  <a href="docs/architecture.md"><b>🏗️ Architecture</b></a>
+  <a href="#-quick-tour-3-minute-judge-flow"><b>⚡ 3-Min Judge Guide</b></a>
 </p>
 
 ---
