@@ -152,8 +152,8 @@ The purpose of this test plan is to validate that DMpact executes flawlessly acr
 | **TC-EDGE-05** | Unsupported Currency Flag | AI / Validation | Web Client | [ ] | Berwyn | — |
 | **TC-EDGE-06** | Vague Deadline "ASAP" Blocker | AI / Validation | Web Client | [ ] | Berwyn | — |
 | **TC-EDGE-07** | Missing Usage Rights Blocker | AI / Validation | Web Client | [ ] | Berwyn | — |
-| **TC-EDGE-08** | Post-Approval Modification | State Machine | Web Client | [ ] | Rio | — |
-| **TC-EDGE-09** | Fixed Deposit Math | Money / Invoice | Sandbox | [ ] | Rio | — |
+| **TC-EDGE-08** | Post-Approval Modification | State Machine | Web Client | [Done] | Rio | 10-11-26 |
+| **TC-EDGE-09** | Fixed Deposit Math | Money / Invoice | Sandbox | [Done] | Rio | 10-11-26 |
 | **TC-EDGE-10** | Gated Delivery File Protection | Security / State | Client Page | [Done] | Marsha  | 10-11-26 |
 
 ---
