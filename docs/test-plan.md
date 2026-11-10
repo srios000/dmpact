@@ -144,17 +144,17 @@ The purpose of this test plan is to validate that DMpact executes flawlessly acr
 
 | Test Case ID | Description | Type | Environment | Status | Tested By | Date |
 |---|---|---|---|---|---|---|
-| **TC-E2E-001** | Happy Path: Paste to Fully Paid | E2E Happy Path | Vercel + Sandbox | [ ] | Marsha | — |
-| **TC-EDGE-01** | Client Requests Changes Loop | Functional Edge | Vercel + Sandbox | [ ] | Marsha | — |
-| **TC-EDGE-02** | Zero Deposit Flow | Functional Edge | Vercel + Sandbox | [ ] | Marsha | — |
-| **TC-EDGE-03** | Webhook Miss Polling Fallback | Integration | Vercel + Sandbox | [ ] | Marsha / Giani | — |
-| **TC-EDGE-04** | Overdue Cron & AI Nudge | Backend / AI | Vercel Cron | [ ] | Marsha / Giani | — |
-| **TC-EDGE-05** | Unsupported Currency Flag | AI / Validation | Web Client | [ ] | Marsha / Berwyn | — |
-| **TC-EDGE-06** | Vague Deadline "ASAP" Blocker | AI / Validation | Web Client | [ ] | Marsha / Berwyn | — |
-| **TC-EDGE-07** | Missing Usage Rights Blocker | AI / Validation | Web Client | [ ] | Marsha / Berwyn | — |
-| **TC-EDGE-08** | Post-Approval Modification | State Machine | Web Client | [ ] | Marsha / Rio | — |
-| **TC-EDGE-09** | Fixed Deposit Math | Money / Invoice | Sandbox | [ ] | Marsha / Rio | — |
-| **TC-EDGE-10** | Gated Delivery File Protection | Security / State | Client Page | [ ] | Marsha / Hasna | — |
+| **TC-E2E-001** | Happy Path: Paste to Fully Paid | E2E Happy Path | Vercel + Sandbox | [Done] | Marsha | 10-11-26 |
+| **TC-EDGE-01** | Client Requests Changes Loop | Functional Edge | Vercel + Sandbox | [Done] | Marsha | 10-11-26 |
+| **TC-EDGE-02** | Zero Deposit Flow | Functional Edge | Vercel + Sandbox | [Done] | Marsha | 10-11-26 |
+| **TC-EDGE-03** | Webhook Miss Polling Fallback | Integration | Vercel + Sandbox | [ ] | Giani | — |
+| **TC-EDGE-04** | Overdue Cron & AI Nudge | Backend / AI | Vercel Cron | [ ] | Giani | — |
+| **TC-EDGE-05** | Unsupported Currency Flag | AI / Validation | Web Client | [ ] | Berwyn | — |
+| **TC-EDGE-06** | Vague Deadline "ASAP" Blocker | AI / Validation | Web Client | [ ] | Berwyn | — |
+| **TC-EDGE-07** | Missing Usage Rights Blocker | AI / Validation | Web Client | [ ] | Berwyn | — |
+| **TC-EDGE-08** | Post-Approval Modification | State Machine | Web Client | [Done] | Rio | 10-11-26 |
+| **TC-EDGE-09** | Fixed Deposit Math | Money / Invoice | Sandbox | [Done] | Rio | 10-11-26 |
+| **TC-EDGE-10** | Gated Delivery File Protection | Security / State | Client Page | [Done] | Marsha  | 10-11-26 |
 
 ---
 
